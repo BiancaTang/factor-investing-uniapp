@@ -1,0 +1,205 @@
+<template>
+	<view class="page">
+		<view class="card">
+			<view class="row">
+				<text class="label">房间号</text>
+				<input
+					class="field"
+					type="number"
+					maxlength="4"
+					:value="roomCode"
+					placeholder="4 位数字，如 1001"
+					@input="onRoomCode"
+				/>
+			</view>
+			<view class="row">
+				<text class="label">组数</text>
+				<input
+					class="field"
+					type="number"
+					:value="groupCount"
+					placeholder="参与游戏的组数"
+					@input="onGroupCount"
+				/>
+			</view>
+			<view class="row">
+				<text class="label">轮次</text>
+				<input
+					class="field"
+					type="number"
+					:value="roundCount"
+					placeholder="游戏进行几轮"
+					@input="onRoundCount"
+				/>
+			</view>
+			<view class="row switch-row">
+				<text class="label">Banker 介入</text>
+				<view class="switch-wrap">
+					<text class="hint">{{ bankerIntervene ? '有后台控制局面' : '无' }}</text>
+					<switch :checked="bankerIntervene" color="#07c160" @change="onBankerChange" />
+				</view>
+			</view>
+
+			<button class="btn" :disabled="!canSubmit || saving" :loading="saving" @click="submit">
+				保存房间
+			</button>
+			<text class="tips">数据写入集合 f_room；房间号全局不可重复。</text>
+		</view>
+	</view>
+</template>
+
+<script setup>
+import { computed, ref } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
+import { f_getStoredUser } from '../../utils/f_userStorage.js'
+import { f_isAdmin } from '../../utils/f_role.js'
+import { f_createRoomInCloud } from '../../utils/f_roomApi.js'
+
+const roomCode = ref('')
+const groupCount = ref('')
+const roundCount = ref('')
+const bankerIntervene = ref(false)
+const saving = ref(false)
+
+onLoad(() => {
+	const u = f_getStoredUser()
+	if (!u || !f_isAdmin(u)) {
+		uni.showToast({ title: '仅管理员可访问', icon: 'none' })
+		setTimeout(() => uni.navigateBack(), 800)
+	}
+})
+
+const canSubmit = computed(() => {
+	const code = String(roomCode.value || '').replace(/\D/g, '').slice(0, 4)
+	const g = parseInt(groupCount.value, 10)
+	const r = parseInt(roundCount.value, 10)
+	return code.length === 4 && g >= 1 && g <= 999 && r >= 1 && r <= 999
+})
+
+function onRoomCode(e) {
+	roomCode.value = String(e.detail.value || '').replace(/\D/g, '').slice(0, 4)
+}
+
+function onGroupCount(e) {
+	groupCount.value = e.detail.value || ''
+}
+
+function onRoundCount(e) {
+	roundCount.value = e.detail.value || ''
+}
+
+function onBankerChange(e) {
+	bankerIntervene.value = !!(e.detail && e.detail.value)
+}
+
+async function submit() {
+	const u = f_getStoredUser()
+	if (!u || !f_isAdmin(u) || !u.f_phone) {
+		uni.showToast({ title: '请以管理员身份登录', icon: 'none' })
+		return
+	}
+	if (!canSubmit.value || saving.value) return
+	saving.value = true
+	try {
+		const f_room_code = String(roomCode.value).replace(/\D/g, '').slice(0, 4)
+		const res = await f_createRoomInCloud({
+			f_admin_phone: u.f_phone,
+			f_room_code,
+			f_group_count: parseInt(groupCount.value, 10),
+			f_round_count: parseInt(roundCount.value, 10),
+			f_banker_intervene: bankerIntervene.value
+		})
+		const body = res.result || {}
+		if (body.f_code !== 0) {
+			uni.showToast({ title: body.f_message || '保存失败', icon: 'none' })
+			return
+		}
+		uni.showToast({ title: '房间已创建', icon: 'success' })
+		setTimeout(() => uni.navigateBack(), 500)
+	} catch (err) {
+		console.error(err)
+		uni.showToast({ title: '请上传云函数 f_create_room', icon: 'none' })
+	} finally {
+		saving.value = false
+	}
+}
+</script>
+
+<style scoped>
+.page {
+	min-height: 100vh;
+	padding: 32rpx;
+	background: #f5f7fa;
+	box-sizing: border-box;
+}
+
+.card {
+	background: #fff;
+	border-radius: 20rpx;
+	padding: 28rpx 24rpx;
+}
+
+.row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 22rpx 0;
+	border-bottom: 1rpx solid #f0f0f0;
+}
+
+.switch-row {
+	align-items: center;
+}
+
+.label {
+	width: 200rpx;
+	font-size: 28rpx;
+	color: #374151;
+	flex-shrink: 0;
+}
+
+.field {
+	flex: 1;
+	font-size: 28rpx;
+	color: #111827;
+}
+
+.switch-wrap {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 16rpx;
+}
+
+.hint {
+	font-size: 24rpx;
+	color: #6b7280;
+}
+
+.btn {
+	margin-top: 40rpx;
+	height: 88rpx;
+	line-height: 88rpx;
+	border-radius: 999rpx;
+	background: #111827;
+	color: #fff;
+	font-size: 30rpx;
+}
+
+.btn::after {
+	border: none;
+}
+
+.btn[disabled] {
+	opacity: 0.45;
+}
+
+.tips {
+	display: block;
+	margin-top: 24rpx;
+	font-size: 22rpx;
+	color: #9ca3af;
+	line-height: 1.6;
+}
+</style>

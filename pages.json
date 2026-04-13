@@ -1,0 +1,60 @@
+{
+	"pages": [
+		{
+			"path": "pages/login/login",
+			"style": {
+				"navigationBarTitleText": "登录",
+				"navigationBarBackgroundColor": "#ffffff"
+			}
+		},
+		{
+			"path": "pages/index/index",
+			"style": {
+				"navigationBarTitleText": "因子投资"
+			}
+		},
+		{
+			"path": "pages/f_room/create",
+			"style": {
+				"navigationBarTitleText": "创建房间"
+			}
+		},
+		{
+			"path": "pages/f_room/join",
+			"style": {
+				"navigationBarTitleText": "加入房间"
+			}
+		},
+		{
+			"path": "pages/f_game/play",
+			"style": {
+				"navigationBarTitleText": "因子博弈"
+			}
+		},
+		{
+			"path": "pages/f_room/score_pdf",
+			"style": {
+				"navigationBarTitleText": "导出评分 PDF"
+			}
+		},
+		{
+			"path": "pages/f_room/obs",
+			"style": {
+				"navigationBarTitleText": "房间观测"
+			}
+		},
+		{
+			"path": "pages/f_admin/data_purge",
+			"style": {
+				"navigationBarTitleText": "清空数据库"
+			}
+		}
+	],
+	"globalStyle": {
+		"navigationBarTextStyle": "black",
+		"navigationBarTitleText": "uni-app",
+		"navigationBarBackgroundColor": "#F8F8F8",
+		"backgroundColor": "#F8F8F8"
+	},
+	"uniIdRouter": {}
+}

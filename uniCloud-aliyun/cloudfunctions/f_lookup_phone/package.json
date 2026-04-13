@@ -1,0 +1,7 @@
+{
+	"name": "f_lookup_phone",
+	"version": "1.0.0",
+	"description": "因子投资：按手机号查询是否已注册",
+	"main": "index.js",
+	"dependencies": {}
+}

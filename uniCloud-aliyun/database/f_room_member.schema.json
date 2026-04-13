@@ -1,0 +1,9 @@
+{
+	"bsonType": "object",
+	"required": ["f_room_code", "f_player_phone"],
+	"properties": {
+		"f_room_code": { "bsonType": "string" },
+		"f_player_phone": { "bsonType": "string" },
+		"f_joined_at": { "bsonType": "timestamp" }
+	}
+}

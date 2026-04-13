@@ -1,0 +1,16 @@
+{
+	"bsonType": "object",
+	"required": ["f_room_code", "f_player_phone", "f_round_index"],
+	"properties": {
+		"f_room_code": { "bsonType": "string" },
+		"f_player_phone": { "bsonType": "string" },
+		"f_round_index": { "bsonType": "int" },
+		"fac_size": { "bsonType": "int" },
+		"fac_momentum": { "bsonType": "int" },
+		"fac_book_to_price": { "bsonType": "int" },
+		"fac_growth": { "bsonType": "int" },
+		"fac_residual_volatility": { "bsonType": "int" },
+		"f_created_at": { "bsonType": "timestamp" },
+		"f_updated_at": { "bsonType": "timestamp" }
+	}
+}

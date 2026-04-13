@@ -1,0 +1,7 @@
+{
+	"name": "f_save_profile",
+	"version": "1.0.0",
+	"description": "因子投资：保存用户头像/昵称/手机号到 f_user_profile",
+	"main": "index.js",
+	"dependencies": {}
+}

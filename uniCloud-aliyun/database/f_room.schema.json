@@ -1,0 +1,13 @@
+{
+	"bsonType": "object",
+	"required": ["f_room_code", "f_group_count", "f_round_count", "f_admin_phone"],
+	"properties": {
+		"f_room_code": { "bsonType": "string", "description": "4 位数字房间号" },
+		"f_group_count": { "bsonType": "int", "description": "参与组数" },
+		"f_round_count": { "bsonType": "int", "description": "游戏轮次" },
+		"f_banker_intervene": { "bsonType": "bool", "description": "是否 banker/后台介入控制局面" },
+		"f_admin_phone": { "bsonType": "string", "description": "创建者管理员手机号" },
+		"f_created_at": { "bsonType": "timestamp" },
+		"f_updated_at": { "bsonType": "timestamp" }
+	}
+}
