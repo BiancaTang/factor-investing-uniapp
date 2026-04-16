@@ -2,6 +2,8 @@
 
 export const F_CLOUD_SAVE_PROFILE = 'f_save_profile'
 export const F_CLOUD_LOOKUP_PHONE = 'f_lookup_phone'
+export const F_CLOUD_GET_WX_PHONE = 'f_get_wx_phone'
+export const F_CLOUD_LOGIN_WX = 'f_login_wx'
 export const F_COLLECTION_USER_PROFILE = 'f_user_profile'
 
 /**
@@ -10,6 +12,29 @@ export const F_COLLECTION_USER_PROFILE = 'f_user_profile'
 export function f_lookupPhoneInCloud(payload) {
 	return uniCloud.callFunction({
 		name: F_CLOUD_LOOKUP_PHONE,
+		data: payload
+	})
+}
+
+/**
+ * 微信小程序：将 getPhoneNumber 回调里的 code 换取号码
+ * （凭证：云函数 f_get_wx_phone 目录下 wx-secret.json，见 wx-secret.example.json）
+ * @param {{ code: string }} payload
+ */
+export function f_getWxPhoneFromCodeInCloud(payload) {
+	return uniCloud.callFunction({
+		name: F_CLOUD_GET_WX_PHONE,
+		data: payload
+	})
+}
+
+/**
+ * 昵称 + 头像登录或注册（服务端按昵称匹配，新用户分配 f_uid）
+ * @param {{ f_nick_name: string, f_avatar_url: string }} payload
+ */
+export function f_loginWxInCloud(payload) {
+	return uniCloud.callFunction({
+		name: F_CLOUD_LOGIN_WX,
 		data: payload
 	})
 }

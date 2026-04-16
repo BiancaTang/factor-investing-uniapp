@@ -5,12 +5,16 @@ const f_rooms = db.collection('f_room')
 const f_members = db.collection('f_room_member')
 const f_rounds = db.collection('f_game_round')
 
+function f_isPlayerUid(s) {
+	return /^u[a-f0-9]{16}$/.test(String(s || '').trim())
+}
+
 exports.main = async (event) => {
-	const f_admin_phone = event.f_admin_phone != null ? String(event.f_admin_phone).trim() : ''
+	const f_admin_uid = event.f_admin_uid != null ? String(event.f_admin_uid).trim() : ''
 	const f_room_code = event.f_room_code != null ? String(event.f_room_code).trim() : ''
 	const f_action = event.f_action != null ? String(event.f_action).trim() : ''
 
-	if (!/^1\d{10}$/.test(f_admin_phone) || !/^\d{4}$/.test(f_room_code)) {
+	if (!f_isPlayerUid(f_admin_uid) || !/^\d{4}$/.test(f_room_code)) {
 		return { f_code: 400, f_message: '参数无效', f_data: null }
 	}
 
@@ -24,7 +28,7 @@ exports.main = async (event) => {
 	}
 
 	const row = r.data[0]
-	if (row.f_admin_phone !== f_admin_phone) {
+	if (row.f_admin_uid !== f_admin_uid) {
 		return { f_code: 403, f_message: '仅房间创建管理员可操作', f_data: null }
 	}
 
@@ -34,22 +38,21 @@ exports.main = async (event) => {
 	const f_now = Date.now()
 
 	if (f_action === 'end') {
-		// 结束本轮前：未提交的玩家写入 f_game_round，五因子均为 0（与已提交结构一致，避免缺行）
 		if (curOpen > 0) {
 			const mem = await f_members.where({ f_room_code }).get()
-			const phones = (mem.data || []).map((m) => m.f_player_phone).filter(Boolean)
+			const uids = (mem.data || []).map((m) => m.f_player_uid).filter(Boolean)
 			const existing = await f_rounds
 				.where({
 					f_room_code,
 					f_round_index: curOpen
 				})
 				.get()
-			const submitted = new Set((existing.data || []).map((r) => r.f_player_phone).filter(Boolean))
-			for (const f_player_phone of phones) {
-				if (submitted.has(f_player_phone)) continue
+			const submitted = new Set((existing.data || []).map((r) => r.f_player_uid).filter(Boolean))
+			for (const f_player_uid of uids) {
+				if (submitted.has(f_player_uid)) continue
 				await f_rounds.add({
 					f_room_code,
-					f_player_phone,
+					f_player_uid,
 					f_round_index: curOpen,
 					fac_size: 0,
 					fac_momentum: 0,

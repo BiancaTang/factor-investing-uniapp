@@ -1,0 +1,7 @@
+{
+	"name": "f_login_wx",
+	"version": "1.0.0",
+	"description": "微信昵称+头像登录/注册，生成 f_uid",
+	"main": "index.js",
+	"dependencies": {}
+}

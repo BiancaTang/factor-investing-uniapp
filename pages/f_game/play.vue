@@ -17,6 +17,9 @@
 				nav-chart-title="玩家净值对比（已提交玩家）"
 				:if-banker="roomIfBanker"
 				:f-group-count="roomGroupCount"
+				:room-admin-uid="roomInfo?.f_admin_uid || ''"
+				:simulation-players="simulationPlayersForChart"
+				:attribution-player-id="currentUserUid"
 			/>
 			<button class="btn ghost" @click="backHome">返回首页</button>
 		</view>
@@ -32,6 +35,9 @@
 					nav-chart-title="玩家净值对比（已提交玩家）"
 					:if-banker="roomIfBanker"
 					:f-group-count="roomGroupCount"
+					:room-admin-uid="roomInfo?.f_admin_uid || ''"
+					:simulation-players="simulationPlayersForChart"
+					:attribution-player-id="currentUserUid"
 				/>
 			</view>
 			<button class="btn primary" :loading="refreshing" @click="refreshStatus">刷新状态</button>
@@ -49,8 +55,8 @@
 					:max="5"
 					:step="1"
 					:value="factors[d.key]"
-					activeColor="#111827"
-					backgroundColor="#e5e7eb"
+					activeColor="#d4af37"
+					backgroundColor="#2a2415"
 					block-size="20"
 					show-value
 					@change="(e) => onSlider(d.key, e)"
@@ -70,6 +76,9 @@
 				nav-chart-title="玩家净值对比（已提交玩家）"
 				:if-banker="roomIfBanker"
 				:f-group-count="roomGroupCount"
+				:room-admin-uid="roomInfo?.f_admin_uid || ''"
+				:simulation-players="simulationPlayersForChart"
+				:attribution-player-id="currentUserUid"
 			/>
 			<button
 				v-if="canContinue && nextRoundOpen"
@@ -103,7 +112,7 @@ import {
 	f_listGameRoundsInCloud,
 	f_getRoomMemberStatusInCloud
 } from '../../utils/f_gameApi.js'
-import { f_buildChartDataFromHistory, f_mergeNavCompareChartData } from '../../utils/f_factorEngine.js'
+import { f_buildJointNavCompareChartData, f_simulatePythonFactorGame } from '../../utils/f_factorEngine.js'
 
 const roomCode = ref('')
 const totalRounds = ref(1)
@@ -135,6 +144,21 @@ const roomGroupCount = computed(() => {
 
 const roomIfBanker = computed(() => !!(roomInfo.value && roomInfo.value.f_banker_intervene))
 
+const currentUserUid = computed(() => {
+	const u = f_getStoredUser()
+	return u && u.f_uid ? String(u.f_uid) : ''
+})
+
+const simulationPlayersForChart = computed(() => {
+	const ps = roomSnapshot.value && roomSnapshot.value.f_players
+	if (!ps || !ps.length) return []
+	return ps.map((p) => ({
+		player_id: p.f_player_uid,
+		history: p.f_history || [],
+		label: p.f_nick_name || p.f_player_uid
+	}))
+})
+
 const playersWithHistory = computed(() => {
 	const ps = roomSnapshot.value && roomSnapshot.value.f_players
 	if (!ps) return []
@@ -145,12 +169,18 @@ const playersWithHistory = computed(() => {
 const compareNavChartData = computed(() => {
 	const list = playersWithHistory.value
 	if (list.length < 2) return null
-	const ifb = roomIfBanker.value
-	const gc = roomGroupCount.value
-	const payloads = list.map((p) =>
-		f_buildChartDataFromHistory(p.f_history, p.f_player_phone, { if_banker: ifb, f_group_count: gc })
+	return f_buildJointNavCompareChartData(
+		list.map((p) => ({
+			player_id: p.f_player_uid,
+			history: p.f_history,
+			label: p.f_nick_name || p.f_player_uid
+		})),
+		{
+			if_banker: roomIfBanker.value,
+			f_group_count: roomGroupCount.value,
+			f_admin_uid: roomInfo.value?.f_admin_uid || ''
+		}
 	)
-	return f_mergeNavCompareChartData(payloads, { if_banker: ifb })
 })
 
 const nextRoundIndex = computed(() => history.value.length + 1)
@@ -237,14 +267,14 @@ async function loadAll(rc, opts = {}) {
 		totalRounds.value = Math.max(1, parseInt(d.f_round_count, 10) || 1)
 
 		const u = f_getStoredUser()
-		if (!u || !u.f_phone) {
+		if (!u || !u.f_uid) {
 			uni.showToast({ title: '请先登录', icon: 'none' })
 			return
 		}
 
 		const lr = await f_listGameRoundsInCloud({
 			f_room_code: rc,
-			f_player_phone: u.f_phone
+			f_player_uid: u.f_uid
 		})
 		const lb = lr.result || {}
 		history.value = lb.f_code === 0 && lb.f_data ? lb.f_data.f_list || [] : []
@@ -259,14 +289,14 @@ async function loadAll(rc, opts = {}) {
 
 async function fetchRoomSnapshot(rc) {
 	const u = f_getStoredUser()
-	if (!u || !u.f_phone || !/^\d{4}$/.test(rc)) {
+	if (!u || !u.f_uid || !/^\d{4}$/.test(rc)) {
 		roomSnapshot.value = null
 		return
 	}
 	try {
 		const ms = await f_getRoomMemberStatusInCloud({
 			f_room_code: rc,
-			f_player_phone: u.f_phone
+			f_player_uid: u.f_uid
 		})
 		const mb = ms.result || {}
 		roomSnapshot.value = mb.f_code === 0 && mb.f_data ? mb.f_data : null
@@ -304,20 +334,30 @@ onLoad((options) => {
 
 async function submitRound() {
 	const u = f_getStoredUser()
-	if (!u || !u.f_phone) return
+	if (!u || !u.f_uid) return
 	const cr = nextRoundIndex.value
 	if (cr > totalRounds.value) return
 	submitting.value = true
 	try {
 		const payload = {
 			f_room_code: roomCode.value,
-			f_player_phone: u.f_phone,
+			f_player_uid: u.f_uid,
 			f_round_index: cr,
 			fac_size: factors.fac_size,
 			fac_momentum: factors.fac_momentum,
 			fac_book_to_price: factors.fac_book_to_price,
 			fac_growth: factors.fac_growth,
 			fac_residual_volatility: factors.fac_residual_volatility
+		}
+		const metric = buildRoundMetricsForSubmit(payload)
+		if (metric) {
+			payload.f_nav = metric.f_nav
+			payload.f_total_return = metric.f_total_return
+			payload.f_size_return = metric.f_size_return
+			payload.f_momentum_return = metric.f_momentum_return
+			payload.f_book_to_price_return = metric.f_book_to_price_return
+			payload.f_growth_return = metric.f_growth_return
+			payload.f_residual_volatility_return = metric.f_residual_volatility_return
 		}
 		const res = await f_submitGameRoundInCloud(payload)
 		const body = res.result || {}
@@ -340,6 +380,59 @@ async function submitRound() {
 		uni.showToast({ title: '请检查云函数 f_submit_game_round', icon: 'none' })
 	} finally {
 		submitting.value = false
+	}
+}
+
+function buildRoundMetricsForSubmit(payload) {
+	const uid = payload && payload.f_player_uid ? String(payload.f_player_uid) : ''
+	const round = parseInt(payload && payload.f_round_index, 10)
+	if (!uid || !Number.isFinite(round)) return null
+
+	const ps = (roomSnapshot.value && roomSnapshot.value.f_players) || []
+	let list = ps.map((p) => ({
+		player_id: String(p.f_player_uid || ''),
+		history: Array.isArray(p.f_history) ? [...p.f_history] : []
+	}))
+	if (!list.some((p) => p.player_id === uid)) {
+		list.push({ player_id: uid, history: [] })
+	}
+	list = list
+		.filter((p) => p.player_id)
+		.map((p) => ({
+			player_id: p.player_id,
+			history: [
+				...p.history.filter((h) => parseInt(h.f_round_index, 10) !== round),
+				p.player_id === uid
+					? {
+							f_round_index: round,
+							fac_size: payload.fac_size,
+							fac_momentum: payload.fac_momentum,
+							fac_book_to_price: payload.fac_book_to_price,
+							fac_growth: payload.fac_growth,
+							fac_residual_volatility: payload.fac_residual_volatility
+						}
+					: null
+			]
+				.filter(Boolean)
+				.sort((a, b) => parseInt(a.f_round_index, 10) - parseInt(b.f_round_index, 10))
+		}))
+
+	const sim = f_simulatePythonFactorGame(list, {
+		if_banker: roomIfBanker.value,
+		f_group_count: roomGroupCount.value,
+		f_admin_uid: roomInfo.value?.f_admin_uid || ''
+	})
+	const rows = sim.attributionRowsByPlayerId.get(uid) || []
+	const hit = rows.find((r) => parseInt(r.round, 10) === round)
+	if (!hit) return null
+	return {
+		f_nav: Number(hit.nav),
+		f_total_return: Number(hit.total_return),
+		f_size_return: Number(hit.size_return),
+		f_momentum_return: Number(hit.momentum_return),
+		f_book_to_price_return: Number(hit.book_to_price_return),
+		f_growth_return: Number(hit.growth_return),
+		f_residual_volatility_return: Number(hit.residual_volatility_return)
 	}
 }
 
@@ -369,7 +462,7 @@ function backHome() {
 	min-height: 100vh;
 	padding: 24rpx;
 	padding-bottom: 48rpx;
-	background: #f3f4f6;
+	background: #0b0b0d;
 	box-sizing: border-box;
 }
 
@@ -381,31 +474,32 @@ function backHome() {
 	display: block;
 	font-size: 34rpx;
 	font-weight: 700;
-	color: #111827;
+	color: #f5e6b3;
 }
 
 .meta {
 	display: block;
 	font-size: 26rpx;
-	color: #6b7280;
+	color: #bfa56a;
 	margin-top: 8rpx;
 }
 
 .banker {
 	display: block;
 	font-size: 24rpx;
-	color: #b45309;
+	color: #d4af37;
 	margin-top: 6rpx;
 }
 
 .loading {
 	text-align: center;
 	padding: 80rpx;
-	color: #6b7280;
+	color: #bfa56a;
 }
 
 .card {
-	background: #fff;
+	background: #161616;
+	border: 1rpx solid #5b4a20;
 	border-radius: 20rpx;
 	padding: 28rpx 24rpx;
 }
@@ -413,14 +507,14 @@ function backHome() {
 .section-title {
 	font-size: 30rpx;
 	font-weight: 600;
-	color: #111827;
+	color: #f5e6b3;
 	display: block;
 	margin-bottom: 24rpx;
 }
 
 .wait-tip {
 	font-size: 26rpx;
-	color: #6b7280;
+	color: #bfa56a;
 	line-height: 1.5;
 	display: block;
 	margin-bottom: 24rpx;
@@ -450,13 +544,13 @@ function backHome() {
 
 .fac-label {
 	font-size: 26rpx;
-	color: #374151;
+	color: #dcc58a;
 }
 
 .fac-num {
 	font-size: 26rpx;
 	font-weight: 600;
-	color: #111827;
+	color: #f5e6b3;
 }
 
 .btn {
@@ -472,18 +566,20 @@ function backHome() {
 }
 
 .btn.primary {
-	background: #111827;
-	color: #fff;
+	background: linear-gradient(135deg, #d4af37, #8f6b1e);
+	color: #111;
 }
 
 .btn.secondary {
-	background: #e5e7eb;
-	color: #374151;
+	background: #2a2415;
+	color: #f5e6b3;
+	border: 1rpx solid #6d5825;
 }
 
 .btn.ghost {
-	background: #e5e7eb;
-	color: #374151;
+	background: #2a2415;
+	color: #f5e6b3;
+	border: 1rpx solid #6d5825;
 	margin-top: 24rpx;
 }
 </style>

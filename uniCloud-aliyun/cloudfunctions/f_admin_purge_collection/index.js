@@ -11,9 +11,13 @@ const ALLOW = new Set(['f_game_round', 'f_room_member', 'f_room', 'f_user_profil
 
 const PURGE_ALL_ORDER = ['f_game_round', 'f_room_member', 'f_room', 'f_user_profile']
 
-async function f_requireAdmin(db, f_admin_phone) {
+function f_isPlayerUid(s) {
+	return /^u[a-f0-9]{16}$/.test(String(s || '').trim())
+}
+
+async function f_requireAdmin(db, f_admin_uid) {
 	const fu = db.collection('f_user_profile')
-	const ur = await fu.where({ f_phone: f_admin_phone }).limit(1).get()
+	const ur = await fu.where({ f_uid: f_admin_uid }).limit(1).get()
 	const urow = ur.data && ur.data[0]
 	if (!urow || urow.f_role !== 'admin') {
 		return { f_ok: false, f_message: '仅管理员可执行' }
@@ -40,15 +44,15 @@ async function purgeOneCollection(db, name) {
 }
 
 exports.main = async (event) => {
-	const f_admin_phone = event.f_admin_phone != null ? String(event.f_admin_phone).trim() : ''
+	const f_admin_uid = event.f_admin_uid != null ? String(event.f_admin_uid).trim() : ''
 
-	if (!/^1\d{10}$/.test(f_admin_phone)) {
-		return { f_code: 400, f_message: '管理员手机号无效', f_data: null }
+	if (!f_isPlayerUid(f_admin_uid)) {
+		return { f_code: 400, f_message: '管理员标识无效', f_data: null }
 	}
 
 	const db = uniCloud.database()
 
-	const adm = await f_requireAdmin(db, f_admin_phone)
+	const adm = await f_requireAdmin(db, f_admin_uid)
 	if (!adm.f_ok) {
 		return { f_code: 403, f_message: adm.f_message, f_data: null }
 	}

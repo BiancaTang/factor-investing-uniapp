@@ -43,7 +43,7 @@
 			<view v-if="status && status.f_players && status.f_players.length" class="list">
 				<text class="list-title">玩家进度（已提交最高轮次）</text>
 				<view v-for="(p, i) in status.f_players" :key="i" class="li">
-					<text class="ph">{{ p.f_player_phone }}</text>
+					<text class="ph">{{ p.f_nick_name }}</text>
 					<text class="pr">第 {{ p.f_max_round_index }} 轮</text>
 				</view>
 			</view>
@@ -56,12 +56,15 @@
 					nav-chart-title="玩家净值对比（已提交玩家）"
 				/>
 			</view>
-			<view v-for="p in playersWithHistory" :key="p.f_player_phone" class="player-charts">
-				<text class="player-h">{{ p.f_player_phone }}</text>
+			<view v-for="p in playersWithHistory" :key="p.f_player_uid" class="player-charts">
+				<text class="player-h">{{ p.f_nick_name }}</text>
 				<f-game-charts
 					:history="p.f_history"
 					:if-banker="roomIfBanker"
 					:f-group-count="roomGroupCount"
+					:room-admin-uid="status?.f_admin_uid || ''"
+					:simulation-players="simulationPlayersForObs"
+					:attribution-player-id="p.f_player_uid"
 				/>
 			</view>
 		</view>
@@ -75,7 +78,7 @@
 import { computed, nextTick, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import FGameCharts from '../../components/f-game-charts/f-game-charts.vue'
-import { f_buildChartDataFromHistory, f_mergeNavCompareChartData } from '../../utils/f_factorEngine.js'
+import { f_buildJointNavCompareChartData } from '../../utils/f_factorEngine.js'
 import { f_getStoredUser } from '../../utils/f_userStorage.js'
 import { f_isAdmin } from '../../utils/f_role.js'
 import {
@@ -145,12 +148,27 @@ const playersWithHistory = computed(() => {
 const compareChartData = computed(() => {
 	const list = playersWithHistory.value
 	if (list.length < 2) return null
-	const ifb = roomIfBanker.value
-	const gc = roomGroupCount.value
-	const payloads = list.map((p) =>
-		f_buildChartDataFromHistory(p.f_history, p.f_player_phone, { if_banker: ifb, f_group_count: gc })
+	return f_buildJointNavCompareChartData(
+		list.map((p) => ({
+			player_id: p.f_player_uid,
+			history: p.f_history,
+			label: p.f_nick_name || p.f_player_uid
+		})),
+		{
+			if_banker: roomIfBanker.value,
+			f_group_count: roomGroupCount.value,
+			f_admin_uid: status.value?.f_admin_uid || ''
+		}
 	)
-	return f_mergeNavCompareChartData(payloads, { if_banker: ifb })
+})
+
+const simulationPlayersForObs = computed(() => {
+	const list = playersWithHistory.value
+	return list.map((p) => ({
+		player_id: p.f_player_uid,
+		history: p.f_history || [],
+		label: p.f_nick_name || p.f_player_uid
+	}))
 })
 
 function onRoomCode(e) {
@@ -164,7 +182,7 @@ function onPickRound(e) {
 
 async function refresh() {
 	const u = f_getStoredUser()
-	if (!u || !u.f_phone || !f_isAdmin(u)) return
+	if (!u || !u.f_uid || !f_isAdmin(u)) return
 	const rc = String(roomCode.value || '').replace(/\D/g, '').slice(0, 4)
 	if (!/^\d{4}$/.test(rc)) {
 		uni.showToast({ title: '请输入 4 位房间号', icon: 'none' })
@@ -173,7 +191,7 @@ async function refresh() {
 	loading.value = true
 	try {
 		const res = await f_getRoomPlayerStatusInCloud({
-			f_admin_phone: u.f_phone,
+			f_admin_uid: u.f_uid,
 			f_room_code: rc
 		})
 		const body = res.result || {}
@@ -195,7 +213,7 @@ async function refresh() {
 
 async function onStartRound() {
 	const u = f_getStoredUser()
-	if (!u || !u.f_phone) return
+	if (!u || !u.f_uid) return
 	const rc = String(roomCode.value || '').replace(/\D/g, '').slice(0, 4)
 	if (!/^\d{4}$/.test(rc)) {
 		uni.showToast({ title: '请输入房间号', icon: 'none' })
@@ -206,7 +224,7 @@ async function onStartRound() {
 	lastAction.value = 'start'
 	try {
 		const res = await f_controlRoomRoundInCloud({
-			f_admin_phone: u.f_phone,
+			f_admin_uid: u.f_uid,
 			f_room_code: rc,
 			f_action: 'start',
 			f_round_index: ri
@@ -229,14 +247,14 @@ async function onStartRound() {
 
 async function onEndRound() {
 	const u = f_getStoredUser()
-	if (!u || !u.f_phone) return
+	if (!u || !u.f_uid) return
 	const rc = String(roomCode.value || '').replace(/\D/g, '').slice(0, 4)
 	if (!/^\d{4}$/.test(rc)) return
 	acting.value = true
 	lastAction.value = 'end'
 	try {
 		const res = await f_controlRoomRoundInCloud({
-			f_admin_phone: u.f_phone,
+			f_admin_uid: u.f_uid,
 			f_room_code: rc,
 			f_action: 'end'
 		})
@@ -261,19 +279,19 @@ async function onEndRound() {
 .charts-wrap {
 	margin-top: 28rpx;
 	padding-top: 24rpx;
-	border-top: 1rpx solid #e5e7eb;
+	border-top: 1rpx solid #3f341a;
 }
 
 .player-charts {
 	margin-top: 32rpx;
 	padding-top: 24rpx;
-	border-top: 1rpx solid #e5e7eb;
+	border-top: 1rpx solid #3f341a;
 }
 
 .player-h {
 	font-size: 28rpx;
 	font-weight: 600;
-	color: #111827;
+	color: #f5e6b3;
 	display: block;
 	margin-bottom: 12rpx;
 }
@@ -282,24 +300,25 @@ async function onEndRound() {
 	min-height: 100vh;
 	padding: 24rpx;
 	padding-bottom: 160rpx;
-	background: #f3f4f6;
+	background: #0b0b0d;
 	box-sizing: border-box;
 }
 .card {
-	background: #fff;
+	background: #161616;
+	border: 1rpx solid #5b4a20;
 	border-radius: 20rpx;
 	padding: 28rpx 24rpx;
 }
 .h1 {
 	font-size: 34rpx;
 	font-weight: 700;
-	color: #111827;
+	color: #f5e6b3;
 	display: block;
 	margin-bottom: 12rpx;
 }
 .tip {
 	font-size: 24rpx;
-	color: #6b7280;
+	color: #bfa56a;
 	display: block;
 	margin-bottom: 24rpx;
 	line-height: 1.5;
@@ -312,13 +331,14 @@ async function onEndRound() {
 .label {
 	width: 160rpx;
 	font-size: 28rpx;
-	color: #374151;
+	color: #dcc58a;
 }
 .field {
 	flex: 1;
 	height: 72rpx;
 	padding: 0 20rpx;
-	background: #f9fafb;
+	background: #222;
+	border: 1rpx solid #6d5825;
 	border-radius: 12rpx;
 	font-size: 28rpx;
 }
@@ -328,7 +348,7 @@ async function onEndRound() {
 .st {
 	display: block;
 	font-size: 26rpx;
-	color: #111827;
+	color: #f5e6b3;
 	margin-top: 8rpx;
 }
 .ctrl {
@@ -336,7 +356,8 @@ async function onEndRound() {
 }
 .picker-inner {
 	padding: 20rpx;
-	background: #f3f4f6;
+	background: #2a2415;
+	color: #f5e6b3;
 	border-radius: 12rpx;
 	font-size: 28rpx;
 	margin-bottom: 16rpx;
@@ -352,21 +373,23 @@ async function onEndRound() {
 	border: none;
 }
 .btn.primary {
-	background: #111827;
-	color: #fff;
+	background: linear-gradient(135deg, #d4af37, #8f6b1e);
+	color: #111;
 }
 .btn.danger {
-	background: #b45309;
-	color: #fff;
+	background: #3b1f1a;
+	color: #f0c2a8;
+	border: 1rpx solid #7a3a2d;
 }
 .btn.ghost {
-	background: #e5e7eb;
-	color: #374151;
+	background: #2a2415;
+	color: #f5e6b3;
+	border: 1rpx solid #6d5825;
 }
 .list-title {
 	font-size: 28rpx;
 	font-weight: 600;
-	color: #111827;
+	color: #f5e6b3;
 	display: block;
 	margin-bottom: 12rpx;
 }
@@ -374,18 +397,18 @@ async function onEndRound() {
 	display: flex;
 	justify-content: space-between;
 	padding: 16rpx 0;
-	border-bottom: 1rpx solid #e5e7eb;
+	border-bottom: 1rpx solid #3f341a;
 	font-size: 26rpx;
 }
 .ph {
-	color: #374151;
+	color: #dcc58a;
 }
 .pr {
-	color: #6b7280;
+	color: #bfa56a;
 }
 .empty {
 	font-size: 26rpx;
-	color: #9ca3af;
+	color: #bfa56a;
 }
 .footer {
 	position: fixed;
@@ -393,7 +416,7 @@ async function onEndRound() {
 	right: 0;
 	bottom: 0;
 	padding: 24rpx 24rpx calc(24rpx + env(safe-area-inset-bottom));
-	background: linear-gradient(to top, #f3f4f6 90%, transparent);
+	background: linear-gradient(to top, #0b0b0d 90%, transparent);
 }
 .wide {
 	width: 100%;

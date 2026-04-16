@@ -10,7 +10,6 @@
 
 			<text class="title">{{ user ? user.f_nick_name || '已登录' : title }}</text>
 
-			<text v-if="user && user.f_phone" class="sub">手机号 {{ user.f_phone }}</text>
 
 			<text v-if="user" class="role">{{ roleLabel }}</text>
 
@@ -31,8 +30,6 @@
 			<button v-if="isAdmin" class="action danger" @click="goDataPurge">清空数据库</button>
 
 			<button class="action" :class="isAdmin ? 'secondary' : 'primary'" @click="goJoinRoom">加入房间</button>
-
-			<button v-if="user.f_current_room_code" class="action game" @click="goGame">进入游戏</button>
 
 		</view>
 
@@ -130,16 +127,6 @@
 
 			},
 
-			goGame() {
-
-				const c = this.user && this.user.f_current_room_code
-
-				if (!c) return
-
-				uni.navigateTo({ url: '/pages/f_game/play?code=' + encodeURIComponent(c) })
-
-			},
-
 			logout() {
 
 				f_clearUserLocal()
@@ -226,7 +213,7 @@
 
 		font-size: 36rpx;
 
-		color: #1f2937;
+		color: #f5e6b3;
 
 	}
 
@@ -236,7 +223,7 @@
 
 		font-size: 24rpx;
 
-		color: #6b7280;
+		color: #bfa56a;
 
 		text-align: center;
 
@@ -248,7 +235,7 @@
 
 		font-size: 26rpx;
 
-		color: #111827;
+		color: #e8d7a2;
 
 		margin-top: 8rpx;
 
@@ -260,7 +247,7 @@
 
 		font-size: 24rpx;
 
-		color: #059669;
+		color: #d4af37;
 
 		margin-top: 4rpx;
 
@@ -310,9 +297,8 @@
 
 	.action.primary {
 
-		background: #111827;
-
-		color: #fff;
+		background: linear-gradient(135deg, #d4af37, #8f6b1e);
+		color: #111;
 
 	}
 
@@ -320,51 +306,41 @@
 
 	.action.secondary {
 
-		background: #ecfdf5;
-
-		color: #047857;
-
-		border: 1rpx solid #a7f3d0;
+		background: #2a2415;
+		color: #f5e6b3;
+		border: 1rpx solid #6d5825;
 
 	}
 
 	.action.game {
 
-		background: #fef3c7;
-
-		color: #92400e;
-
-		border: 1rpx solid #fcd34d;
+		background: #201b10;
+		color: #f3d87a;
+		border: 1rpx solid #7f6630;
 
 	}
 
 	.action.pdf {
 
-		background: #ede9fe;
-
-		color: #5b21b6;
-
-		border: 1rpx solid #c4b5fd;
+		background: #201b10;
+		color: #f3d87a;
+		border: 1rpx solid #7f6630;
 
 	}
 
 	.action.obs {
 
-		background: #e0f2fe;
-
-		color: #0369a1;
-
-		border: 1rpx solid #7dd3fc;
+		background: #201b10;
+		color: #f3d87a;
+		border: 1rpx solid #7f6630;
 
 	}
 
 	.action.danger {
 
-		background: #fef2f2;
-
-		color: #991b1b;
-
-		border: 1rpx solid #fecaca;
+		background: #2a1515;
+		color: #f0c2a8;
+		border: 1rpx solid #7a3a2d;
 
 	}
 
@@ -376,9 +352,9 @@
 
 		font-size: 28rpx;
 
-		color: #6b7280;
-
-		background: #f3f4f6;
+		color: #d8c083;
+		background: #2a2415;
+		border: 1rpx solid #6d5825;
 
 		border-radius: 999rpx;
 

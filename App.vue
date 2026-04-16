@@ -13,5 +13,18 @@
 </script>
 
 <style>
-	/*每个页面公共css */
+	/* 全局黑金主题 */
+	page {
+		background: #0b0b0d;
+		color: #f5e6b3;
+	}
+
+	view,
+	text {
+		color: inherit;
+	}
+
+	button {
+		border-radius: 999rpx;
+	}
 </style>

@@ -5,11 +5,15 @@ const f_rooms = db.collection('f_room')
 const f_members = db.collection('f_room_member')
 const f_rounds = db.collection('f_game_round')
 
+function f_isPlayerUid(s) {
+	return /^u[a-f0-9]{16}$/.test(String(s || '').trim())
+}
+
 exports.main = async (event) => {
-	const f_admin_phone = event.f_admin_phone != null ? String(event.f_admin_phone).trim() : ''
+	const f_admin_uid = event.f_admin_uid != null ? String(event.f_admin_uid).trim() : ''
 	const f_room_code = event.f_room_code != null ? String(event.f_room_code).trim() : ''
 
-	if (!/^1\d{10}$/.test(f_admin_phone) || !/^\d{4}$/.test(f_room_code)) {
+	if (!f_isPlayerUid(f_admin_uid) || !/^\d{4}$/.test(f_room_code)) {
 		return { f_code: 400, f_message: '参数无效', f_data: null }
 	}
 
@@ -19,7 +23,7 @@ exports.main = async (event) => {
 	}
 
 	const row = room.data[0]
-	if (row.f_admin_phone !== f_admin_phone) {
+	if (row.f_admin_uid !== f_admin_uid) {
 		return { f_code: 403, f_message: '仅房间创建管理员可查看', f_data: null }
 	}
 
@@ -27,18 +31,29 @@ exports.main = async (event) => {
 	const f_open_round_index = Number.isFinite(openRi) && openRi >= 0 ? openRi : 0
 
 	const mem = await f_members.where({ f_room_code }).get()
-	const phones = (mem.data || []).map((m) => m.f_player_phone).filter(Boolean)
+	const memRows = [...(mem.data || [])].sort((a, b) => {
+		const ta = typeof a.f_joined_at === 'number' ? a.f_joined_at : new Date(a.f_joined_at || 0).getTime()
+		const tb = typeof b.f_joined_at === 'number' ? b.f_joined_at : new Date(b.f_joined_at || 0).getTime()
+		return ta - tb
+	})
+	const uids = memRows.map((m) => m.f_player_uid).filter(Boolean)
+	const nickByUid = {}
+	for (const m of memRows) {
+		if (m.f_player_uid) {
+			nickByUid[m.f_player_uid] = (m.f_nick_name && String(m.f_nick_name).trim()) || m.f_player_uid.slice(0, 8)
+		}
+	}
 
 	const rounds = await f_rounds.where({ f_room_code }).get()
-	const maxByPhone = {}
-	const listByPhone = {}
+	const maxByUid = {}
+	const listByUid = {}
 	for (const g of rounds.data || []) {
-		const p = g.f_player_phone
+		const p = g.f_player_uid
 		const ri = parseInt(g.f_round_index, 10)
 		if (!p || !Number.isFinite(ri)) continue
-		maxByPhone[p] = Math.max(maxByPhone[p] || 0, ri)
-		if (!listByPhone[p]) listByPhone[p] = []
-		listByPhone[p].push({
+		maxByUid[p] = Math.max(maxByUid[p] || 0, ri)
+		if (!listByUid[p]) listByUid[p] = []
+		listByUid[p].push({
 			f_round_index: ri,
 			fac_size: g.fac_size,
 			fac_momentum: g.fac_momentum,
@@ -47,14 +62,15 @@ exports.main = async (event) => {
 			fac_residual_volatility: g.fac_residual_volatility
 		})
 	}
-	for (const p of Object.keys(listByPhone)) {
-		listByPhone[p].sort((a, b) => a.f_round_index - b.f_round_index)
+	for (const p of Object.keys(listByUid)) {
+		listByUid[p].sort((a, b) => a.f_round_index - b.f_round_index)
 	}
 
-	const f_players = phones.map((f_player_phone) => ({
-		f_player_phone,
-		f_max_round_index: maxByPhone[f_player_phone] || 0,
-		f_history: listByPhone[f_player_phone] || []
+	const f_players = uids.map((f_player_uid) => ({
+		f_player_uid,
+		f_nick_name: nickByUid[f_player_uid] || f_player_uid.slice(0, 8),
+		f_max_round_index: maxByUid[f_player_uid] || 0,
+		f_history: listByUid[f_player_uid] || []
 	}))
 
 	return {
@@ -66,6 +82,7 @@ exports.main = async (event) => {
 			f_group_count: row.f_group_count,
 			f_banker_intervene: !!row.f_banker_intervene,
 			f_open_round_index,
+			f_admin_uid: row.f_admin_uid || '',
 			f_players
 		}
 	}

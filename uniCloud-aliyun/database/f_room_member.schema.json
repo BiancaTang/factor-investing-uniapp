@@ -1,9 +1,10 @@
 {
 	"bsonType": "object",
-	"required": ["f_room_code", "f_player_phone"],
+	"required": ["f_room_code", "f_player_uid"],
 	"properties": {
 		"f_room_code": { "bsonType": "string" },
-		"f_player_phone": { "bsonType": "string" },
+		"f_player_uid": { "bsonType": "string", "description": "玩家 f_uid" },
+		"f_nick_name": { "bsonType": "string", "description": "加入房间时的昵称快照（展示用）" },
 		"f_joined_at": { "bsonType": "timestamp" }
 	}
 }

@@ -32,115 +32,186 @@ function f_clampInt(v) {
 	return Math.max(-5, Math.min(5, n))
 }
 
-function emptyPlayer(nav) {
-	const p = { nav }
-	for (const f of FACTORS) p[f] = 0
-	return p
+function f_emptyExposureRow() {
+	const o = {}
+	for (const f of FACTORS) o[f] = 0
+	return o
 }
 
 /**
- * 与前端 utils/f_factorEngine.js、Python nz_gaming_process_server.py 一致：
- * if_banker 时用 player_nm 得 banker_nav0=floor(nm/3)，庄家暴露为 0 参与净值加权。
+ * 与 utils/f_factorEngine.js、FastAPI FactorTradingGameAPI 一致：player_nm 槽位 + NAV 加权因子收益。
  */
-function buildChartDataFromHistory(rows, playerId, roomOpts = {}) {
+function simulatePythonFactorGame(allPlayerHistories, roomOpts) {
 	const if_banker = !!roomOpts.if_banker
 	const player_nm = Math.max(1, parseInt(roomOpts.f_group_count, 10) || 20)
 	const banker_nav0 = Math.floor(player_nm / 3)
+	const adminUid =
+		if_banker && roomOpts.f_admin_uid != null && String(roomOpts.f_admin_uid).trim() !== ''
+			? String(roomOpts.f_admin_uid).trim()
+			: ''
 
-	const sorted = [...(rows || [])].sort((a, b) => a.f_round_index - b.f_round_index)
-	const human = emptyPlayer(1.0)
-	const banker = if_banker ? emptyPlayer(banker_nav0) : null
-	const df_far_return = []
-	const df_all_perf = []
-	const bankerNavByRound = []
-
-	for (const raw of sorted) {
-		const round = Number(raw.f_round_index)
-		for (const [facKey, internal] of Object.entries(FAC_TO_INTERNAL)) {
-			human[internal] = f_clampInt(raw[facKey])
+	const roundSet = new Set()
+	for (const p of allPlayerHistories || []) {
+		for (const r of p.history || []) {
+			const ri = parseInt(r.f_round_index, 10)
+			if (Number.isFinite(ri)) roundSet.add(ri)
 		}
-		const factor_return = {}
-		if (if_banker && banker) {
-			const navSum = (banker.nav || 0) + (human.nav || 0)
-			for (const f of FACTORS) {
-				const num = (human[f] || 0) * (human.nav || 0)
-				const wgt = navSum === 0 ? 0 : num / navSum
-				factor_return[f] = wgt * (FACTOR_UNIT_RETURNS[f] / 10)
-			}
+	}
+	const rounds = [...roundSet].sort((a, b) => a - b)
+	const firstRound = rounds.length ? rounds[0] : null
+
+	const nav = new Array(player_nm).fill(1)
+	if (if_banker) nav[0] = banker_nav0
+
+	const uidBySlot = new Array(player_nm).fill(null)
+	const slotByUid = new Map()
+	const startSlot = if_banker ? 1 : 0
+
+	if (if_banker) {
+		if (adminUid) {
+			uidBySlot[0] = adminUid
+			slotByUid.set(adminUid, 0)
 		} else {
-			const navSum = human.nav || 0
-			for (const f of FACTORS) {
-				const num = (human[f] || 0) * (human.nav || 0)
-				const wgt = navSum === 0 ? 0 : num / navSum
-				factor_return[f] = wgt * (FACTOR_UNIT_RETURNS[f] / 10)
+			uidBySlot[0] = '__banker__'
+		}
+	}
+
+	function assignSlot(uid) {
+		if (slotByUid.has(uid)) return slotByUid.get(uid)
+		for (let s = startSlot; s < player_nm; s++) {
+			if (uidBySlot[s] == null) {
+				uidBySlot[s] = uid
+				slotByUid.set(uid, s)
+				return s
 			}
 		}
+		return -1
+	}
+
+	const df_far_return = []
+	const navByPlayerId = new Map()
+	const bankerNavByRound = if_banker ? [] : null
+	const attributionRowsByPlayerId = new Map()
+
+	const playersOrdered = [...(allPlayerHistories || [])]
+
+	for (const round of rounds) {
+		const exp = Array.from({ length: player_nm }, () => f_emptyExposureRow())
+
+		for (const p of playersOrdered) {
+			const row = (p.history || []).find((h) => parseInt(h.f_round_index, 10) === round)
+			if (!row) continue
+			const uid = String(p.player_id)
+			const s = assignSlot(uid)
+			if (s < 0) continue
+			for (const [facKey, internal] of Object.entries(FAC_TO_INTERNAL)) {
+				exp[s][internal] = f_clampInt(row[facKey])
+			}
+		}
+
+		let sumNav = 0
+		for (let i = 0; i < player_nm; i++) sumNav += nav[i]
+		const factor_return = {}
+		for (const f of FACTORS) {
+			let num = 0
+			for (let i = 0; i < player_nm; i++) num += exp[i][f] * nav[i]
+			const wgt = sumNav === 0 ? 0 : num / sumNav
+			factor_return[f] = wgt * (FACTOR_UNIT_RETURNS[f] / 10)
+		}
+
 		const rowFar = { round }
 		for (const f of FACTORS) rowFar[f] = factor_return[f]
 		df_far_return.push(rowFar)
-		let totalReturn = 0
-		const factorReturns = {}
-		for (const f of FACTORS) {
-			const exposure = human[f] || 0
-			const fr = exposure * factor_return[f]
-			factorReturns[f] = fr
-			totalReturn += fr
+
+		const nextNav = new Array(player_nm)
+		const slotTotalReturn = new Array(player_nm)
+		const slotFactorRet = Array.from({ length: player_nm }, () => ({}))
+
+		for (let i = 0; i < player_nm; i++) {
+			let totalReturn = 0
+			const factorReturns = {}
+			for (const f of FACTORS) {
+				const exposure = exp[i][f] || 0
+				const fr = exposure * factor_return[f]
+				factorReturns[f] = fr
+				totalReturn += fr
+			}
+			slotTotalReturn[i] = totalReturn
+			for (const f of FACTORS) slotFactorRet[i][f] = factorReturns[f]
+			nextNav[i] = nav[i] * (totalReturn + 1)
 		}
-		human.nav = human.nav * (totalReturn + 1)
-		const rowPerf = {
-			Player_ID: 0,
-			round,
-			nav: human.nav,
-			total_return: totalReturn
+
+		if (if_banker && firstRound !== null && round === firstRound) {
+			nextNav[0] = 1
 		}
-		for (const f of FACTORS) {
-			rowPerf[f] = human[f] || 0
-			rowPerf[`${f}_return`] = factorReturns[f]
+
+		for (let i = 0; i < player_nm; i++) {
+			nav[i] = nextNav[i]
+			const uid = uidBySlot[i]
+			if (!uid || uid === '__banker__') continue
+
+			if (!navByPlayerId.has(uid)) navByPlayerId.set(uid, [])
+			navByPlayerId.get(uid).push({ round, nav: nav[i] })
+
+			const tr = slotTotalReturn[i]
+			const attRow = { round, nav: nav[i], total_return: tr }
+			for (const f of FACTORS) {
+				attRow[f] = exp[i][f] || 0
+				attRow[`${f}_return`] = slotFactorRet[i][f]
+			}
+			if (!attributionRowsByPlayerId.has(uid)) attributionRowsByPlayerId.set(uid, [])
+			attributionRowsByPlayerId.get(uid).push(attRow)
 		}
-		df_all_perf.push(rowPerf)
-		if (if_banker && banker) {
-			bankerNavByRound.push({ round, nav: banker.nav })
+
+		if (if_banker && bankerNavByRound) {
+			bankerNavByRound.push({ round, nav: nav[0] })
 		}
 	}
 
-	const byPlayer = {}
-	for (const row of df_all_perf) {
-		const pid = row.Player_ID
-		if (!byPlayer[pid]) byPlayer[pid] = []
-		byPlayer[pid].push({ round: row.round, nav: row.nav })
-	}
+	return { df_far_return, navByPlayerId, bankerNavByRound, attributionRowsByPlayerId }
+}
+
+function buildChartDataForTarget(allPlayerHistories, targetUid, displayLabel, roomOpts) {
+	const sim = simulatePythonFactorGame(allPlayerHistories, roomOpts)
+	const uid = String(targetUid)
+	const adm = roomOpts.f_admin_uid != null ? String(roomOpts.f_admin_uid).trim() : ''
+	const strId =
+		!!roomOpts.if_banker && adm && uid === adm ? '庄家' : String(displayLabel || uid)
+	const pts = sim.navByPlayerId.get(uid)
 	const nav_series = []
-	if (byPlayer[0] && byPlayer[0].length) {
+	if (pts && pts.length) {
 		nav_series.push({
-			player_id: String(playerId),
-			points: [...byPlayer[0]].sort((a, b) => a.round - b.round)
+			player_id: strId,
+			points: [...pts].sort((a, b) => a.round - b.round)
 		})
 	}
 	let banker_series = null
-	if (if_banker && bankerNavByRound.length) {
-		const pts = [...bankerNavByRound].sort((a, b) => a.round - b.round)
-		const n0 = pts[0].nav
-		banker_series = pts.map((p) => ({
+	if (sim.bankerNavByRound && sim.bankerNavByRound.length) {
+		const ptsb = [...sim.bankerNavByRound].sort((a, b) => a.round - b.round)
+		const n0 = ptsb[0].nav
+		banker_series = ptsb.map((p) => ({
 			round: p.round,
 			nav_norm: n0 === 0 ? 1 : p.nav / n0
 		}))
 	}
+	const attRows = sim.attributionRowsByPlayerId.get(uid) || []
 	const rounds = {}
-	for (const row of df_all_perf) {
-		if (row.Player_ID !== 0) continue
+	for (const row of attRows) {
 		const r = row.round
 		if (!rounds[r]) rounds[r] = { round: r }
-		for (const f of FACTORS) rounds[r][f] = row[`${f}_return`] || 0
+		for (const f of FACTORS) {
+			rounds[r][f] = row[`${f}_return`] || 0
+		}
 	}
 	const attribution = [
 		{
-			player_id: String(playerId),
+			player_id: strId,
 			by_round: Object.values(rounds).sort((a, b) => a.round - b.round)
 		}
 	]
 	let factor_cumulative = []
-	if (df_far_return.length) {
-		const sortedFar = [...df_far_return].sort((a, b) => a.round - b.round)
+	if (sim.df_far_return.length) {
+		const sortedFar = [...sim.df_far_return].sort((a, b) => a.round - b.round)
 		const cum = {}
 		for (const f of FACTORS) cum[f] = 0
 		factor_cumulative = sortedFar.map((row) => {
@@ -152,13 +223,14 @@ function buildChartDataFromHistory(rows, playerId, roomOpts = {}) {
 			return out
 		})
 	}
+	if (!!roomOpts.if_banker && adm && uid === adm) {
+		banker_series = null
+	}
 	return { nav_series, banker_series, attribution, factor_cumulative }
 }
 
-function maskPhone(p) {
-	const s = String(p || '')
-	if (s.length >= 7) return s.slice(0, 3) + '****' + s.slice(-4)
-	return s
+function f_isPlayerUid(s) {
+	return /^u[a-f0-9]{16}$/.test(String(s || '').trim())
 }
 
 function boundsFromSeries(seriesList) {
@@ -225,11 +297,11 @@ function drawLineSeries(page, font, seriesList, x0, y0, w, h) {
 }
 
 exports.main = async (event, context) => {
-	const f_admin_phone = event.f_admin_phone != null ? String(event.f_admin_phone).trim() : ''
+	const f_admin_uid = event.f_admin_uid != null ? String(event.f_admin_uid).trim() : ''
 	const f_room_code = event.f_room_code != null ? String(event.f_room_code).trim() : ''
 
-	if (!/^1\d{10}$/.test(f_admin_phone)) {
-		return { f_code: 400, f_message: '管理员手机号无效', f_data: null }
+	if (!f_isPlayerUid(f_admin_uid)) {
+		return { f_code: 400, f_message: '管理员标识无效', f_data: null }
 	}
 	if (!/^\d{4}$/.test(f_room_code)) {
 		return { f_code: 400, f_message: '房间号须为 4 位', f_data: null }
@@ -237,7 +309,7 @@ exports.main = async (event, context) => {
 
 	const db = uniCloud.database()
 	const fu = db.collection('f_user_profile')
-	const ur = await fu.where({ f_phone: f_admin_phone }).limit(1).get()
+	const ur = await fu.where({ f_uid: f_admin_uid }).limit(1).get()
 	const urow = ur.data && ur.data[0]
 	if (!urow || urow.f_role !== 'admin') {
 		return { f_code: 403, f_message: '仅管理员可导出', f_data: null }
@@ -251,23 +323,43 @@ exports.main = async (event, context) => {
 	const maxR = Math.max(1, parseInt(room.f_round_count, 10) || 1)
 
 	const mem = await db.collection('f_room_member').where({ f_room_code }).get()
-	const phones = [...new Set((mem.data || []).map((m) => m.f_player_phone).filter(Boolean))]
-	if (!phones.length) {
+	const memRows = [...(mem.data || [])].sort((a, b) => {
+		const ta = typeof a.f_joined_at === 'number' ? a.f_joined_at : new Date(a.f_joined_at || 0).getTime()
+		const tb = typeof b.f_joined_at === 'number' ? b.f_joined_at : new Date(b.f_joined_at || 0).getTime()
+		return ta - tb
+	})
+	const uids = []
+	const uidSeen = new Set()
+	for (const m of memRows) {
+		const id = m.f_player_uid
+		if (id && !uidSeen.has(id)) {
+			uidSeen.add(id)
+			uids.push(id)
+		}
+	}
+	const labelByUid = {}
+	for (const m of memRows) {
+		if (m.f_player_uid) {
+			const nick = (m.f_nick_name && String(m.f_nick_name).trim()) || ''
+			labelByUid[m.f_player_uid] = nick || String(m.f_player_uid).slice(0, 10)
+		}
+	}
+	if (!uids.length) {
 		return { f_code: 400, f_message: '房间内暂无玩家', f_data: null }
 	}
 
 	const requireAll = !!event.f_require_all_done
 	if (requireAll) {
-		for (const ph of phones) {
+		for (const uid of uids) {
 			const cr = await db
 				.collection('f_game_round')
-				.where({ f_room_code, f_player_phone: ph })
+				.where({ f_room_code, f_player_uid: uid })
 				.count()
 			const n = (cr && cr.total) || 0
 			if (n < maxR) {
 				return {
 					f_code: 400,
-					f_message: `尚未全部完成：${maskPhone(ph)} 仅 ${n}/${maxR} 轮`,
+					f_message: `尚未全部完成：${labelByUid[uid] || uid} 仅 ${n}/${maxR} 轮`,
 					f_data: null
 				}
 			}
@@ -299,24 +391,30 @@ exports.main = async (event, context) => {
 	const chartH = 118
 	const gap = 14
 
-	for (const phone of [...phones].sort()) {
-		const gr = await db
-			.collection('f_game_round')
-			.where({ f_room_code, f_player_phone: phone })
-			.get()
+	const allPlayerHistories = []
+	for (const uid of uids) {
+		const gr = await db.collection('f_game_round').where({ f_room_code, f_player_uid: uid }).get()
 		const rows = (gr.data || []).sort((a, b) => a.f_round_index - b.f_round_index)
+		if (rows.length) {
+			allPlayerHistories.push({ player_id: uid, history: rows })
+		}
+	}
+
+	const roomChartOpts = {
+		if_banker: !!room.f_banker_intervene,
+		f_group_count: room.f_group_count,
+		f_admin_uid: room.f_admin_uid != null ? String(room.f_admin_uid).trim() : ''
+	}
+
+	for (const uid of [...uids].sort()) {
+		const rows = (allPlayerHistories.find((p) => p.player_id === uid) || {}).history || []
 		if (!rows.length) continue
 
 		const roundSet = [...new Set(rows.map((r) => r.f_round_index))].sort((a, b) => a - b)
 		const lastRound = roundSet.length ? roundSet[roundSet.length - 1] : 0
-		const label = maskPhone(phone)
+		const label = labelByUid[uid] || String(uid).slice(0, 10)
 
-		const roomChartOpts = {
-			if_banker: !!room.f_banker_intervene,
-			f_group_count: room.f_group_count
-		}
-
-		const cd = buildChartDataFromHistory(rows, phone, roomChartOpts)
+		const cd = buildChartDataForTarget(allPlayerHistories, uid, label, roomChartOpts)
 
 		if (cy < margin + chartH * 3 + gap * 2 + 80) {
 			page = pdfDoc.addPage([W, H])

@@ -2,20 +2,20 @@
 	<view class="page">
 		<view class="hero">
 			<text class="brand">因子投资</text>
-			<text class="sub">{{ step === 'phone' ? '请输入手机号' : '完善微信头像与昵称以完成注册' }}</text>
+			<text class="sub">{{ step === 'phone' ? '请输入ID' : '完善微信头像与昵称以完成注册' }}</text>
 		</view>
 
 		<view class="card">
-			<!-- 第一步：仅手机号 -->
+			<!-- 第一步：仅 ID -->
 			<view v-if="step === 'phone'" class="block">
 				<view class="row">
-					<text class="label">手机号</text>
+					<text class="label">id</text>
 					<input
 						class="field"
 						type="number"
 						maxlength="11"
 						:value="phone"
-						placeholder="11 位中国大陆手机号"
+						placeholder="11 位中国大陆 ID"
 						@input="onPhoneInput"
 					/>
 				</view>
@@ -27,14 +27,14 @@
 				>
 					确定
 				</button>
-				<text class="tips">将查询云数据库表 f_user_profile 是否已有该手机号。</text>
+				<text class="tips">将查询云数据库表 f_user_profile 是否已有该 ID。</text>
 			</view>
 
 			<!-- 第二步：未注册时填写资料 -->
 			<view v-else class="block">
 				<view class="phone-bar">
-					<text class="phone-fixed">手机号 {{ phone }}</text>
-					<text class="link" @click="backToPhone">更换手机号</text>
+					<text class="phone-fixed">ID {{ phone }}</text>
+					<text class="link" @click="backToPhone">更换 ID</text>
 				</view>
 
 				<view class="row avatar-row">
@@ -142,6 +142,7 @@ async function onPhoneConfirm() {
 		if (fd.f_exists && fd.f_user) {
 			const u = fd.f_user
 			f_saveUserLocal({
+				f_uid: u.f_uid || '',
 				f_avatar_url: u.f_avatar_url,
 				f_nick_name: u.f_nick_name,
 				f_phone: u.f_phone,
@@ -213,6 +214,7 @@ async function doRegister() {
 		const fd = body.f_data || {}
 		f_saveUserLocal({
 			...payload,
+			f_uid: fd.f_uid || '',
 			f_role: fd.f_role || 'player',
 			f_cloud_id: fd.f_id,
 			f_cloud_action: fd.f_action
@@ -233,7 +235,7 @@ async function doRegister() {
 	min-height: 100vh;
 	padding: 48rpx 40rpx 80rpx;
 	box-sizing: border-box;
-	background: linear-gradient(180deg, #e8f5e9 0%, #f5f7fa 35%, #f5f7fa 100%);
+	background: linear-gradient(180deg, #090909 0%, #111111 40%, #15120a 100%);
 }
 
 .hero {
@@ -244,7 +246,7 @@ async function doRegister() {
 	display: block;
 	font-size: 44rpx;
 	font-weight: 700;
-	color: #1a1a1a;
+	color: #f5e6b3;
 	letter-spacing: 2rpx;
 }
 
@@ -252,12 +254,13 @@ async function doRegister() {
 	display: block;
 	margin-top: 12rpx;
 	font-size: 26rpx;
-	color: #6b7280;
+	color: #bfa56a;
 	line-height: 1.45;
 }
 
 .card {
-	background: #fff;
+	background: #161616;
+	border: 1rpx solid #5b4a20;
 	border-radius: 24rpx;
 	padding: 36rpx 32rpx;
 	box-shadow: 0 12rpx 40rpx rgba(15, 23, 42, 0.06);
@@ -273,18 +276,18 @@ async function doRegister() {
 	justify-content: space-between;
 	margin-bottom: 24rpx;
 	padding-bottom: 20rpx;
-	border-bottom: 1rpx solid #f0f0f0;
+	border-bottom: 1rpx solid #3f341a;
 }
 
 .phone-fixed {
 	font-size: 28rpx;
-	color: #111827;
+	color: #f5e6b3;
 	font-weight: 500;
 }
 
 .link {
 	font-size: 26rpx;
-	color: #059669;
+	color: #d4af37;
 }
 
 .row {
@@ -292,7 +295,7 @@ async function doRegister() {
 	align-items: center;
 	justify-content: space-between;
 	padding: 20rpx 0;
-	border-bottom: 1rpx solid #f0f0f0;
+	border-bottom: 1rpx solid #3f341a;
 }
 
 .avatar-row {
@@ -301,7 +304,7 @@ async function doRegister() {
 
 .label {
 	font-size: 28rpx;
-	color: #374151;
+	color: #dcc58a;
 	width: 140rpx;
 	flex-shrink: 0;
 }
@@ -309,7 +312,7 @@ async function doRegister() {
 .field {
 	flex: 1;
 	font-size: 28rpx;
-	color: #111827;
+	color: #f5e6b3;
 }
 
 .avatar-btn {
@@ -319,8 +322,8 @@ async function doRegister() {
 	height: 120rpx;
 	border-radius: 50%;
 	overflow: hidden;
-	background: #f3f4f6;
-	border: 2rpx solid #e5e7eb;
+	background: #222;
+	border: 2rpx solid #6d5825;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -353,8 +356,8 @@ async function doRegister() {
 	margin: 0;
 	font-size: 26rpx;
 	padding: 12rpx 24rpx;
-	background: #f3f4f6;
-	color: #374151;
+	background: #2a2415;
+	color: #f5e6b3;
 	border-radius: 12rpx;
 }
 
@@ -364,7 +367,7 @@ async function doRegister() {
 
 .avatar-placeholder {
 	font-size: 22rpx;
-	color: #9ca3af;
+	color: #bfa56a;
 	padding: 8rpx;
 	text-align: center;
 }
@@ -382,13 +385,14 @@ async function doRegister() {
 }
 
 .primary {
-	background: #07c160;
-	color: #fff;
+	background: linear-gradient(135deg, #d4af37, #8f6b1e);
+	color: #111;
 }
 
 .enter {
-	background: #111827;
-	color: #fff;
+	background: #242424;
+	color: #f5e6b3;
+	border: 1rpx solid #6d5825;
 }
 
 .enter[disabled],
@@ -400,7 +404,7 @@ async function doRegister() {
 	display: block;
 	margin-top: 28rpx;
 	font-size: 22rpx;
-	color: #9ca3af;
+	color: #bfa56a;
 	line-height: 1.65;
 }
 </style>

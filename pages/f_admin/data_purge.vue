@@ -38,7 +38,7 @@ const lastResult = ref('')
 
 onLoad(() => {
 	const u = f_getStoredUser()
-	if (!u || !u.f_phone || !f_isAdmin(u)) {
+	if (!u || !u.f_uid || !f_isAdmin(u)) {
 		uni.showToast({ title: '仅管理员', icon: 'none' })
 		setTimeout(() => uni.navigateBack(), 600)
 	}
@@ -50,13 +50,13 @@ function onInput(e) {
 
 async function onPurgeAll() {
 	const u = f_getStoredUser()
-	if (!u || !u.f_phone || !f_isAdmin(u)) return
+	if (!u || !u.f_uid || !f_isAdmin(u)) return
 	if (confirmText.value.trim() !== 'DELETE_ALL_DATA') return
 	loading.value = true
 	lastResult.value = ''
 	try {
 		const res = await f_purgeAllDataInCloud({
-			f_admin_phone: u.f_phone,
+			f_admin_uid: u.f_uid,
 			f_confirm: 'DELETE_ALL_DATA'
 		})
 		const body = res.result || {}
@@ -82,34 +82,34 @@ async function onPurgeAll() {
 .page {
 	min-height: 100vh;
 	padding: 24rpx;
-	background: #f3f4f6;
+	background: #0b0b0d;
 	box-sizing: border-box;
 }
 .card {
-	background: #fff;
+	background: #161616;
 	border-radius: 20rpx;
 	padding: 28rpx 24rpx;
 }
 .danger-zone {
-	border: 2rpx solid #b91c1c;
+	border: 2rpx solid #7a3a2d;
 }
 .h1 {
 	font-size: 32rpx;
 	font-weight: 700;
-	color: #991b1b;
+	color: #f0c2a8;
 	display: block;
 	margin-bottom: 16rpx;
 }
 .warn {
 	font-size: 26rpx;
-	color: #444;
+	color: #dcc58a;
 	line-height: 1.55;
 	display: block;
 	margin-bottom: 24rpx;
 }
 .lab {
 	font-size: 24rpx;
-	color: #6b7280;
+	color: #bfa56a;
 	display: block;
 	margin-bottom: 12rpx;
 }
@@ -118,7 +118,9 @@ async function onPurgeAll() {
 	height: 80rpx;
 	padding: 0 20rpx;
 	box-sizing: border-box;
-	background: #f9fafb;
+	background: #222;
+	border: 1rpx solid #6d5825;
+	color: #f5e6b3;
 	border-radius: 12rpx;
 	font-size: 28rpx;
 	margin-bottom: 24rpx;
@@ -133,14 +135,15 @@ async function onPurgeAll() {
 	border: none;
 }
 .btn.purge {
-	background: #b91c1c;
-	color: #fff;
+	background: #3b1f1a;
+	color: #f0c2a8;
+	border: 1rpx solid #7a3a2d;
 }
 .result {
 	display: block;
 	margin-top: 20rpx;
 	font-size: 22rpx;
-	color: #374151;
+	color: #dcc58a;
 	white-space: pre-wrap;
 	word-break: break-all;
 }

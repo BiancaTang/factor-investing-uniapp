@@ -36,7 +36,7 @@ function onRoomCode(e) {
 
 async function submit() {
 	const u = f_getStoredUser()
-	if (!u || !u.f_phone) {
+	if (!u || !u.f_uid) {
 		uni.showToast({ title: '请先登录', icon: 'none' })
 		return
 	}
@@ -46,7 +46,8 @@ async function submit() {
 		const f_room_code = String(roomCode.value).replace(/\D/g, '').slice(0, 4)
 		const res = await f_joinRoomInCloud({
 			f_room_code,
-			f_player_phone: u.f_phone
+			f_player_uid: u.f_uid,
+			f_nick_name: u.f_nick_name || ''
 		})
 		const body = res.result || {}
 		if (body.f_code !== 0) {
@@ -59,7 +60,10 @@ async function submit() {
 			title: act === 'already_in' ? '已在该房间中' : '加入成功',
 			icon: 'success'
 		})
-		setTimeout(() => uni.navigateBack(), 500)
+		setTimeout(
+			() => uni.redirectTo({ url: '/pages/f_game/play?code=' + encodeURIComponent(f_room_code) }),
+			350
+		)
 	} catch (err) {
 		console.error(err)
 		uni.showToast({ title: '请上传云函数 f_join_room', icon: 'none' })
@@ -73,12 +77,13 @@ async function submit() {
 .page {
 	min-height: 100vh;
 	padding: 32rpx;
-	background: #f5f7fa;
+	background: #0b0b0d;
 	box-sizing: border-box;
 }
 
 .card {
-	background: #fff;
+	background: #161616;
+	border: 1rpx solid #5b4a20;
 	border-radius: 20rpx;
 	padding: 28rpx 24rpx;
 }
@@ -87,19 +92,19 @@ async function submit() {
 	display: flex;
 	align-items: center;
 	padding: 22rpx 0;
-	border-bottom: 1rpx solid #f0f0f0;
+	border-bottom: 1rpx solid #3f341a;
 }
 
 .label {
 	width: 160rpx;
 	font-size: 28rpx;
-	color: #374151;
+	color: #dcc58a;
 }
 
 .field {
 	flex: 1;
 	font-size: 28rpx;
-	color: #111827;
+	color: #f5e6b3;
 }
 
 .btn {
@@ -107,8 +112,8 @@ async function submit() {
 	height: 88rpx;
 	line-height: 88rpx;
 	border-radius: 999rpx;
-	background: #07c160;
-	color: #fff;
+	background: linear-gradient(135deg, #d4af37, #8f6b1e);
+	color: #111;
 	font-size: 30rpx;
 }
 
@@ -124,7 +129,7 @@ async function submit() {
 	display: block;
 	margin-top: 24rpx;
 	font-size: 22rpx;
-	color: #9ca3af;
+	color: #bfa56a;
 	line-height: 1.6;
 }
 </style>

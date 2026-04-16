@@ -77,6 +77,21 @@
 				</view>
 			</view>
 			<!-- #endif -->
+			<view v-if="factorInputRows.length" class="block">
+				<text class="sub">玩家输入的五个因子值</text>
+				<view class="factor-table">
+					<view class="factor-head">
+						<text class="c-round">轮次</text>
+						<text v-for="c in factorColumns" :key="'h-' + c.key" class="c-val">{{ c.label }}</text>
+					</view>
+					<view v-for="r in factorInputRows" :key="'r-' + r.f_round_index" class="factor-row">
+						<text class="c-round">第 {{ r.f_round_index }} 轮</text>
+						<text v-for="c in factorColumns" :key="`v-${r.f_round_index}-${c.key}`" class="c-val">
+							{{ r[c.key] }}
+						</text>
+					</view>
+				</view>
+			</view>
 		</template>
 	</view>
 </template>
@@ -134,6 +149,23 @@ const props = defineProps({
 	fGroupCount: {
 		type: Number,
 		default: 20
+	},
+	/**
+	 * 全房间玩家历史（与 Python 多槽位仿真一致）；有则用于因子累积/归因/净值，而非仅用 history 单人回放
+	 */
+	simulationPlayers: {
+		type: Array,
+		default: null
+	},
+	/** 当前用户 f_uid，用于在 simulationPlayers 中定位归因与本人净值曲线 */
+	attributionPlayerId: {
+		type: String,
+		default: ''
+	},
+	/** 房间创建者 f_uid；开启 Banker 且房主参与对局时，其因子计入庄家槽（与 f_factorEngine 一致） */
+	roomAdminUid: {
+		type: String,
+		default: ''
 	}
 })
 
@@ -141,11 +173,32 @@ const chartPayload = computed(() => {
 	if (props.chartData && typeof props.chartData === 'object') {
 		return props.chartData
 	}
-	const phone = (f_getStoredUser() || {}).f_phone || 'player'
+	const u = f_getStoredUser() || {}
+	const label = u.f_nick_name || 'player'
+	const targetId = props.attributionPlayerId || u.f_uid || ''
 	const gc = Math.max(1, parseInt(props.fGroupCount, 10) || 20)
-	const own = f_buildChartDataFromHistory(props.history, phone, {
+	const baseOpts = {
 		if_banker: props.ifBanker,
-		f_group_count: gc
+		f_group_count: gc,
+		targetPlayerId: targetId,
+		...(props.roomAdminUid && String(props.roomAdminUid).trim()
+			? { f_admin_uid: String(props.roomAdminUid).trim() }
+			: {})
+	}
+	let allList = null
+	if (props.simulationPlayers && props.simulationPlayers.length > 0) {
+		allList = props.simulationPlayers.map((p) => ({
+			player_id: p.player_id != null ? String(p.player_id) : String(p.f_player_uid || ''),
+			history: p.history || p.f_history || [],
+			label:
+				p.label != null && p.label !== ''
+					? String(p.label)
+					: String(p.f_nick_name || p.player_id || p.f_player_uid || '')
+		}))
+	}
+	const own = f_buildChartDataFromHistory(props.history, label, {
+		...baseOpts,
+		...(allList ? { allPlayerHistories: allList } : {})
 	})
 	const nav = props.navChartData
 	if (nav && typeof nav === 'object') {
@@ -171,6 +224,33 @@ const hasData = computed(() => {
 	if (d.factor_cumulative && d.factor_cumulative.length) return true
 	if (props.history && props.history.length) return true
 	return false
+})
+
+const factorColumns = [
+	{ key: 'fac_size', label: '规模' },
+	{ key: 'fac_momentum', label: '动量' },
+	{ key: 'fac_book_to_price', label: '账面市值比' },
+	{ key: 'fac_growth', label: '成长' },
+	{ key: 'fac_residual_volatility', label: '残差波动' }
+]
+
+const factorInputRows = computed(() => {
+	const rows = Array.isArray(props.history) ? props.history : []
+	return [...rows]
+		.filter((r) => Number.isFinite(parseInt(r.f_round_index, 10)))
+		.map((r) => ({
+			f_round_index: parseInt(r.f_round_index, 10),
+			fac_size: Number.isFinite(Number(r.fac_size)) ? Math.round(Number(r.fac_size)) : 0,
+			fac_momentum: Number.isFinite(Number(r.fac_momentum)) ? Math.round(Number(r.fac_momentum)) : 0,
+			fac_book_to_price: Number.isFinite(Number(r.fac_book_to_price))
+				? Math.round(Number(r.fac_book_to_price))
+				: 0,
+			fac_growth: Number.isFinite(Number(r.fac_growth)) ? Math.round(Number(r.fac_growth)) : 0,
+			fac_residual_volatility: Number.isFinite(Number(r.fac_residual_volatility))
+				? Math.round(Number(r.fac_residual_volatility))
+				: 0
+		}))
+		.sort((a, b) => a.f_round_index - b.f_round_index)
 })
 
 const { idNav, idFc, idAtt, renderCharts, disposeAllCharts } = useFGameCharts(
@@ -199,7 +279,7 @@ onMounted(() => {
 
 .empty {
 	font-size: 26rpx;
-	color: #9ca3af;
+	color: #bfa56a;
 	padding: 24rpx 0;
 }
 
@@ -209,21 +289,57 @@ onMounted(() => {
 
 .sub {
 	font-size: 26rpx;
-	color: #333;
+	color: #dcc58a;
 	display: block;
 	margin-bottom: 12rpx;
 }
 
 .chart-box {
 	width: 100%;
-	border: 1rpx solid #eee;
+	border: 1rpx solid #5b4a20;
 	border-radius: 12rpx;
 	overflow: hidden;
-	background: #fafafa;
+	background: #141414;
 }
 
 .chart-inner {
 	width: 100%;
 	height: 480rpx;
+}
+
+.factor-table {
+	border: 1rpx solid #5b4a20;
+	border-radius: 12rpx;
+	overflow: hidden;
+	background: #161616;
+}
+
+.factor-head,
+.factor-row {
+	display: flex;
+	align-items: center;
+	padding: 14rpx 12rpx;
+	border-bottom: 1rpx solid #3f341a;
+}
+
+.factor-head {
+	background: #211c10;
+}
+
+.factor-row:last-child {
+	border-bottom: none;
+}
+
+.c-round {
+	width: 120rpx;
+	font-size: 22rpx;
+	color: #dcc58a;
+}
+
+.c-val {
+	flex: 1;
+	font-size: 22rpx;
+	color: #f5e6b3;
+	text-align: center;
 }
 </style>

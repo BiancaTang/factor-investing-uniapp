@@ -13,7 +13,7 @@ exports.main = async (event) => {
 	}
 
 	if (!/^1\d{10}$/.test(f_phone)) {
-		return { f_code: 400, f_message: '手机号需为 11 位中国大陆号码', f_data: null }
+		return { f_code: 400, f_message: 'ID 需为 11 位中国大陆号码', f_data: null }
 	}
 
 	const r = await f_col.where({ f_phone }).limit(1).get()
@@ -30,9 +30,10 @@ exports.main = async (event) => {
 	const row = list[0]
 	const f_user = {
 		f_id: row._id,
+		f_uid: row.f_uid || '',
 		f_avatar_url: row.f_avatar_url || '',
 		f_nick_name: row.f_nick_name || '',
-		f_phone: row.f_phone,
+		f_phone: row.f_phone || '',
 		f_role: row.f_role || F_ROLE_PLAYER
 	}
 

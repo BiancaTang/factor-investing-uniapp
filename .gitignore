@@ -4,3 +4,6 @@ unpackage/
 *.log
 .hbuilderx/
 *.code-workspace
+
+# 微信 AppSecret 仅保存在本地，勿提交（复制 wx-secret.example.json 为 wx-secret.json 后填写）
+uniCloud-aliyun/cloudfunctions/f_get_wx_phone/wx-secret.json

@@ -50,7 +50,7 @@ onLoad((q) => {
 
 async function onExport() {
 	const u = f_getStoredUser()
-	if (!u || !u.f_phone || !f_isAdmin(u)) return
+	if (!u || !u.f_uid || !f_isAdmin(u)) return
 	const rc = String(roomCode.value || '').replace(/\D/g, '').slice(0, 4)
 	if (!/^\d{4}$/.test(rc)) {
 		uni.showToast({ title: '请输入 4 位房间号', icon: 'none' })
@@ -59,7 +59,7 @@ async function onExport() {
 	loading.value = true
 	try {
 		const res = await f_exportScorePdfInCloud({
-			f_admin_phone: u.f_phone,
+			f_admin_uid: u.f_uid,
 			f_room_code: rc,
 			f_require_all_done: requireAllDone.value
 		})
@@ -108,23 +108,25 @@ async function onExport() {
 .page {
 	min-height: 100vh;
 	padding: 24rpx;
-	background: #f3f4f6;
+	background: #0b0b0d;
 	box-sizing: border-box;
 }
 .card {
-	background: #fff;
+	background: #161616;
+	border: 1rpx solid #5b4a20;
 	border-radius: 16rpx;
 	padding: 28rpx;
 }
 .h1 {
 	font-size: 34rpx;
 	font-weight: 600;
+	color: #f5e6b3;
 	display: block;
 	margin-bottom: 16rpx;
 }
 .tip {
 	font-size: 24rpx;
-	color: #6b7280;
+	color: #bfa56a;
 	line-height: 1.55;
 	display: block;
 	margin-bottom: 24rpx;
@@ -134,15 +136,17 @@ async function onExport() {
 }
 .lab {
 	font-size: 28rpx;
-	color: #374151;
+	color: #dcc58a;
 	display: block;
 	margin-bottom: 8rpx;
 }
 .inp {
-	border: 1rpx solid #e5e7eb;
+	border: 1rpx solid #6d5825;
 	border-radius: 12rpx;
 	padding: 20rpx;
 	font-size: 28rpx;
+	background: #222;
+	color: #f5e6b3;
 }
 .row-check {
 	display: flex;
@@ -152,14 +156,17 @@ async function onExport() {
 }
 .ck {
 	font-size: 24rpx;
-	color: #4b5563;
+	color: #dcc58a;
 }
 .btn {
 	margin-bottom: 20rpx;
+	background: linear-gradient(135deg, #d4af37, #8f6b1e) !important;
+	color: #111 !important;
+	border: none;
 }
 .hint {
 	font-size: 22rpx;
-	color: #9ca3af;
+	color: #bfa56a;
 	line-height: 1.5;
 }
 </style>

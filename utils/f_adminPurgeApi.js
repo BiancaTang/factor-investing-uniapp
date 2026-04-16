@@ -3,14 +3,14 @@
 export const F_CLOUD_ADMIN_PURGE = 'f_admin_purge_collection'
 
 /**
- * 清空本项目全部业务数据（对局、成员、房间、用户）。需管理员手机号 + 确认串。
- * @param {{ f_admin_phone: string, f_confirm: 'DELETE_ALL_DATA' }} payload
+ * 清空本项目全部业务数据（对局、成员、房间、用户）。需管理员 f_uid + 确认串。
+ * @param {{ f_admin_uid: string, f_confirm: 'DELETE_ALL_DATA' }} payload
  */
 export function f_purgeAllDataInCloud(payload) {
 	return uniCloud.callFunction({
 		name: F_CLOUD_ADMIN_PURGE,
 		data: {
-			f_admin_phone: payload.f_admin_phone,
+			f_admin_uid: payload.f_admin_uid,
 			f_purge_all: true,
 			f_confirm: payload.f_confirm
 		}
@@ -24,7 +24,7 @@ export function f_purgeCollectionInCloud(payload) {
 	return uniCloud.callFunction({
 		name: F_CLOUD_ADMIN_PURGE,
 		data: {
-			f_admin_phone: payload.f_admin_phone,
+			f_admin_uid: payload.f_admin_uid,
 			f_collection: payload.f_collection
 		}
 	})

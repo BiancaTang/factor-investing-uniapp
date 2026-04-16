@@ -23,7 +23,7 @@ exports.main = async (event) => {
 			f_group_count: row.f_group_count,
 			f_round_count: row.f_round_count,
 			f_banker_intervene: !!row.f_banker_intervene,
-			f_admin_phone: row.f_admin_phone,
+			f_admin_uid: row.f_admin_uid,
 			f_open_round_index: Number.isFinite(openRi) && openRi >= 0 ? openRi : 0
 		}
 	}
