@@ -77,7 +77,23 @@ exports.main = async (event) => {
 		}
 	}
 
+	// 轮次倒计时：默认 300 秒；开启时记录开始时间
+	const dur = parseInt(roomRow.f_round_duration_sec, 10)
+	const durationSec = Number.isFinite(dur) && dur > 0 ? dur : 300
+	const startedAt =
+		typeof roomRow.f_round_started_at === 'number' ? roomRow.f_round_started_at : parseInt(roomRow.f_round_started_at, 10)
 	const f_now = Date.now()
+	if (Number.isFinite(startedAt) && startedAt > 0) {
+		const deadline = startedAt + durationSec * 1000
+		if (f_now > deadline) {
+			return {
+				f_code: 403,
+				f_message: '本轮已超时，请等待管理员开启下一轮',
+				f_data: { f_open_round_index: f_open, f_deadline_at: deadline }
+			}
+		}
+	}
+
 	const doc = {
 		f_room_code,
 		f_player_uid,

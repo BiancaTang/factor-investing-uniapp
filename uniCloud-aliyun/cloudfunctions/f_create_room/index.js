@@ -55,9 +55,13 @@ exports.main = async (event) => {
 		f_group_count,
 		f_round_count,
 		f_banker_intervene,
+		// 单轮时长：默认 5 分钟
+		f_round_duration_sec: 300,
 		f_admin_uid,
 		/** 管理员当前开启的轮次，0 表示未开启，玩家不可提交 */
 		f_open_round_index: 0,
+		/** 当前轮开始时间戳；未开启时为 0 */
+		f_round_started_at: 0,
 		f_created_at: f_now,
 		f_updated_at: f_now
 	}

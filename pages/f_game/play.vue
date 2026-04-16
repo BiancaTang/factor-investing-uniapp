@@ -2,7 +2,7 @@
 	<view class="page">
 		<view class="head">
 			<text class="room">房间 {{ roomCode || '-' }}</text>
-			<text class="meta">共 {{ totalRounds }} 轮 · 开放轮次 {{ openRoundLabel }}</text>
+			<text class="meta">共 {{ totalRounds }} 轮 · 开放轮次 {{ openRoundLabel }} · 剩余 {{ roundCountdownLabel }}</text>
 			<text v-if="roomInfo && roomInfo.f_banker_intervene" class="banker">Banker 介入：开</text>
 		</view>
 
@@ -101,7 +101,7 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref } from 'vue'
+import { computed, onUnmounted, reactive, ref, watch } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import FGameCharts from '../../components/f-game-charts/f-game-charts.vue'
 import { F_FACTOR_DEFS } from '../../utils/f_gameLogic.js'
@@ -127,6 +127,8 @@ const history = ref([])
 const roomSnapshot = ref(null)
 /** 刷新数据后递增，小程序端强制重绘图表 */
 const chartRefreshKey = ref(0)
+const tick = ref(Date.now())
+let timer = null
 
 const factors = reactive({
 	fac_size: 0,
@@ -200,6 +202,36 @@ const openRoundLabel = computed(() => {
 	return '未开启'
 })
 
+const roundCountdownLabel = computed(() => {
+	const d = roomInfo.value
+	if (!d) return '--:--'
+	const open = d.f_open_round_index ? parseInt(d.f_open_round_index, 10) : 0
+	if (!Number.isFinite(open) || open <= 0) return '--:--'
+	const dur = parseInt(d.f_round_duration_sec, 10)
+	const durationSec = Number.isFinite(dur) && dur > 0 ? dur : 300
+	const st =
+		typeof d.f_round_started_at === 'number' ? d.f_round_started_at : parseInt(d.f_round_started_at, 10)
+	if (!Number.isFinite(st) || st <= 0) return '05:00'
+	const leftMs = st + durationSec * 1000 - tick.value
+	const left = Math.max(0, Math.floor(leftMs / 1000))
+	const mm = String(Math.floor(left / 60)).padStart(2, '0')
+	const ss = String(left % 60).padStart(2, '0')
+	return `${mm}:${ss}`
+})
+
+const roundExpired = computed(() => {
+	const d = roomInfo.value
+	if (!d) return false
+	const open = d.f_open_round_index ? parseInt(d.f_open_round_index, 10) : 0
+	if (!Number.isFinite(open) || open <= 0) return false
+	const dur = parseInt(d.f_round_duration_sec, 10)
+	const durationSec = Number.isFinite(dur) && dur > 0 ? dur : 300
+	const st =
+		typeof d.f_round_started_at === 'number' ? d.f_round_started_at : parseInt(d.f_round_started_at, 10)
+	if (!Number.isFinite(st) || st <= 0) return false
+	return tick.value > st + durationSec * 1000
+})
+
 /** 管理员已开启「下一轮」编号，与玩家将要打的 nextRoundIndex 一致时可进入输入 */
 const nextRoundOpen = computed(() => {
 	const open = roomInfo.value?.f_open_round_index
@@ -208,6 +240,19 @@ const nextRoundOpen = computed(() => {
 	if (!Number.isFinite(o) || o <= 0) return false
 	return o === nextR && nextR <= totalRounds.value
 })
+
+watch(
+	roundExpired,
+	async (ex) => {
+		if (!ex) return
+		// 超时后：自动刷新一次，让页面进入 waiting / review 状态
+		if (phase.value === 'input') {
+			uni.showToast({ title: '本轮已结束', icon: 'none' })
+		}
+		await refreshStatus()
+	},
+	{ immediate: false }
+)
 
 function resetFactors() {
 	F_FACTOR_DEFS.forEach((d) => {
@@ -330,6 +375,14 @@ onLoad((options) => {
 		return
 	}
 	loadAll(rc)
+	timer = setInterval(() => {
+		tick.value = Date.now()
+	}, 1000)
+})
+
+onUnmounted(() => {
+	if (timer) clearInterval(timer)
+	timer = null
 })
 
 async function submitRound() {

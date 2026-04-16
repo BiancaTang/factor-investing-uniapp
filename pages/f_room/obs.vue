@@ -17,6 +17,7 @@
 			<view v-if="status" class="status">
 				<text class="st">总轮次：{{ status.f_round_count }}</text>
 				<text class="st">当前开放轮次：{{ openLabel }}</text>
+				<text v-if="status.f_open_round_index" class="st">本轮剩余时间：{{ roundCountdownLabel }}</text>
 				<text class="st">组数(player_nm)：{{ roomGroupCount }} · Banker：{{ status.f_banker_intervene ? '开' : '关' }}</text>
 			</view>
 			<view class="ctrl">
@@ -75,7 +76,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import FGameCharts from '../../components/f-game-charts/f-game-charts.vue'
 import { f_buildJointNavCompareChartData } from '../../utils/f_factorEngine.js'
@@ -92,6 +93,9 @@ const loading = ref(false)
 const acting = ref(false)
 const lastAction = ref('')
 const pickIndex = ref(0)
+const tick = ref(Date.now())
+let timer = null
+let autoEnding = false
 
 onLoad((q) => {
 	const u = f_getStoredUser()
@@ -106,6 +110,14 @@ onLoad((q) => {
 		const rc = String(roomCode.value || '').replace(/\D/g, '').slice(0, 4)
 		if (/^\d{4}$/.test(rc)) refresh()
 	})
+	timer = setInterval(() => {
+		tick.value = Date.now()
+	}, 1000)
+})
+
+onUnmounted(() => {
+	if (timer) clearInterval(timer)
+	timer = null
 })
 
 const roundLabels = computed(() => {
@@ -125,6 +137,48 @@ const openLabel = computed(() => {
 	const o = status.value.f_open_round_index
 	return o && o > 0 ? `第 ${o} 轮` : '未开启（玩家不可提交）'
 })
+
+const roundCountdownLabel = computed(() => {
+	if (!status.value) return '-'
+	const open = status.value.f_open_round_index || 0
+	if (!open) return '-'
+	const dur = parseInt(status.value.f_round_duration_sec, 10)
+	const durationSec = Number.isFinite(dur) && dur > 0 ? dur : 300
+	const st = typeof status.value.f_round_started_at === 'number' ? status.value.f_round_started_at : parseInt(status.value.f_round_started_at, 10)
+	if (!Number.isFinite(st) || st <= 0) return `${durationSec}s`
+	const leftMs = st + durationSec * 1000 - tick.value
+	const left = Math.max(0, Math.floor(leftMs / 1000))
+	const mm = String(Math.floor(left / 60)).padStart(2, '0')
+	const ss = String(left % 60).padStart(2, '0')
+	return `${mm}:${ss}`
+})
+
+const roundExpired = computed(() => {
+	if (!status.value) return false
+	const open = status.value.f_open_round_index || 0
+	if (!open) return false
+	const dur = parseInt(status.value.f_round_duration_sec, 10)
+	const durationSec = Number.isFinite(dur) && dur > 0 ? dur : 300
+	const st = typeof status.value.f_round_started_at === 'number' ? status.value.f_round_started_at : parseInt(status.value.f_round_started_at, 10)
+	if (!Number.isFinite(st) || st <= 0) return false
+	return tick.value > st + durationSec * 1000
+})
+
+watch(
+	roundExpired,
+	async (ex) => {
+		if (!ex) return
+		if (autoEnding) return
+		if (!status.value || !status.value.f_open_round_index) return
+		autoEnding = true
+		try {
+			await onEndRound()
+		} finally {
+			autoEnding = false
+		}
+	},
+	{ immediate: false }
+)
 
 const canStart = computed(() => {
 	if (!status.value) return false

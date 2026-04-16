@@ -4,7 +4,9 @@ export const F_CLOUD_GET_ROOM_PLAYER_STATUS = 'f_get_room_player_status'
 export function f_controlRoomRoundInCloud(payload) {
 	return uniCloud.callFunction({
 		name: F_CLOUD_CONTROL_ROOM_ROUND,
-		data: payload
+		data: payload,
+		// end 动作可能包含批量补齐未提交玩家记录，适当放宽超时
+		timeout: 120000
 	})
 }
 

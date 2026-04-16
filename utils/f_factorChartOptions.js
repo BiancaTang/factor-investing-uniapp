@@ -17,6 +17,31 @@ const FACTOR_LEGEND_NAME = {
 	residual_volatility: 'res_vol'
 }
 
+function fmtNumber(v, digits = 2) {
+	const n = Number(v)
+	if (!Number.isFinite(n)) return ''
+	return n.toFixed(digits)
+}
+
+function pointLabel(digits) {
+	return {
+		show: true,
+		position: 'top',
+		distance: 6,
+		fontSize: 9,
+		color: '#f5e6b3',
+		backgroundColor: 'rgba(0,0,0,0.55)',
+		borderColor: 'rgba(212,175,55,0.55)',
+		borderWidth: 1,
+		borderRadius: 4,
+		padding: [2, 4],
+		formatter: (p) => {
+			const val = Array.isArray(p.value) ? p.value[1] : p.value
+			return fmtNumber(val, digits)
+		}
+	}
+}
+
 export function buildNavOption(chartData) {
 	const nav = chartData?.nav_series || []
 	const series = nav.map((s) => ({
@@ -25,7 +50,8 @@ export function buildNavOption(chartData) {
 		smooth: false,
 		symbol: 'circle',
 		symbolSize: 6,
-		data: (s.points || []).map((p) => [Number(p.round), Number(p.nav)])
+		data: (s.points || []).map((p) => [Number(p.round), Number(p.nav)]),
+		label: pointLabel(2)
 	}))
 	const bs = chartData?.banker_series
 	if (bs && bs.length) {
@@ -36,7 +62,8 @@ export function buildNavOption(chartData) {
 			symbol: 'diamond',
 			symbolSize: 5,
 			lineStyle: { type: 'dashed', width: 2 },
-			data: bs.map((b) => [Number(b.round), Number(b.nav_norm)])
+			data: bs.map((b) => [Number(b.round), Number(b.nav_norm)]),
+			label: pointLabel(3)
 		})
 	}
 	const multi = series.length > 1
@@ -91,7 +118,8 @@ export function buildFactorCumOption(chartData) {
 		data: fc.map((row) => [
 			Number(row.round),
 			row[f] != null ? Number(row[f]) : 0
-		])
+		]),
+		label: pointLabel(4)
 	}))
 	return {
 		color: ['#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de'],
@@ -132,7 +160,8 @@ export function buildAttributionOption(chartData) {
 		data: br.map((row) => [
 			Number(row.round),
 			row[f] != null ? Number(row[f]) : 0
-		])
+		]),
+		label: pointLabel(4)
 	}))
 	return {
 		title: {

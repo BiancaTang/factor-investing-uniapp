@@ -48,9 +48,10 @@ exports.main = async (event) => {
 				})
 				.get()
 			const submitted = new Set((existing.data || []).map((r) => r.f_player_uid).filter(Boolean))
+			const toInsert = []
 			for (const f_player_uid of uids) {
 				if (submitted.has(f_player_uid)) continue
-				await f_rounds.add({
+				toInsert.push({
 					f_room_code,
 					f_player_uid,
 					f_round_index: curOpen,
@@ -63,10 +64,18 @@ exports.main = async (event) => {
 					f_created_at: f_now
 				})
 			}
+			// 批量写入，避免逐条 await 导致超时
+			const CHUNK = 100
+			for (let i = 0; i < toInsert.length; i += CHUNK) {
+				const batch = toInsert.slice(i, i + CHUNK)
+				// uniCloud DB 支持 add(array) 批量插入
+				await f_rounds.add(batch)
+			}
 		}
 
 		await f_rooms.doc(row._id).update({
 			f_open_round_index: 0,
+			f_round_started_at: 0,
 			f_updated_at: f_now
 		})
 		return {
@@ -87,6 +96,9 @@ exports.main = async (event) => {
 
 	await f_rooms.doc(row._id).update({
 		f_open_round_index: f_round_index,
+		f_round_started_at: f_now,
+		// 兼容旧房间：若没有设置轮时长，则写入默认 300 秒
+		...(row.f_round_duration_sec ? {} : { f_round_duration_sec: 300 }),
 		f_updated_at: f_now
 	})
 

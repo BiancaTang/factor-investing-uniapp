@@ -6,6 +6,8 @@
 		"f_group_count": { "bsonType": "int", "description": "参与组数" },
 		"f_round_count": { "bsonType": "int", "description": "游戏轮次" },
 		"f_banker_intervene": { "bsonType": "bool", "description": "是否 banker/后台介入控制局面" },
+		"f_round_duration_sec": { "bsonType": "int", "description": "单轮时长（秒），默认 300" },
+		"f_round_started_at": { "bsonType": "timestamp", "description": "当前开放轮次开始时间（毫秒时间戳），f_open_round_index=0 时可为 0/空" },
 		"f_admin_uid": { "bsonType": "string", "description": "创建者管理员 f_uid" },
 		"f_created_at": { "bsonType": "timestamp" },
 		"f_updated_at": { "bsonType": "timestamp" }

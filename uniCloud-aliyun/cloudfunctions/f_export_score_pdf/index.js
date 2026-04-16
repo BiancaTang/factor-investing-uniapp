@@ -1,6 +1,42 @@
 'use strict'
 
 const { PDFDocument, rgb, StandardFonts } = require('pdf-lib')
+const fs = require('fs')
+const path = require('path')
+
+function f_safeWinAnsiText(s) {
+	const str = String(s == null ? '' : s)
+	// Helvetica(StandardFonts) 仅 WinAnsi；为避免云函数直接抛异常，降级为可编码字符
+	return str.replace(/[^\x20-\x7E]/g, '?')
+}
+
+async function f_loadPdfFont(pdfDoc) {
+	// 优先使用云函数目录内的中文字体文件（你需要自行放入）
+	// 推荐：uniCloud-aliyun/cloudfunctions/f_export_score_pdf/fonts/NotoSansSC-Regular.otf（或 .ttf）
+	const candidates = [
+		path.join(__dirname, 'fonts', 'NotoSansSC-Regular.otf'),
+		path.join(__dirname, 'fonts', 'NotoSansSC-Regular.ttf'),
+		path.join(__dirname, 'fonts', 'SourceHanSansCN-Regular.otf'),
+		path.join(__dirname, 'fonts', 'SourceHanSansCN-Regular.ttf')
+	]
+	for (const p of candidates) {
+		try {
+			if (!fs.existsSync(p)) continue
+			const fontkit = require('fontkit')
+			pdfDoc.registerFontkit(fontkit)
+			const bytes = fs.readFileSync(p)
+			const f = await pdfDoc.embedFont(bytes, { subset: true })
+			console.log('[f_export_score_pdf] using CJK font:', p)
+			return { font: f, safeText: (x) => String(x == null ? '' : x) }
+		} catch (e) {
+			console.error('[f_export_score_pdf] load font failed:', p, e && e.message ? e.message : e)
+		}
+	}
+	// 无字体文件时回退到 Helvetica，并对文本做 WinAnsi 安全处理
+	const f = await pdfDoc.embedFont(StandardFonts.Helvetica)
+	console.log('[f_export_score_pdf] using StandardFonts.Helvetica (WinAnsi fallback)')
+	return { font: f, safeText: f_safeWinAnsiText }
+}
 
 const FACTORS = ['size', 'momentum', 'book_to_price', 'growth', 'residual_volatility']
 const FAC_TO_INTERNAL = {
@@ -58,7 +94,6 @@ function simulatePythonFactorGame(allPlayerHistories, roomOpts) {
 		}
 	}
 	const rounds = [...roundSet].sort((a, b) => a - b)
-	const firstRound = rounds.length ? rounds[0] : null
 
 	const nav = new Array(player_nm).fill(1)
 	if (if_banker) nav[0] = banker_nav0
@@ -141,9 +176,7 @@ function simulatePythonFactorGame(allPlayerHistories, roomOpts) {
 			nextNav[i] = nav[i] * (totalReturn + 1)
 		}
 
-		if (if_banker && firstRound !== null && round === firstRound) {
-			nextNav[0] = 1
-		}
+		// 对齐 gaming_process.py：Banker 的 nav 不做“首轮后重置为 1”，仅在展示时可归一化
 
 		for (let i = 0; i < player_nm; i++) {
 			nav[i] = nextNav[i]
@@ -359,7 +392,8 @@ exports.main = async (event, context) => {
 			if (n < maxR) {
 				return {
 					f_code: 400,
-					f_message: `尚未全部完成：${labelByUid[uid] || uid} 仅 ${n}/${maxR} 轮`,
+					// 这里也可能含中文昵称；避免前端展示/日志编码问题
+					f_message: `尚未全部完成：${String(labelByUid[uid] || uid)} 仅 ${n}/${maxR} 轮`,
 					f_data: null
 				}
 			}
@@ -367,7 +401,7 @@ exports.main = async (event, context) => {
 	}
 
 	const pdfDoc = await PDFDocument.create()
-	const font = await pdfDoc.embedFont(StandardFonts.Helvetica)
+	const { font, safeText } = await f_loadPdfFont(pdfDoc)
 
 	const W = 595
 	const H = 842
@@ -375,14 +409,33 @@ exports.main = async (event, context) => {
 	let page = pdfDoc.addPage([W, H])
 	let cy = H - margin
 
-	page.drawText('Factor Game — Score Report (PDF)', { x: margin, y: cy, size: 16, font, color: rgb(0.1, 0.1, 0.1) })
+	page.drawText(safeText('Factor Game — Score Report (PDF)'), {
+		x: margin,
+		y: cy,
+		size: 16,
+		font,
+		color: rgb(0.1, 0.1, 0.1)
+	})
 	cy -= 28
-	page.drawText(`Room: ${f_room_code}   Rounds(config): ${maxR}`, { x: margin, y: cy, size: 11, font })
+	page.drawText(safeText(`Room: ${f_room_code}   Rounds(config): ${maxR}`), {
+		x: margin,
+		y: cy,
+		size: 11,
+		font
+	})
 	cy -= 16
-	page.drawText(`Exported: ${new Date().toISOString()}`, { x: margin, y: cy, size: 9, font, color: rgb(0.4, 0.4, 0.4) })
+	page.drawText(safeText(`Exported: ${new Date().toISOString()}`), {
+		x: margin,
+		y: cy,
+		size: 9,
+		font,
+		color: rgb(0.4, 0.4, 0.4)
+	})
 	cy -= 28
 	page.drawText(
-		'Per player: final snapshot only (last submitted round). Chart1 NAV | Chart2 Factor cum | Chart3 Attribution',
+		safeText(
+			'Per player: final snapshot only (last submitted round). Chart1 NAV | Chart2 Factor cum | Chart3 Attribution'
+		),
 		{ x: margin, y: cy, size: 8, font, color: rgb(0.35, 0.35, 0.35) }
 	)
 	cy -= 22
@@ -421,7 +474,12 @@ exports.main = async (event, context) => {
 			cy = H - margin
 		}
 
-		page.drawText(`Player ${label}  |  Final (after round ${lastRound})`, { x: margin, y: cy, size: 11, font })
+		page.drawText(safeText(`Player ${label}  |  Final (after round ${lastRound})`), {
+			x: margin,
+			y: cy,
+			size: 11,
+			font
+		})
 		cy -= 18
 
 		const navPts = (cd.nav_series[0] && cd.nav_series[0].points) || []

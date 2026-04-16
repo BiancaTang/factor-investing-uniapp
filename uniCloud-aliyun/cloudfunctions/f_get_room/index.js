@@ -14,6 +14,8 @@ exports.main = async (event) => {
 	}
 	const row = r.data[0]
 	const openRi = parseInt(row.f_open_round_index, 10)
+	const dur = parseInt(row.f_round_duration_sec, 10)
+	const startedAt = typeof row.f_round_started_at === 'number' ? row.f_round_started_at : parseInt(row.f_round_started_at, 10)
 	return {
 		f_code: 0,
 		f_message: 'ok',
@@ -24,7 +26,9 @@ exports.main = async (event) => {
 			f_round_count: row.f_round_count,
 			f_banker_intervene: !!row.f_banker_intervene,
 			f_admin_uid: row.f_admin_uid,
-			f_open_round_index: Number.isFinite(openRi) && openRi >= 0 ? openRi : 0
+			f_open_round_index: Number.isFinite(openRi) && openRi >= 0 ? openRi : 0,
+			f_round_duration_sec: Number.isFinite(dur) && dur > 0 ? dur : 300,
+			f_round_started_at: Number.isFinite(startedAt) && startedAt > 0 ? startedAt : 0
 		}
 	}
 }

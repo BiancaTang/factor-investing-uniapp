@@ -70,7 +70,6 @@ export function f_simulatePythonFactorGame(allPlayerHistories, options = {}) {
 		}
 	}
 	const rounds = [...roundSet].sort((a, b) => a - b)
-	const firstRound = rounds.length ? rounds[0] : null
 
 	const nav = new Array(player_nm).fill(1)
 	if (if_banker) nav[0] = banker_nav0
@@ -157,9 +156,7 @@ export function f_simulatePythonFactorGame(allPlayerHistories, options = {}) {
 			nextNav[i] = nav[i] * (totalReturn + 1)
 		}
 
-		if (if_banker && firstRound !== null && round === firstRound) {
-			nextNav[0] = 1
-		}
+		// 对齐 gaming_process.py：Banker 的 nav 不做“首轮后重置为 1”，仅在展示时可归一化
 
 		for (let i = 0; i < player_nm; i++) {
 			nav[i] = nextNav[i]
