@@ -12,12 +12,16 @@ import { patchCanvasForEcharts } from '../utils/echartsWxCanvasPatch.js'
 /**
  * @param {() => any} getChartData
  * @param {import('vue').ComponentInternalInstance | null} vueInstance setup 内同步取得的 getCurrentInstance()，勿在异步里取
- * @param {{ onlyNav?: boolean, getOnlyNav?: () => boolean }} options
+ * @param {{ onlyNav?: boolean, getOnlyNav?: () => boolean, getRenderMode?: () => 'all' | 'onlyNav' | 'factorOnly' }} options
  *        仅净值模式请传 getOnlyNav（与 props 同步）；onlyNav 为兼容旧用法
  */
 export function useFGameCharts(getChartData, vueInstance = null, options = {}) {
 	const getOnlyNav =
 		typeof options.getOnlyNav === 'function' ? options.getOnlyNav : () => options.onlyNav === true
+	const getRenderMode =
+		typeof options.getRenderMode === 'function'
+			? options.getRenderMode
+			: () => (getOnlyNav() ? 'onlyNav' : 'all')
 	const componentScope = vueInstance && vueInstance.proxy ? vueInstance.proxy : null
 	const chartUid = Math.random().toString(36).slice(2)
 	const idNav = ref(`fchart-nav-${chartUid}`)
@@ -27,6 +31,13 @@ export function useFGameCharts(getChartData, vueInstance = null, options = {}) {
 	let chartNav = null
 	let chartFc = null
 	let chartAtt = null
+
+	function getRenderFlags() {
+		const mode = getRenderMode()
+		if (mode === 'onlyNav') return { nav: true, fc: false, att: false }
+		if (mode === 'factorOnly') return { nav: false, fc: true, att: false }
+		return { nav: true, fc: true, att: true }
+	}
 
 	function disposeAllCharts() {
 		;[chartNav, chartFc, chartAtt].forEach((c) => {
@@ -125,24 +136,27 @@ export function useFGameCharts(getChartData, vueInstance = null, options = {}) {
 
 	function initChartsH5(d) {
 		if (!d) return
-		const elNav = document.getElementById(idNav.value)
 		if (typeof echarts.init !== 'function') return
 		disposeAllCharts()
-		if (getOnlyNav()) {
+		const flags = getRenderFlags()
+		const elNav = document.getElementById(idNav.value)
+		const elFc = document.getElementById(idFc.value)
+		const elAtt = document.getElementById(idAtt.value)
+		if (flags.nav) {
 			if (!elNav) return
 			chartNav = echarts.init(elNav)
 			chartNav.setOption(buildNavOption(d), true)
-			return
 		}
-		const elFc = document.getElementById(idFc.value)
-		const elAtt = document.getElementById(idAtt.value)
-		if (!elNav || !elFc || !elAtt) return
-		chartNav = echarts.init(elNav)
-		chartNav.setOption(buildNavOption(d), true)
-		chartFc = echarts.init(elFc)
-		chartFc.setOption(buildFactorCumOption(d), true)
-		chartAtt = echarts.init(elAtt)
-		chartAtt.setOption(buildAttributionOption(d), true)
+		if (flags.fc) {
+			if (!elFc) return
+			chartFc = echarts.init(elFc)
+			chartFc.setOption(buildFactorCumOption(d), true)
+		}
+		if (flags.att) {
+			if (!elAtt) return
+			chartAtt = echarts.init(elAtt)
+			chartAtt.setOption(buildAttributionOption(d), true)
+		}
 	}
 
 	async function initChartsMpOnce(d) {
@@ -179,12 +193,18 @@ export function useFGameCharts(getChartData, vueInstance = null, options = {}) {
 			}
 		}
 
-		chartNav = await run(idNav.value, buildNavOption)
-		if (getOnlyNav()) return
-		await sleep(100)
-		chartFc = await run(idFc.value, buildFactorCumOption)
-		await sleep(100)
-		chartAtt = await run(idAtt.value, buildAttributionOption)
+		const flags = getRenderFlags()
+		if (flags.nav) {
+			chartNav = await run(idNav.value, buildNavOption)
+		}
+		if (flags.fc) {
+			await sleep(100)
+			chartFc = await run(idFc.value, buildFactorCumOption)
+		}
+		if (flags.att) {
+			await sleep(100)
+			chartAtt = await run(idAtt.value, buildAttributionOption)
+		}
 	}
 
 	async function initChartsMp(d) {

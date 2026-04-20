@@ -7,6 +7,7 @@
  */
 
 const FACTOR_KEYS = ['size', 'momentum', 'book_to_price', 'growth', 'residual_volatility']
+import { F_FACTOR_COLORS, F_FACTOR_COLOR_LIST } from './f_factorPalette.js'
 
 /** 缩短图例文案，避免一行挤不下又去依赖 scroll */
 const FACTOR_LEGEND_NAME = {
@@ -115,6 +116,8 @@ export function buildFactorCumOption(chartData) {
 		smooth: false,
 		symbol: 'circle',
 		symbolSize: 4,
+		lineStyle: { color: F_FACTOR_COLORS[f] },
+		itemStyle: { color: F_FACTOR_COLORS[f] },
 		data: fc.map((row) => [
 			Number(row.round),
 			row[f] != null ? Number(row[f]) : 0
@@ -122,7 +125,7 @@ export function buildFactorCumOption(chartData) {
 		label: pointLabel(4)
 	}))
 	return {
-		color: ['#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de'],
+		color: F_FACTOR_COLOR_LIST,
 		tooltip: { trigger: 'axis' },
 		legend: {
 			type: 'plain',
@@ -157,6 +160,8 @@ export function buildAttributionOption(chartData) {
 		type: 'line',
 		smooth: false,
 		symbolSize: 4,
+		lineStyle: { color: F_FACTOR_COLORS[f] },
+		itemStyle: { color: F_FACTOR_COLORS[f] },
 		data: br.map((row) => [
 			Number(row.round),
 			row[f] != null ? Number(row[f]) : 0
@@ -170,7 +175,7 @@ export function buildAttributionOption(chartData) {
 			top: 4,
 			textStyle: { fontSize: 12 }
 		},
-		color: ['#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de'],
+		color: F_FACTOR_COLOR_LIST,
 		tooltip: { trigger: 'axis' },
 		legend: {
 			type: 'plain',

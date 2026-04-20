@@ -61,6 +61,20 @@
 
 		<view v-else-if="phase === 'input'" class="card">
 			<text class="section-title">第 {{ nextRoundIndex }} / {{ totalRoundsLabel }} 轮 · 设置五个因子（-5～5）</text>
+			<view v-if="history.length" class="wait-charts">
+				<f-game-charts
+					:key="'i-' + chartRefreshKey"
+					:history="history"
+					:nav-chart-data="compareNavChartData"
+					display-mode="factorOnly"
+					nav-chart-title="玩家净值对比（已提交玩家）"
+					:if-banker="roomIfBanker"
+					:f-group-count="roomGroupCount"
+					:room-admin-uid="roomInfo?.f_admin_uid || ''"
+					:simulation-players="simulationPlayersForChart"
+					:attribution-player-id="currentUserUid"
+				/>
+			</view>
 			<view class="intro-wrap">
 				<text class="intro-title">因子配置说明（入门版）</text>
 				<view v-for="item in factorIntroItems" :key="item.key" class="intro-item">
@@ -137,6 +151,7 @@ import {
 	f_getRoomMemberStatusInCloud
 } from '../../utils/f_gameApi.js'
 import { f_buildJointNavCompareChartData, f_simulatePythonFactorGame } from '../../utils/f_factorEngine.js'
+import { F_FACTOR_COLORS } from '../../utils/f_factorPalette.js'
 
 const roomCode = ref('')
 const totalRounds = ref(1)
@@ -159,31 +174,31 @@ const factorIntroItems = [
 		key: 'size',
 		title: 'size - 市值因子',
 		desc: '衡量公司规模。通常在 A 股中，小市值长期更容易出现超额收益，但波动也更大。',
-		color: '#e98a2f'
+		color: F_FACTOR_COLORS.size
 	},
 	{
 		key: 'momentum',
 		title: 'momentum - 动量因子',
 		desc: '衡量近期趋势强弱。趋势更强通常打分更高，但过热后也可能出现反转。',
-		color: '#f2c30c'
+		color: F_FACTOR_COLORS.momentum
 	},
 	{
 		key: 'book_to_price',
 		title: 'book_to_price - 净市率因子',
 		desc: '可理解为市净率（P/B）的倒数，越高表示估值相对更便宜。',
-		color: '#7bbc43'
+		color: F_FACTOR_COLORS.book_to_price
 	},
 	{
 		key: 'growth',
 		title: 'growth - 成长因子',
 		desc: '衡量公司成长性。成长越高一般打分越高，但也要警惕估值过贵带来的回撤。',
-		color: '#37bdb5'
+		color: F_FACTOR_COLORS.growth
 	},
 	{
 		key: 'residual_volatility',
 		title: 'residual_volatility - 残差波动因子',
 		desc: '衡量个股特异性波动。低残差波动通常更稳健，高残差波动弹性更高。',
-		color: '#e14c65'
+		color: F_FACTOR_COLORS.residual_volatility
 	}
 ]
 

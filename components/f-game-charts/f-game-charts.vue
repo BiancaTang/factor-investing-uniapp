@@ -3,7 +3,7 @@
 		<view v-if="!hasData" class="empty">暂无对局数据</view>
 		<template v-else>
 			<!-- #ifdef H5 -->
-			<template v-if="onlyNav">
+			<template v-if="showNav">
 				<view class="block">
 					<text class="sub">{{ navChartTitle }}</text>
 					<view class="chart-box">
@@ -11,19 +11,15 @@
 					</view>
 				</view>
 			</template>
-			<template v-else>
-				<view class="block">
-					<text class="sub">{{ navChartTitle }}</text>
-					<view class="chart-box">
-						<view :id="idNav" class="chart-inner"></view>
-					</view>
-				</view>
+			<template v-if="showFactorCurve">
 				<view class="block">
 					<text class="sub">因子收益率曲线（累积）</text>
 					<view class="chart-box">
 						<view :id="idFc" class="chart-inner"></view>
 					</view>
 				</view>
+			</template>
+			<template v-if="showAttribution">
 				<view class="block">
 					<text class="sub">收益归因</text>
 					<view class="chart-box">
@@ -37,7 +33,7 @@
 				始终挂载三个 type="2d" canvas，仅用 v-show 隐藏后两张（仅净值模式）。
 			-->
 			<!-- #ifndef H5 -->
-			<view class="block">
+			<view v-show="showNav" class="block">
 				<text class="sub">{{ navChartTitle }}</text>
 				<view class="chart-box">
 					<canvas
@@ -50,7 +46,7 @@
 					></canvas>
 				</view>
 			</view>
-			<view v-show="!onlyNav" class="block">
+			<view v-show="showFactorCurve" class="block">
 				<text class="sub">因子收益率曲线（累积）</text>
 				<view class="chart-box">
 					<canvas
@@ -63,7 +59,7 @@
 					></canvas>
 				</view>
 			</view>
-			<view v-show="!onlyNav" class="block">
+			<view v-show="showAttribution" class="block">
 				<text class="sub">收益归因</text>
 				<view class="chart-box">
 					<canvas
@@ -136,6 +132,11 @@ const props = defineProps({
 		type: Boolean,
 		default: false
 	},
+	/** all: 三图+表；factorOnly: 仅因子收益率曲线+五因子表 */
+	displayMode: {
+		type: String,
+		default: 'all'
+	},
 	navChartTitle: {
 		type: String,
 		default: '玩家净值曲线'
@@ -168,6 +169,14 @@ const props = defineProps({
 		default: ''
 	}
 })
+
+const effectiveMode = computed(() => {
+	if (props.onlyNav) return 'onlyNav'
+	return props.displayMode === 'factorOnly' ? 'factorOnly' : 'all'
+})
+const showNav = computed(() => effectiveMode.value !== 'factorOnly')
+const showFactorCurve = computed(() => effectiveMode.value !== 'onlyNav')
+const showAttribution = computed(() => effectiveMode.value === 'all')
 
 const chartPayload = computed(() => {
 	if (props.chartData && typeof props.chartData === 'object') {
@@ -256,7 +265,10 @@ const factorInputRows = computed(() => {
 const { idNav, idFc, idAtt, renderCharts, disposeAllCharts } = useFGameCharts(
 	() => chartPayload.value,
 	vueInstance,
-	{ getOnlyNav: () => props.onlyNav }
+	{
+		getOnlyNav: () => props.onlyNav,
+		getRenderMode: () => effectiveMode.value
+	}
 )
 
 watch(
