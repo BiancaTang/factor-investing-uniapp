@@ -204,6 +204,16 @@ function f_buildFactorCumulative(df_far_return) {
 	})
 }
 
+function f_normalizeNavPoints(points) {
+	const arr = [...(points || [])].sort((a, b) => a.round - b.round)
+	if (!arr.length) return []
+	const n0 = Number(arr[0].nav)
+	if (!Number.isFinite(n0) || n0 === 0) {
+		return arr.map((p) => ({ round: p.round, nav: 1 }))
+	}
+	return arr.map((p) => ({ round: p.round, nav: Number(p.nav) / n0 }))
+}
+
 /**
  * @param {string} targetPlayerId
  * @param {string} displayLabel 图例 / player_id 展示名
@@ -215,10 +225,12 @@ function f_chartPayloadForPlayer(targetPlayerId, displayLabel, sim) {
 	const pts = sim.navByPlayerId.get(uid)
 	const nav_series = []
 	if (pts && pts.length) {
+		const isBanker = strId === F_BANKER_CHART_LABEL
+		const outPts = isBanker ? f_normalizeNavPoints(pts) : [...pts].sort((a, b) => a.round - b.round)
 		nav_series.push({
 			player_id: strId,
 			num_id: 0,
-			points: [...pts].sort((a, b) => a.round - b.round)
+			points: outPts
 		})
 	}
 
@@ -336,6 +348,8 @@ export function f_buildJointNavCompareChartData(allPlayerHistories, options = {}
 		const uid = String(p.player_id)
 		const pts = sim.navByPlayerId.get(uid)
 		if (!pts || !pts.length) continue
+		const isBanker = !!options.if_banker && !!adminUid && uid === adminUid
+		const outPts = isBanker ? f_normalizeNavPoints(pts) : [...pts].sort((a, b) => a.round - b.round)
 		const leg =
 			adminUid && uid === adminUid
 				? F_BANKER_CHART_LABEL
@@ -345,7 +359,7 @@ export function f_buildJointNavCompareChartData(allPlayerHistories, options = {}
 		nav_series.push({
 			player_id: leg,
 			num_id: 0,
-			points: [...pts].sort((a, b) => a.round - b.round)
+			points: outPts
 		})
 	}
 

@@ -4,10 +4,12 @@
 	"properties": {
 		"f_room_code": { "bsonType": "string", "description": "4 位数字房间号" },
 		"f_group_count": { "bsonType": "int", "description": "参与组数" },
-		"f_round_count": { "bsonType": "int", "description": "游戏轮次" },
+		"f_round_count": { "bsonType": "int", "description": "游戏轮次，0 表示无限轮" },
 		"f_banker_intervene": { "bsonType": "bool", "description": "是否 banker/后台介入控制局面" },
 		"f_round_duration_sec": { "bsonType": "int", "description": "单轮时长（秒），默认 300" },
 		"f_round_started_at": { "bsonType": "timestamp", "description": "当前开放轮次开始时间（毫秒时间戳），f_open_round_index=0 时可为 0/空" },
+		"f_game_ended": { "bsonType": "bool", "description": "游戏是否已结束（管理员点击结束游戏）" },
+		"f_game_ended_at": { "bsonType": "timestamp", "description": "游戏结束时间（毫秒时间戳）" },
 		"f_admin_uid": { "bsonType": "string", "description": "创建者管理员 f_uid" },
 		"f_created_at": { "bsonType": "timestamp" },
 		"f_updated_at": { "bsonType": "timestamp" }

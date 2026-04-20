@@ -18,8 +18,8 @@ exports.main = async (event) => {
 		return { f_code: 400, f_message: '参数无效', f_data: null }
 	}
 
-	if (f_action !== 'start' && f_action !== 'end') {
-		return { f_code: 400, f_message: 'f_action 须为 start 或 end', f_data: null }
+	if (f_action !== 'start' && f_action !== 'end' && f_action !== 'finish_game') {
+		return { f_code: 400, f_message: 'f_action 须为 start / end / finish_game', f_data: null }
 	}
 
 	const r = await f_rooms.where({ f_room_code }).limit(1).get()
@@ -36,6 +36,26 @@ exports.main = async (event) => {
 	const openRi = parseInt(row.f_open_round_index, 10)
 	const curOpen = Number.isFinite(openRi) && openRi >= 0 ? openRi : 0
 	const f_now = Date.now()
+	const ended = !!row.f_game_ended
+
+	if (f_action === 'finish_game') {
+		await f_rooms.doc(row._id).update({
+			f_game_ended: true,
+			f_game_ended_at: f_now,
+			f_open_round_index: 0,
+			f_round_started_at: 0,
+			f_updated_at: f_now
+		})
+		return {
+			f_code: 0,
+			f_message: 'ok',
+			f_data: { f_action: 'finish_game', f_game_ended: true }
+		}
+	}
+
+	if (ended) {
+		return { f_code: 400, f_message: '游戏已结束，不能再开启或结束轮次', f_data: null }
+	}
 
 	if (f_action === 'end') {
 		if (curOpen > 0) {
@@ -86,7 +106,10 @@ exports.main = async (event) => {
 	}
 
 	const f_round_index = parseInt(event.f_round_index, 10)
-	if (!Number.isFinite(f_round_index) || f_round_index < 1 || f_round_index > maxR) {
+	if (!Number.isFinite(f_round_index) || f_round_index < 1) {
+		return { f_code: 400, f_message: '轮次须为 >=1 的整数', f_data: null }
+	}
+	if (Number.isFinite(maxR) && maxR > 0 && f_round_index > maxR) {
 		return { f_code: 400, f_message: '轮次须为 1～' + maxR, f_data: null }
 	}
 

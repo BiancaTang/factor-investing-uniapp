@@ -2,14 +2,14 @@
 	<view class="page">
 		<view class="head">
 			<text class="room">房间 {{ roomCode || '-' }}</text>
-			<text class="meta">共 {{ totalRounds }} 轮 · 开放轮次 {{ openRoundLabel }} · 剩余 {{ roundCountdownLabel }}</text>
+			<text class="meta">共 {{ totalRoundsLabel }} 轮 · 开放轮次 {{ openRoundLabel }} · 剩余 {{ roundCountdownLabel }}</text>
 			<text v-if="roomInfo && roomInfo.f_banker_intervene" class="banker">Banker 介入：开</text>
 		</view>
 
 		<view v-if="loading" class="loading">加载中…</view>
 
 		<view v-else-if="phase === 'complete'" class="card">
-			<text class="done-title">已完成全部 {{ totalRounds }} 轮</text>
+			<text class="done-title">{{ roomEnded ? '游戏已结束' : `已完成全部 ${totalRoundsLabel} 轮` }}</text>
 			<f-game-charts
 				:key="'c-' + chartRefreshKey"
 				:history="history"
@@ -21,12 +21,28 @@
 				:simulation-players="simulationPlayersForChart"
 				:attribution-player-id="currentUserUid"
 			/>
+			<view v-if="roomEnded && rankingList.length" class="ranking">
+				<text class="section-title">最终净值排名</text>
+				<view v-for="r in rankingList" :key="r.f_player_uid" class="rank-row">
+					<text class="rank-name">#{{ r.rank }} {{ r.f_nick_name }}</text>
+					<text class="rank-nav">净值 {{ r.f_nav_text }}</text>
+				</view>
+			</view>
 			<button class="btn ghost" @click="backHome">返回首页</button>
 		</view>
 
 		<view v-else-if="phase === 'waiting'" class="card">
 			<text class="section-title">等待管理员开始第 {{ nextRoundIndex }} 轮</text>
 			<text class="wait-tip">管理员在「房间观测」中开启本轮后，点击下方刷新即可继续。</text>
+			<view class="intro-wrap">
+				<text class="intro-title">因子配置说明（入门版）</text>
+				<view v-for="item in factorIntroItems" :key="item.key" class="intro-item">
+					<view class="intro-bar" :style="{ background: item.color }">
+						<text class="intro-bar-text">{{ item.title }}</text>
+					</view>
+					<text class="intro-desc">{{ item.desc }}</text>
+				</view>
+			</view>
 			<view v-if="history.length" class="wait-charts">
 				<f-game-charts
 					:key="'w-' + chartRefreshKey"
@@ -44,7 +60,16 @@
 		</view>
 
 		<view v-else-if="phase === 'input'" class="card">
-			<text class="section-title">第 {{ nextRoundIndex }} / {{ totalRounds }} 轮 · 设置五个因子（-5～5）</text>
+			<text class="section-title">第 {{ nextRoundIndex }} / {{ totalRoundsLabel }} 轮 · 设置五个因子（-5～5）</text>
+			<view class="intro-wrap">
+				<text class="intro-title">因子配置说明（入门版）</text>
+				<view v-for="item in factorIntroItems" :key="item.key" class="intro-item">
+					<view class="intro-bar" :style="{ background: item.color }">
+						<text class="intro-bar-text">{{ item.title }}</text>
+					</view>
+					<text class="intro-desc">{{ item.desc }}</text>
+				</view>
+			</view>
 			<view v-for="d in F_FACTOR_DEFS" :key="d.key" class="fac">
 				<view class="fac-top">
 					<text class="fac-label">{{ d.label }}</text>
@@ -95,7 +120,6 @@
 			>
 				刷新状态（等待管理员开启下一轮）
 			</button>
-			<button v-if="!canContinue" class="btn primary" @click="setComplete">完成游戏</button>
 		</view>
 	</view>
 </template>
@@ -130,6 +154,39 @@ const chartRefreshKey = ref(0)
 const tick = ref(Date.now())
 let timer = null
 
+const factorIntroItems = [
+	{
+		key: 'size',
+		title: 'size - 市值因子',
+		desc: '衡量公司规模。通常在 A 股中，小市值长期更容易出现超额收益，但波动也更大。',
+		color: '#e98a2f'
+	},
+	{
+		key: 'momentum',
+		title: 'momentum - 动量因子',
+		desc: '衡量近期趋势强弱。趋势更强通常打分更高，但过热后也可能出现反转。',
+		color: '#f2c30c'
+	},
+	{
+		key: 'book_to_price',
+		title: 'book_to_price - 净市率因子',
+		desc: '可理解为市净率（P/B）的倒数，越高表示估值相对更便宜。',
+		color: '#7bbc43'
+	},
+	{
+		key: 'growth',
+		title: 'growth - 成长因子',
+		desc: '衡量公司成长性。成长越高一般打分越高，但也要警惕估值过贵带来的回撤。',
+		color: '#37bdb5'
+	},
+	{
+		key: 'residual_volatility',
+		title: 'residual_volatility - 残差波动因子',
+		desc: '衡量个股特异性波动。低残差波动通常更稳健，高残差波动弹性更高。',
+		color: '#e14c65'
+	}
+]
+
 const factors = reactive({
 	fac_size: 0,
 	fac_momentum: 0,
@@ -161,6 +218,57 @@ const simulationPlayersForChart = computed(() => {
 	}))
 })
 
+const rankingList = computed(() => {
+	const ps = (roomSnapshot.value && roomSnapshot.value.f_players) || []
+	const ifBanker = !!(roomInfo.value && roomInfo.value.f_banker_intervene)
+	const adminUid = roomInfo.value && roomInfo.value.f_admin_uid ? String(roomInfo.value.f_admin_uid) : ''
+	const bankerNav0 = Math.max(1, Math.floor(roomGroupCount.value / 3))
+	const sim = f_simulatePythonFactorGame(
+		ps.map((p) => ({
+			player_id: String(p.f_player_uid || ''),
+			history: Array.isArray(p.f_history) ? p.f_history : []
+		})),
+		{
+			if_banker: ifBanker,
+			f_group_count: roomGroupCount.value,
+			f_admin_uid: adminUid
+		}
+	)
+	const rows = ps.map((p) => {
+		const uid = String(p.f_player_uid || '')
+		const pts = sim.navByPlayerId.get(uid) || []
+		const sortedPts = [...pts].sort((a, b) => a.round - b.round)
+		const last = sortedPts.length ? sortedPts[sortedPts.length - 1] : null
+		const nav = last ? Number(last.nav) : 0
+		let navNorm = Number.isFinite(nav) ? nav : 0
+		if (ifBanker && adminUid && uid === adminUid) {
+			navNorm = bankerNav0 === 0 ? navNorm : navNorm / bankerNav0
+		}
+		return {
+			f_player_uid: uid,
+			f_nick_name: p.f_nick_name || p.f_player_uid,
+			f_nav: navNorm,
+			f_round_index: last ? Number(last.round) : 0
+		}
+	})
+	rows.sort((a, b) => {
+		if (b.f_nav !== a.f_nav) return b.f_nav - a.f_nav
+		return b.f_round_index - a.f_round_index
+	})
+	let prevNav = null
+	let prevRank = 0
+	return rows.map((r, i) => {
+		const rank = prevNav !== null && r.f_nav === prevNav ? prevRank : i + 1
+		prevNav = r.f_nav
+		prevRank = rank
+		return {
+			...r,
+			rank,
+			f_nav_text: r.f_nav.toFixed(4)
+		}
+	})
+})
+
 const playersWithHistory = computed(() => {
 	const ps = roomSnapshot.value && roomSnapshot.value.f_players
 	if (!ps) return []
@@ -186,6 +294,12 @@ const compareNavChartData = computed(() => {
 })
 
 const nextRoundIndex = computed(() => history.value.length + 1)
+const roomEnded = computed(() => !!(roomInfo.value && roomInfo.value.f_game_ended))
+const isUnlimitedRounds = computed(() => {
+	const n = roomInfo.value ? parseInt(roomInfo.value.f_round_count, 10) : 0
+	return !Number.isFinite(n) || n <= 0
+})
+const totalRoundsLabel = computed(() => (isUnlimitedRounds.value ? '∞' : String(totalRounds.value)))
 
 const lastCompletedRound = computed(() => {
 	if (!history.value.length) return 0
@@ -193,7 +307,11 @@ const lastCompletedRound = computed(() => {
 	return sorted[0].f_round_index
 })
 
-const canContinue = computed(() => history.value.length < totalRounds.value)
+const canContinue = computed(() => {
+	if (roomEnded.value) return false
+	if (isUnlimitedRounds.value) return true
+	return history.value.length < totalRounds.value
+})
 
 const openRoundLabel = computed(() => {
 	const o = roomInfo.value && roomInfo.value.f_open_round_index
@@ -238,7 +356,7 @@ const nextRoundOpen = computed(() => {
 	const o = typeof open === 'number' ? open : parseInt(open, 10)
 	const nextR = nextRoundIndex.value
 	if (!Number.isFinite(o) || o <= 0) return false
-	return o === nextR && nextR <= totalRounds.value
+	return o === nextR && (isUnlimitedRounds.value || nextR <= totalRounds.value)
 })
 
 watch(
@@ -276,18 +394,22 @@ function applyPhaseAfterLoad(preserveReview) {
 	if (!Number.isFinite(open) || open < 0) open = 0
 	const nextR = h + 1
 
-	if (h >= total) {
+	if (roomEnded.value) {
+		phase.value = 'complete'
+		return
+	}
+	if (!isUnlimitedRounds.value && h >= total) {
 		phase.value = 'complete'
 		return
 	}
 	if (preserveReview && phase.value === 'review') {
-		if (open === nextR && nextR <= total) {
+		if (open === nextR && (isUnlimitedRounds.value || nextR <= total)) {
 			phase.value = 'input'
 			resetFactors()
 		}
 		return
 	}
-	if (open === nextR) {
+	if (open === nextR && (isUnlimitedRounds.value || nextR <= total)) {
 		phase.value = 'input'
 		resetFactors()
 	} else {
@@ -309,7 +431,8 @@ async function loadAll(rc, opts = {}) {
 		}
 		const d = gb.f_data
 		roomInfo.value = d
-		totalRounds.value = Math.max(1, parseInt(d.f_round_count, 10) || 1)
+		const tr = parseInt(d.f_round_count, 10)
+		totalRounds.value = Number.isFinite(tr) && tr > 0 ? tr : 0
 
 		const u = f_getStoredUser()
 		if (!u || !u.f_uid) {
@@ -389,7 +512,7 @@ async function submitRound() {
 	const u = f_getStoredUser()
 	if (!u || !u.f_uid) return
 	const cr = nextRoundIndex.value
-	if (cr > totalRounds.value) return
+	if (!isUnlimitedRounds.value && cr > totalRounds.value) return
 	submitting.value = true
 	try {
 		const payload = {
@@ -501,10 +624,6 @@ async function goNextRound() {
 	}
 }
 
-function setComplete() {
-	phase.value = 'complete'
-}
-
 function backHome() {
 	uni.navigateBack()
 }
@@ -577,6 +696,39 @@ function backHome() {
 	margin-bottom: 24rpx;
 }
 
+.intro-wrap {
+	margin-bottom: 24rpx;
+}
+
+.intro-title {
+	display: block;
+	font-size: 26rpx;
+	color: #f5e6b3;
+	margin-bottom: 10rpx;
+}
+
+.intro-item {
+	margin-bottom: 12rpx;
+}
+
+.intro-bar {
+	border-radius: 10rpx;
+	padding: 12rpx 16rpx;
+}
+
+.intro-bar-text {
+	font-size: 26rpx;
+	color: #fff;
+}
+
+.intro-desc {
+	display: block;
+	margin-top: 8rpx;
+	font-size: 23rpx;
+	line-height: 1.5;
+	color: #dcc58a;
+}
+
 .done-title {
 	font-size: 32rpx;
 	font-weight: 600;
@@ -634,5 +786,32 @@ function backHome() {
 	color: #f5e6b3;
 	border: 1rpx solid #6d5825;
 	margin-top: 24rpx;
+}
+
+.ranking {
+	margin-top: 26rpx;
+	padding-top: 18rpx;
+	border-top: 1rpx solid #3f341a;
+}
+
+.rank-row {
+	display: flex;
+	justify-content: space-between;
+	padding: 12rpx 0;
+	border-bottom: 1rpx solid #2a2415;
+}
+
+.rank-row:last-child {
+	border-bottom: none;
+}
+
+.rank-name {
+	font-size: 26rpx;
+	color: #dcc58a;
+}
+
+.rank-nav {
+	font-size: 26rpx;
+	color: #f5e6b3;
 }
 </style>

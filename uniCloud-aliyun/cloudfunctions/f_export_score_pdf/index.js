@@ -213,9 +213,10 @@ function buildChartDataForTarget(allPlayerHistories, targetUid, displayLabel, ro
 	const pts = sim.navByPlayerId.get(uid)
 	const nav_series = []
 	if (pts && pts.length) {
+		const outPts = strId === '庄家' ? normalizeNavPoints(pts) : [...pts].sort((a, b) => a.round - b.round)
 		nav_series.push({
 			player_id: strId,
-			points: [...pts].sort((a, b) => a.round - b.round)
+			points: outPts
 		})
 	}
 	let banker_series = null
@@ -327,6 +328,16 @@ function drawLineSeries(page, font, seriesList, x0, y0, w, h) {
 	page.drawText(String(b.maxX.toFixed(0)), { x: Math.min(x0 + w - 24, x0 + w), y: y0 - 10, size: fs, font, color: rgb(0.3, 0.3, 0.3) })
 	page.drawText(String(b.minY.toFixed(4)), { x: x0 + 2, y: y0 + 2, size: fs, font, color: rgb(0.45, 0.45, 0.45) })
 	page.drawText(String(b.maxY.toFixed(4)), { x: x0 + 2, y: y0 + h - 10, size: fs, font, color: rgb(0.45, 0.45, 0.45) })
+}
+
+function normalizeNavPoints(points) {
+	const arr = [...(points || [])].sort((a, b) => a.round - b.round)
+	if (!arr.length) return []
+	const n0 = Number(arr[0].nav)
+	if (!Number.isFinite(n0) || n0 === 0) {
+		return arr.map((p) => ({ round: p.round, nav: 1 }))
+	}
+	return arr.map((p) => ({ round: p.round, nav: Number(p.nav) / n0 }))
 }
 
 exports.main = async (event, context) => {

@@ -61,7 +61,14 @@ exports.main = async (event) => {
 			fac_momentum: g.fac_momentum,
 			fac_book_to_price: g.fac_book_to_price,
 			fac_growth: g.fac_growth,
-			fac_residual_volatility: g.fac_residual_volatility
+			fac_residual_volatility: g.fac_residual_volatility,
+			f_nav: g.f_nav,
+			f_total_return: g.f_total_return,
+			f_size_return: g.f_size_return,
+			f_momentum_return: g.f_momentum_return,
+			f_book_to_price_return: g.f_book_to_price_return,
+			f_growth_return: g.f_growth_return,
+			f_residual_volatility_return: g.f_residual_volatility_return
 		})
 	}
 	for (const p of Object.keys(listByUid)) {
@@ -86,6 +93,8 @@ exports.main = async (event) => {
 			f_open_round_index,
 			f_round_duration_sec: Number.isFinite(dur) && dur > 0 ? dur : 300,
 			f_round_started_at: Number.isFinite(startedAt) && startedAt > 0 ? startedAt : 0,
+			f_game_ended: !!row.f_game_ended,
+			f_game_ended_at: row.f_game_ended_at || 0,
 			f_admin_uid: row.f_admin_uid || '',
 			f_players
 		}

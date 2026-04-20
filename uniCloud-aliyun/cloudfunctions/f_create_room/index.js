@@ -20,7 +20,6 @@ exports.main = async (event) => {
 	const f_admin_uid = event.f_admin_uid != null ? String(event.f_admin_uid).trim() : ''
 	const f_room_code = event.f_room_code != null ? String(event.f_room_code).trim() : ''
 	const f_group_count = parseInt(event.f_group_count, 10)
-	const f_round_count = parseInt(event.f_round_count, 10)
 	const f_banker_intervene = !!event.f_banker_intervene
 
 	if (!f_isPlayerUid(f_admin_uid)) {
@@ -40,10 +39,6 @@ exports.main = async (event) => {
 		return { f_code: 400, f_message: '组数须为 1～999 的整数', f_data: null }
 	}
 
-	if (!Number.isFinite(f_round_count) || f_round_count < 1 || f_round_count > 999) {
-		return { f_code: 400, f_message: '轮次须为 1～999 的整数', f_data: null }
-	}
-
 	const dup = await f_rooms.where({ f_room_code }).limit(1).get()
 	if (dup.data && dup.data.length > 0) {
 		return { f_code: 409, f_message: '该房间号已存在', f_data: null }
@@ -53,10 +48,13 @@ exports.main = async (event) => {
 	const doc = {
 		f_room_code,
 		f_group_count,
-		f_round_count,
+		// 0 表示无限轮，由管理员主动结束游戏
+		f_round_count: 0,
 		f_banker_intervene,
 		// 单轮时长：默认 5 分钟
 		f_round_duration_sec: 300,
+		f_game_ended: false,
+		f_game_ended_at: 0,
 		f_admin_uid,
 		/** 管理员当前开启的轮次，0 表示未开启，玩家不可提交 */
 		f_open_round_index: 0,

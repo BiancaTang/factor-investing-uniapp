@@ -24,13 +24,7 @@
 			</view>
 			<view class="row">
 				<text class="label">轮次</text>
-				<input
-					class="field"
-					type="number"
-					:value="roundCount"
-					placeholder="游戏进行几轮"
-					@input="onRoundCount"
-				/>
+				<text class="hint">默认无限轮（由管理员手动结束游戏）</text>
 			</view>
 			<view class="row switch-row">
 				<text class="label">Banker 介入</text>
@@ -57,7 +51,6 @@ import { f_createRoomInCloud } from '../../utils/f_roomApi.js'
 
 const roomCode = ref('')
 const groupCount = ref('')
-const roundCount = ref('')
 const bankerIntervene = ref(false)
 const saving = ref(false)
 
@@ -72,8 +65,7 @@ onLoad(() => {
 const canSubmit = computed(() => {
 	const code = String(roomCode.value || '').replace(/\D/g, '').slice(0, 4)
 	const g = parseInt(groupCount.value, 10)
-	const r = parseInt(roundCount.value, 10)
-	return code.length === 4 && g >= 1 && g <= 999 && r >= 1 && r <= 999
+	return code.length === 4 && g >= 1 && g <= 999
 })
 
 function onRoomCode(e) {
@@ -82,10 +74,6 @@ function onRoomCode(e) {
 
 function onGroupCount(e) {
 	groupCount.value = e.detail.value || ''
-}
-
-function onRoundCount(e) {
-	roundCount.value = e.detail.value || ''
 }
 
 function onBankerChange(e) {
@@ -106,7 +94,7 @@ async function submit() {
 			f_admin_uid: u.f_uid,
 			f_room_code,
 			f_group_count: parseInt(groupCount.value, 10),
-			f_round_count: parseInt(roundCount.value, 10),
+			f_round_count: 0,
 			f_banker_intervene: bankerIntervene.value
 		})
 		const body = res.result || {}

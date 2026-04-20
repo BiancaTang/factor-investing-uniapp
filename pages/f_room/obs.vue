@@ -15,22 +15,20 @@
 				/>
 			</view>
 			<view v-if="status" class="status">
-				<text class="st">总轮次：{{ status.f_round_count }}</text>
+				<text class="st">总轮次：{{ totalRoundsLabel }}</text>
 				<text class="st">当前开放轮次：{{ openLabel }}</text>
 				<text v-if="status.f_open_round_index" class="st">本轮剩余时间：{{ roundCountdownLabel }}</text>
 				<text class="st">组数(player_nm)：{{ roomGroupCount }} · Banker：{{ status.f_banker_intervene ? '开' : '关' }}</text>
+				<text v-if="status.f_game_ended" class="st">游戏状态：已结束</text>
 			</view>
 			<view class="ctrl">
-				<picker mode="selector" :range="roundLabels" :value="pickIndex" @change="onPickRound">
-					<view class="picker-inner">选择要开启的轮次：{{ pickRound }}</view>
-				</picker>
 				<button
 					class="btn primary"
 					:disabled="acting || !canStart"
 					:loading="acting && lastAction === 'start'"
 					@click="onStartRound"
 				>
-					开始本轮
+					开始第 {{ nextRoundToStart }} 轮
 				</button>
 				<button
 					class="btn danger"
@@ -39,6 +37,15 @@
 					@click="onEndRound"
 				>
 					结束本轮
+				</button>
+				<button
+					v-if="status && status.f_open_round_index === 0 && !status.f_game_ended"
+					class="btn danger"
+					:disabled="acting"
+					:loading="acting && lastAction === 'finish_game'"
+					@click="onFinishGame"
+				>
+					结束游戏
 				</button>
 			</view>
 			<view v-if="status && status.f_players && status.f_players.length" class="list">
@@ -49,6 +56,14 @@
 				</view>
 			</view>
 			<view v-else-if="status" class="empty">暂无成员或未加入房间</view>
+
+			<view v-if="status && status.f_game_ended && rankingList.length" class="ranking">
+				<text class="list-title">最终净值排名</text>
+				<view v-for="r in rankingList" :key="r.f_player_uid" class="li">
+					<text class="ph">#{{ r.rank }} {{ r.f_nick_name }}</text>
+					<text class="pr">净值 {{ r.f_nav_text }}</text>
+				</view>
+			</view>
 
 			<view v-if="compareChartData" class="charts-wrap">
 				<f-game-charts
@@ -79,7 +94,7 @@
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import FGameCharts from '../../components/f-game-charts/f-game-charts.vue'
-import { f_buildJointNavCompareChartData } from '../../utils/f_factorEngine.js'
+import { f_buildJointNavCompareChartData, f_simulatePythonFactorGame } from '../../utils/f_factorEngine.js'
 import { f_getStoredUser } from '../../utils/f_userStorage.js'
 import { f_isAdmin } from '../../utils/f_role.js'
 import {
@@ -92,7 +107,6 @@ const status = ref(null)
 const loading = ref(false)
 const acting = ref(false)
 const lastAction = ref('')
-const pickIndex = ref(0)
 const tick = ref(Date.now())
 let timer = null
 let autoEnding = false
@@ -120,16 +134,10 @@ onUnmounted(() => {
 	timer = null
 })
 
-const roundLabels = computed(() => {
-	const n = status.value ? parseInt(status.value.f_round_count, 10) : 0
-	const max = Number.isFinite(n) && n >= 1 ? n : 1
-	return Array.from({ length: max }, (_, i) => `第 ${i + 1} 轮`)
-})
-
-const pickRound = computed(() => {
-	const labels = roundLabels.value
-	const idx = Math.min(pickIndex.value, labels.length - 1)
-	return idx >= 0 ? idx + 1 : 1
+const totalRoundsLabel = computed(() => {
+	if (!status.value) return '-'
+	const n = parseInt(status.value.f_round_count, 10)
+	return Number.isFinite(n) && n > 0 ? String(n) : '无限'
 })
 
 const openLabel = computed(() => {
@@ -182,7 +190,18 @@ watch(
 
 const canStart = computed(() => {
 	if (!status.value) return false
+	if (status.value.f_game_ended) return false
 	return status.value.f_open_round_index === 0
+})
+
+const nextRoundToStart = computed(() => {
+	const list = (status.value && status.value.f_players) || []
+	let maxRi = 0
+	for (const p of list) {
+		const ri = parseInt(p.f_max_round_index, 10)
+		if (Number.isFinite(ri) && ri > maxRi) maxRi = ri
+	}
+	return maxRi + 1
 })
 
 const roomGroupCount = computed(() => {
@@ -225,13 +244,59 @@ const simulationPlayersForObs = computed(() => {
 	}))
 })
 
+const rankingList = computed(() => {
+	const ps = (status.value && status.value.f_players) || []
+	const ifBanker = !!(status.value && status.value.f_banker_intervene)
+	const adminUid = status.value && status.value.f_admin_uid ? String(status.value.f_admin_uid) : ''
+	const bankerNav0 = Math.max(1, Math.floor(roomGroupCount.value / 3))
+	const sim = f_simulatePythonFactorGame(
+		ps.map((p) => ({
+			player_id: String(p.f_player_uid || ''),
+			history: Array.isArray(p.f_history) ? p.f_history : []
+		})),
+		{
+			if_banker: ifBanker,
+			f_group_count: roomGroupCount.value,
+			f_admin_uid: adminUid
+		}
+	)
+	const rows = ps.map((p) => {
+		const uid = String(p.f_player_uid || '')
+		const pts = sim.navByPlayerId.get(uid) || []
+		const sortedPts = [...pts].sort((a, b) => a.round - b.round)
+		const last = sortedPts.length ? sortedPts[sortedPts.length - 1] : null
+		const nav = last ? Number(last.nav) : 0
+		let navNorm = Number.isFinite(nav) ? nav : 0
+		if (ifBanker && adminUid && uid === adminUid) {
+			navNorm = bankerNav0 === 0 ? navNorm : navNorm / bankerNav0
+		}
+		return {
+			f_player_uid: uid,
+			f_nick_name: p.f_nick_name || p.f_player_uid,
+			f_nav: navNorm,
+			f_round_index: last ? Number(last.round) : 0
+		}
+	})
+	rows.sort((a, b) => {
+		if (b.f_nav !== a.f_nav) return b.f_nav - a.f_nav
+		return b.f_round_index - a.f_round_index
+	})
+	let prevNav = null
+	let prevRank = 0
+	return rows.map((r, i) => {
+		const rank = prevNav !== null && r.f_nav === prevNav ? prevRank : i + 1
+		prevNav = r.f_nav
+		prevRank = rank
+		return {
+			...r,
+			rank,
+			f_nav_text: r.f_nav.toFixed(4)
+		}
+	})
+})
+
 function onRoomCode(e) {
 	roomCode.value = String(e.detail.value || '').replace(/\D/g, '').slice(0, 4)
-}
-
-function onPickRound(e) {
-	const v = parseInt(e.detail.value, 10)
-	if (Number.isFinite(v)) pickIndex.value = v
 }
 
 async function refresh() {
@@ -255,8 +320,6 @@ async function refresh() {
 			return
 		}
 		status.value = body.f_data
-		const maxR = parseInt(status.value.f_round_count, 10) || 1
-		if (pickIndex.value >= maxR) pickIndex.value = 0
 	} catch (e) {
 		console.error(e)
 		uni.showToast({ title: '请上传云函数 f_get_room_player_status', icon: 'none' })
@@ -273,7 +336,7 @@ async function onStartRound() {
 		uni.showToast({ title: '请输入房间号', icon: 'none' })
 		return
 	}
-	const ri = pickRound.value
+	const ri = nextRoundToStart.value
 	acting.value = true
 	lastAction.value = 'start'
 	try {
@@ -318,6 +381,35 @@ async function onEndRound() {
 			return
 		}
 		uni.showToast({ title: '已结束本轮', icon: 'success' })
+		await refresh()
+	} catch (e) {
+		console.error(e)
+		uni.showToast({ title: '请上传云函数 f_control_room_round', icon: 'none' })
+	} finally {
+		acting.value = false
+		lastAction.value = ''
+	}
+}
+
+async function onFinishGame() {
+	const u = f_getStoredUser()
+	if (!u || !u.f_uid) return
+	const rc = String(roomCode.value || '').replace(/\D/g, '').slice(0, 4)
+	if (!/^\d{4}$/.test(rc)) return
+	acting.value = true
+	lastAction.value = 'finish_game'
+	try {
+		const res = await f_controlRoomRoundInCloud({
+			f_admin_uid: u.f_uid,
+			f_room_code: rc,
+			f_action: 'finish_game'
+		})
+		const body = res.result || {}
+		if (body.f_code !== 0) {
+			uni.showToast({ title: body.f_message || '失败', icon: 'none' })
+			return
+		}
+		uni.showToast({ title: '游戏已结束', icon: 'success' })
 		await refresh()
 	} catch (e) {
 		console.error(e)
@@ -463,6 +555,12 @@ async function onEndRound() {
 .empty {
 	font-size: 26rpx;
 	color: #bfa56a;
+}
+
+.ranking {
+	margin-top: 24rpx;
+	padding-top: 18rpx;
+	border-top: 1rpx solid #3f341a;
 }
 .footer {
 	position: fixed;

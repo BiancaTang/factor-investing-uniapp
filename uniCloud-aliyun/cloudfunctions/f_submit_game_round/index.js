@@ -62,8 +62,11 @@ exports.main = async (event) => {
 	}
 
 	const roomRow = room.data[0]
+	if (roomRow.f_game_ended) {
+		return { f_code: 403, f_message: '游戏已结束，不能继续提交', f_data: null }
+	}
 	const maxR = roomRow.f_round_count
-	if (f_round_index > maxR) {
+	if (Number.isFinite(maxR) && maxR > 0 && f_round_index > maxR) {
 		return { f_code: 400, f_message: '超过房间设定轮次', f_data: null }
 	}
 

@@ -28,7 +28,9 @@ exports.main = async (event) => {
 			f_admin_uid: row.f_admin_uid,
 			f_open_round_index: Number.isFinite(openRi) && openRi >= 0 ? openRi : 0,
 			f_round_duration_sec: Number.isFinite(dur) && dur > 0 ? dur : 300,
-			f_round_started_at: Number.isFinite(startedAt) && startedAt > 0 ? startedAt : 0
+			f_round_started_at: Number.isFinite(startedAt) && startedAt > 0 ? startedAt : 0,
+			f_game_ended: !!row.f_game_ended,
+			f_game_ended_at: row.f_game_ended_at || 0
 		}
 	}
 }
