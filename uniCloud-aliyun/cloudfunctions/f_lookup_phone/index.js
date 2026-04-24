@@ -12,10 +12,6 @@ exports.main = async (event) => {
 		return { f_code: 400, f_message: '请传入 f_phone', f_data: null }
 	}
 
-	if (!/^1\d{10}$/.test(f_phone)) {
-		return { f_code: 400, f_message: 'ID 需为 11 位中国大陆号码', f_data: null }
-	}
-
 	const r = await f_col.where({ f_phone }).limit(1).get()
 	const list = r.data || []
 

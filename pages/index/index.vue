@@ -27,6 +27,8 @@
 
 			<button v-if="isAdmin" class="action obs" @click="goRoomObs">房间观测</button>
 
+			<button v-if="isAdmin" class="action game" @click="goPlayDirect">直接进入游戏</button>
+
 			<button v-if="isAdmin" class="action danger" @click="goDataPurge">清空数据库</button>
 
 			<button class="action" :class="isAdmin ? 'secondary' : 'primary'" @click="goJoinRoom">加入房间</button>
@@ -112,6 +114,18 @@
 				const q = c ? '?code=' + encodeURIComponent(c) : ''
 
 				uni.navigateTo({ url: '/pages/f_room/obs' + q })
+
+			},
+
+			goPlayDirect() {
+
+				const c = this.user && this.user.f_current_room_code
+				if (!c) {
+					uni.showToast({ title: '请先加入房间', icon: 'none' })
+					return
+				}
+				const q = '?code=' + encodeURIComponent(c)
+				uni.navigateTo({ url: '/pages/f_game/play' + q })
 
 			},
 

@@ -29,10 +29,6 @@ exports.main = async (event) => {
 		return { f_code: 400, f_message: 'f_avatar_url、f_nick_name 为必填', f_data: null }
 	}
 
-	if (f_phone && !/^1\d{10}$/.test(f_phone)) {
-		return { f_code: 400, f_message: 'ID 格式不正确', f_data: null }
-	}
-
 	const f_now = Date.now()
 	const f_doc = {
 		f_avatar_url,

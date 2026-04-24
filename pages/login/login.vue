@@ -12,10 +12,10 @@
 					<text class="label">id</text>
 					<input
 						class="field"
-						type="number"
-						maxlength="11"
+						type="text"
+						maxlength="40"
 						:value="phone"
-						placeholder="11 位中国大陆 ID"
+						placeholder="请输入你的 ID"
 						@input="onPhoneInput"
 					/>
 				</view>
@@ -104,7 +104,7 @@ const nickName = ref('')
 const lookupLoading = ref(false)
 const saving = ref(false)
 
-const phoneOk = computed(() => /^1\d{10}$/.test(String(phone.value || '').trim()))
+const phoneOk = computed(() => !!String(phone.value || '').trim())
 
 const canRegister = computed(() => {
 	return !!(avatarUrl.value && nickName.value.trim() && phoneOk.value)
@@ -118,7 +118,7 @@ onShow(() => {
 })
 
 function onPhoneInput(e) {
-	phone.value = String(e.detail.value || '').replace(/\D/g, '').slice(0, 11)
+	phone.value = String(e.detail.value || '').trim().slice(0, 40)
 }
 
 function backToPhone() {
