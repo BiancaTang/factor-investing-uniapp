@@ -1,12 +1,12 @@
 <template>
   <view class="settlement-screen">
     <view class="settlement-header">
-      <text class="settle-title">🏆 ROUND {{ roundIndex }} 结算</text>
+      <text class="settle-title">ROUND {{ roundIndex }} 结算</text>
     </view>
 
     <view class="settlement-body">
       <view class="ranking-panel">
-        <view class="ranking-title">净值排名</view>
+        <text class="panel-title">净值排名</text>
         <view class="ranking-list">
           <view
             v-for="(player, idx) in sortedPlayers"
@@ -18,7 +18,7 @@
             <text class="rank-num">{{ idx + 1 }}</text>
             <view class="rank-avatar" :style="{ borderColor: getFactionColor(player.charFaction) }">
               <image v-if="player.avatar" :src="player.avatar" class="rank-img" />
-              <text v-else class="rank-emoji">{{ getFactionEmoji(player.charFaction) }}</text>
+              <text v-else class="rank-symbol">◆</text>
             </view>
             <view class="rank-info">
               <text class="rank-name">{{ player.nickName }}</text>
@@ -26,15 +26,14 @@
                 {{ player.nav }}
               </text>
             </view>
-            <text v-if="idx < 3" class="rank-medal">{{ ['🥇', '🥈', '🥉'][idx] }}</text>
+            <text v-if="idx < 3" class="rank-medal">{{ ['I', 'II', 'III'][idx] }}</text>
           </view>
         </view>
       </view>
 
       <view class="factor-panel">
-        <view class="factor-title">因子归因</view>
+        <text class="panel-title">因子归因</text>
         <view class="factor-chart">
-          <!-- 简化版柱状图 -->
           <view v-for="def in factorDefs" :key="def.key" class="factor-row">
             <text class="factor-label">{{ def.label }}</text>
             <view class="factor-bar-track">
@@ -47,7 +46,7 @@
 
     <view class="skill-danmaku">
       <view v-for="(skill, idx) in visibleSkills" :key="idx" class="danmaku-item" :style="getDanmakuStyle(idx)">
-        🎭 {{ skill.f_char_name || '某角色' }} 触发【{{ skill.f_skill_name }}】
+        {{ skill.f_char_name || '某角色' }} 触发 {{ skill.f_skill_name }}
       </view>
     </view>
   </view>
@@ -76,15 +75,9 @@ const FACTION_COLORS = {
   value: '#4a6fa5', growth: '#43a047', momentum: '#fbc02d',
   stable: '#90a4ae', aggressive: '#e53935'
 }
-const FACTION_EMOJIS = {
-  value: '🏰', growth: '🚀', momentum: '⚡', stable: '🛡️', aggressive: '🔥'
-}
 
 function getFactionColor(faction) {
-  return FACTION_COLORS[faction] || '#888'
-}
-function getFactionEmoji(faction) {
-  return FACTION_EMOJIS[faction] || '🎲'
+  return FACTION_COLORS[faction] || '#333'
 }
 
 function getRankItemStyle(idx) {
@@ -94,12 +87,12 @@ function getRankItemStyle(idx) {
 }
 
 function getFactorBarStyle(def) {
-  // 简化：用群体暴露模拟因子贡献
-  const val = Math.random() * 0.05 // TODO: 接入真实归因数据
+  const val = Math.random() * 0.05
   const pct = Math.min(val * 2000, 100)
   return {
     width: pct + '%',
-    backgroundColor: colors[def.internal] || '#888'
+    backgroundColor: colors[def.internal] || '#333',
+    opacity: 0.5
   }
 }
 
@@ -118,24 +111,25 @@ function getDanmakuStyle(idx) {
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 24px 32px;
+  padding: 32px 40px;
 }
 
 .settlement-header {
   text-align: center;
-  margin-bottom: 16px;
+  margin-bottom: 24px;
 }
 
 .settle-title {
-  font-size: 22px;
-  font-weight: bold;
-  color: #d4af37;
+  font-size: 14px;
+  font-weight: 400;
+  color: #c9a84c;
+  letter-spacing: 4px;
 }
 
 .settlement-body {
   flex: 1;
   display: flex;
-  gap: 24px;
+  gap: 32px;
   min-height: 0;
 }
 
@@ -145,10 +139,11 @@ function getDanmakuStyle(idx) {
   flex-direction: column;
 }
 
-.ranking-title {
-  font-size: 14px;
-  color: #888;
-  margin-bottom: 8px;
+.panel-title {
+  font-size: 11px;
+  color: #444;
+  margin-bottom: 12px;
+  letter-spacing: 3px;
 }
 
 .ranking-list {
@@ -161,16 +156,16 @@ function getDanmakuStyle(idx) {
   align-items: center;
   gap: 10px;
   padding: 8px 12px;
-  background: rgba(255,255,255,0.03);
-  border-radius: 8px;
-  margin-bottom: 6px;
+  background: rgba(255,255,255,0.02);
+  border-radius: 1px;
+  margin-bottom: 4px;
   opacity: 0;
   animation: slideIn 0.5s ease forwards;
 }
 
 .rank-top3 {
-  background: rgba(212, 175, 55, 0.08);
-  border: 1px solid rgba(212, 175, 55, 0.2);
+  background: rgba(201, 168, 76, 0.04);
+  border-left: 2px solid rgba(201, 168, 76, 0.3);
 }
 
 @keyframes slideIn {
@@ -179,23 +174,24 @@ function getDanmakuStyle(idx) {
 }
 
 .rank-num {
-  width: 24px;
-  font-size: 14px;
-  font-weight: bold;
-  color: #888;
+  width: 20px;
+  font-size: 12px;
+  font-weight: 400;
+  color: #444;
   text-align: center;
 }
 
 .rank-avatar {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  border: 2px solid;
+  border: 1px solid;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #222;
+  background: #111;
+  flex-shrink: 0;
 }
 
 .rank-img {
@@ -204,8 +200,9 @@ function getDanmakuStyle(idx) {
   object-fit: cover;
 }
 
-.rank-emoji {
-  font-size: 18px;
+.rank-symbol {
+  font-size: 14px;
+  color: #333;
 }
 
 .rank-info {
@@ -215,38 +212,34 @@ function getDanmakuStyle(idx) {
 }
 
 .rank-name {
-  font-size: 13px;
-  color: #ccc;
+  font-size: 12px;
+  color: #888;
 }
 
 .rank-nav {
-  font-size: 15px;
-  font-weight: bold;
-  color: #d4af37;
+  font-size: 14px;
+  font-weight: 400;
+  color: #c9a84c;
 }
 
 .nav-up {
-  color: #4caf50;
+  color: #7a9a6a;
 }
 
 .nav-down {
-  color: #f44336;
+  color: #9a5a5a;
 }
 
 .rank-medal {
-  font-size: 20px;
+  font-size: 14px;
+  color: #c9a84c;
+  font-weight: 300;
 }
 
 .factor-panel {
   flex: 1;
   display: flex;
   flex-direction: column;
-}
-
-.factor-title {
-  font-size: 14px;
-  color: #888;
-  margin-bottom: 8px;
 }
 
 .factor-chart {
@@ -260,28 +253,29 @@ function getDanmakuStyle(idx) {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 4px 0;
+  margin: 3px 0;
 }
 
 .factor-label {
-  width: 64px;
-  font-size: 11px;
-  color: #aaa;
+  width: 56px;
+  font-size: 10px;
+  color: #444;
   text-align: right;
   flex-shrink: 0;
+  letter-spacing: 1px;
 }
 
 .factor-bar-track {
   flex: 1;
-  height: 12px;
-  background: #222;
-  border-radius: 3px;
+  height: 8px;
+  background: rgba(255,255,255,0.02);
+  border-radius: 1px;
   overflow: hidden;
 }
 
 .factor-bar {
   height: 100%;
-  border-radius: 3px;
+  border-radius: 1px;
   transition: width 1s ease;
 }
 
@@ -297,13 +291,14 @@ function getDanmakuStyle(idx) {
 .danmaku-item {
   position: absolute;
   white-space: nowrap;
-  padding: 6px 16px;
-  background: rgba(0,0,0,0.7);
-  border: 1px solid #d4af37;
-  border-radius: 16px;
-  font-size: 13px;
-  color: #d4af37;
+  padding: 5px 14px;
+  background: rgba(5,5,5,0.85);
+  border: 1px solid rgba(201, 168, 76, 0.15);
+  border-radius: 1px;
+  font-size: 11px;
+  color: #888;
   animation: danmakuSlide linear forwards;
+  letter-spacing: 1px;
 }
 
 @keyframes danmakuSlide {

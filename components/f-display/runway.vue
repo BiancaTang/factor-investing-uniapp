@@ -9,8 +9,8 @@
 			</view>
 
 			<!-- 起点/终点标识 -->
-			<view class="track-start">🏁</view>
-			<view class="track-end">🏆</view>
+			<text class="track-start">◆</text>
+			<text class="track-end">◆</text>
 
 			<!-- 玩家棋子 -->
 			<view
@@ -21,7 +21,7 @@
 			>
 				<view class="piece-avatar" :style="{ borderColor: getFactionColor(player.charFaction) }">
 					<image v-if="player.avatar" :src="player.avatar" class="piece-img" />
-					<text v-else class="piece-emoji">{{ getFactionEmoji(player.charFaction) }}</text>
+					<text v-else class="piece-symbol">◆</text>
 				</view>
 				<view class="piece-info">
 					<text class="piece-name">{{ player.nickName }}</text>
@@ -50,28 +50,18 @@ const FACTION_COLORS = {
 	aggressive: '#e53935'
 }
 
-const FACTION_EMOJIS = {
-	value: '🏰',
-	growth: '🚀',
-	momentum: '⚡',
-	stable: '🛡️',
-	aggressive: '🔥'
-}
-
 const sortedPlayers = computed(() =>
 	[...props.players].sort((a, b) => Number(b.nav) - Number(a.nav))
 )
 
 function getPieceStyle(player) {
-	// 将净值映射到跑道位置 (0% ~ 100%)
 	const max = Math.max(props.maxNav, ...props.players.map(p => Number(p.nav)))
 	const min = Math.min(0.5, ...props.players.map(p => Number(p.nav)))
 	const range = max - min || 1
-	const pos = ((Number(player.nav) - min) / range) * 90 + 5 // 5%~95%
+	const pos = ((Number(player.nav) - min) / range) * 90 + 5
 
-	// 根据排名计算垂直偏移，避免重叠
 	const rank = sortedPlayers.value.findIndex(p => p.uid === player.uid)
-	const laneOffset = (rank % 3) * 28 // 3条跑道线
+	const laneOffset = (rank % 3) * 28
 
 	return {
 		left: pos + '%',
@@ -81,11 +71,7 @@ function getPieceStyle(player) {
 }
 
 function getFactionColor(faction) {
-	return FACTION_COLORS[faction] || '#888'
-}
-
-function getFactionEmoji(faction) {
-	return FACTION_EMOJIS[faction] || '🎲'
+	return FACTION_COLORS[faction] || '#333'
 }
 </script>
 
@@ -98,9 +84,9 @@ function getFactionEmoji(faction) {
 .runway-track {
 	position: relative;
 	height: 120px;
-	background: linear-gradient(180deg, #1a1a1a 0%, #111 100%);
-	border-radius: 8px;
-	border: 1px solid #333;
+	background: linear-gradient(180deg, rgba(255,255,255,0.01) 0%, rgba(255,255,255,0.03) 100%);
+	border-radius: 1px;
+	border: 1px solid rgba(255,255,255,0.04);
 	overflow: visible;
 }
 
@@ -118,7 +104,7 @@ function getFactionEmoji(faction) {
 	top: 0;
 	width: 1px;
 	height: 100%;
-	background: #333;
+	background: rgba(255,255,255,0.03);
 }
 
 .mark-num {
@@ -126,8 +112,8 @@ function getFactionEmoji(faction) {
 	bottom: 2px;
 	left: 50%;
 	transform: translateX(-50%);
-	font-size: 10px;
-	color: #555;
+	font-size: 9px;
+	color: #333;
 }
 
 .track-start {
@@ -135,7 +121,8 @@ function getFactionEmoji(faction) {
 	left: 8px;
 	top: 50%;
 	transform: translateY(-50%);
-	font-size: 20px;
+	font-size: 12px;
+	color: #333;
 }
 
 .track-end {
@@ -143,7 +130,8 @@ function getFactionEmoji(faction) {
 	right: 8px;
 	top: 50%;
 	transform: translateY(-50%);
-	font-size: 20px;
+	font-size: 12px;
+	color: #333;
 }
 
 .player-piece {
@@ -155,12 +143,12 @@ function getFactionEmoji(faction) {
 }
 
 .piece-avatar {
-	width: 32px;
-	height: 32px;
+	width: 28px;
+	height: 28px;
 	border-radius: 50%;
-	border: 2px solid;
+	border: 1px solid;
 	overflow: hidden;
-	background: #222;
+	background: #0a0a0a;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -173,8 +161,9 @@ function getFactionEmoji(faction) {
 	object-fit: cover;
 }
 
-.piece-emoji {
-	font-size: 16px;
+.piece-symbol {
+	font-size: 12px;
+	color: #333;
 }
 
 .piece-info {
@@ -183,22 +172,23 @@ function getFactionEmoji(faction) {
 }
 
 .piece-name {
-	font-size: 11px;
-	color: #ccc;
+	font-size: 10px;
+	color: #666;
 	white-space: nowrap;
+	letter-spacing: 1px;
 }
 
 .piece-nav {
-	font-size: 12px;
-	font-weight: bold;
-	color: #d4af37;
+	font-size: 11px;
+	font-weight: 400;
+	color: #c9a84c;
 }
 
 .nav-up {
-	color: #4caf50;
+	color: #6a8a6a;
 }
 
 .nav-down {
-	color: #f44336;
+	color: #8a6a6a;
 }
 </style>

@@ -1,7 +1,7 @@
 <template>
   <view class="review-screen">
     <view class="review-header">
-      <text class="review-title">📊 ROUND {{ roundIndex }} 复盘</text>
+      <text class="review-title">ROUND {{ roundIndex }} 复盘</text>
     </view>
 
     <view class="review-body">
@@ -9,7 +9,6 @@
         <view class="radar-panel">
           <text class="panel-title">群体因子偏好</text>
           <view class="radar-placeholder">
-            <text class="placeholder-text">[10因子雷达图]</text>
             <view class="radar-factors">
               <view v-for="def in factorDefs" :key="def.key" class="radar-dot">
                 <text class="dot-label">{{ def.label }}</text>
@@ -38,7 +37,7 @@
         <text class="panel-title">净值走势</text>
         <view class="curve-chart">
           <view v-for="player in topPlayers" :key="player.uid" class="curve-line">
-            <text class="curve-name" :style="{ color: colors[player.faction] || '#888' }">
+            <text class="curve-name" :style="{ color: colors[player.faction] || '#555' }">
               {{ player.nickName }}
             </text>
             <view class="curve-points">
@@ -57,7 +56,7 @@
     </view>
 
     <view class="review-footer">
-      <text class="waiting-text">等待管理员开启第 {{ roundIndex + 1 }} 轮...</text>
+      <text class="waiting-text">等待管理员开启第 {{ roundIndex + 1 }} 轮</text>
     </view>
   </view>
 </template>
@@ -79,10 +78,9 @@ const factorDefs = F_FACTOR_DEFS
 const colors = F_FACTOR_COLORS
 
 const topPlayers = computed(() => {
-  // 简化：展示前5名玩家的净值历史
   return props.players.slice(0, 5).map(p => ({
     ...p,
-    history: [1, 1.05, 1.12, Number(p.nav)] // TODO: 接入真实历史数据
+    history: [1, 1.05, 1.12, Number(p.nav)]
   }))
 })
 
@@ -100,17 +98,18 @@ function formatExposure(key) {
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 24px 32px;
+  padding: 32px 40px;
 }
 
 .review-header {
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
 .review-title {
-  font-size: 20px;
-  font-weight: bold;
-  color: #d4af37;
+  font-size: 14px;
+  font-weight: 400;
+  color: #c9a84c;
+  letter-spacing: 4px;
 }
 
 .review-body {
@@ -129,17 +128,18 @@ function formatExposure(key) {
 
 .radar-panel, .event-panel {
   flex: 1;
-  background: rgba(255,255,255,0.03);
-  border-radius: 8px;
-  padding: 12px;
+  background: rgba(255,255,255,0.015);
+  border-radius: 1px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
 }
 
 .panel-title {
-  font-size: 13px;
-  color: #888;
-  margin-bottom: 8px;
+  font-size: 10px;
+  color: #444;
+  margin-bottom: 12px;
+  letter-spacing: 3px;
 }
 
 .radar-placeholder {
@@ -150,37 +150,32 @@ function formatExposure(key) {
   justify-content: center;
 }
 
-.placeholder-text {
-  font-size: 12px;
-  color: #555;
-}
-
 .radar-factors {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 8px;
-  margin-top: 8px;
   width: 100%;
 }
 
 .radar-dot {
   text-align: center;
-  padding: 4px;
-  background: rgba(0,0,0,0.3);
-  border-radius: 4px;
+  padding: 6px;
+  background: rgba(0,0,0,0.2);
+  border-radius: 1px;
 }
 
 .dot-label {
-  font-size: 10px;
-  color: #888;
+  font-size: 9px;
+  color: #555;
   display: block;
+  letter-spacing: 1px;
 }
 
 .dot-value {
-  font-size: 12px;
-  font-weight: bold;
+  font-size: 11px;
+  font-weight: 400;
   display: block;
-  margin-top: 2px;
+  margin-top: 3px;
 }
 
 .event-card-mini {
@@ -188,27 +183,29 @@ function formatExposure(key) {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 8px;
-  background: rgba(212, 175, 55, 0.05);
-  border-radius: 6px;
-  border-left: 3px solid #d4af37;
+  padding: 12px;
+  background: rgba(201, 168, 76, 0.03);
+  border-radius: 1px;
+  border-left: 1px solid rgba(201, 168, 76, 0.2);
 }
 
 .mini-name {
-  font-size: 15px;
-  font-weight: bold;
-  color: #f0f0f0;
+  font-size: 14px;
+  font-weight: 400;
+  color: #aaa;
 }
 
 .mini-category {
-  font-size: 11px;
-  color: #d4af37;
-  margin: 2px 0;
+  font-size: 10px;
+  color: #c9a84c;
+  margin: 4px 0;
+  letter-spacing: 1px;
 }
 
 .mini-desc {
-  font-size: 12px;
-  color: #aaa;
+  font-size: 11px;
+  color: #555;
+  line-height: 1.6;
 }
 
 .event-empty {
@@ -216,15 +213,15 @@ function formatExposure(key) {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
-  color: #555;
+  font-size: 12px;
+  color: #333;
 }
 
 .curve-panel {
   flex: 1;
-  background: rgba(255,255,255,0.03);
-  border-radius: 8px;
-  padding: 12px;
+  background: rgba(255,255,255,0.015);
+  border-radius: 1px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -247,7 +244,7 @@ function formatExposure(key) {
 
 .curve-name {
   width: 80px;
-  font-size: 11px;
+  font-size: 10px;
   text-align: right;
   flex-shrink: 0;
 }
@@ -264,19 +261,20 @@ function formatExposure(key) {
 }
 
 .point-dot {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
   border-radius: 50%;
   background: currentColor;
 }
 
 .review-footer {
   text-align: center;
-  padding: 12px 0;
+  padding: 16px 0;
 }
 
 .waiting-text {
-  font-size: 13px;
-  color: #666;
+  font-size: 11px;
+  color: #333;
+  letter-spacing: 2px;
 }
 </style>

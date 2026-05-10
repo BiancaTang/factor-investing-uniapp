@@ -1,13 +1,13 @@
 <template>
   <view class="event-screen">
-    <view class="event-flash">⚡ MARKET EVENT ⚡</view>
+    <view class="event-flash">MARKET EVENT</view>
 
     <view class="event-card-container">
       <view class="event-card" :class="{ flipped: showFront }">
         <!-- 背面 -->
         <view class="card-face card-back">
-          <text class="back-logo">🎲</text>
-          <text class="back-text">市场事件</text>
+          <text class="back-logo">◈</text>
+          <text class="back-text">MARKET EVENT</text>
         </view>
 
         <!-- 正面 -->
@@ -34,7 +34,7 @@
           v-for="eff in (event?.effects || [])"
           :key="eff.factor"
           class="affected-tag"
-          :style="{ backgroundColor: getFactorColor(eff.factor) + '30', borderColor: getFactorColor(eff.factor) }"
+          :style="{ backgroundColor: getFactorColor(eff.factor) + '15', borderColor: getFactorColor(eff.factor) + '40' }"
         >
           {{ eff.factor }}
         </view>
@@ -62,7 +62,6 @@ function getFactorColor(internal) {
 }
 
 onMounted(() => {
-  // 1秒后翻转卡片
   setTimeout(() => {
     showFront.value = true
   }, 800)
@@ -81,27 +80,27 @@ onMounted(() => {
 }
 
 .event-flash {
-  font-size: 28px;
-  font-weight: bold;
-  color: #d4af37;
-  letter-spacing: 4px;
-  margin-bottom: 32px;
+  font-size: 14px;
+  font-weight: 300;
+  color: #c9a84c;
+  letter-spacing: 6px;
+  margin-bottom: 40px;
   animation: flashIn 0.5s ease;
 }
 
 @keyframes flashIn {
-  from { opacity: 0; transform: scale(0.8); }
-  to { opacity: 1; transform: scale(1); }
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .event-card-container {
   perspective: 1000px;
-  margin-bottom: 32px;
+  margin-bottom: 40px;
 }
 
 .event-card {
-  width: 320px;
-  height: 440px;
+  width: 300px;
+  height: 420px;
   position: relative;
   transform-style: preserve-3d;
   transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
@@ -116,94 +115,99 @@ onMounted(() => {
   width: 100%;
   height: 100%;
   backface-visibility: hidden;
-  border-radius: 16px;
+  border-radius: 2px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: 32px;
   box-sizing: border-box;
 }
 
 .card-back {
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-  border: 2px solid #d4af37;
+  background: #080808;
+  border: 1px solid rgba(201, 168, 76, 0.15);
 }
 
 .back-logo {
-  font-size: 64px;
-  margin-bottom: 16px;
+  font-size: 48px;
+  color: #c9a84c;
+  margin-bottom: 20px;
+  opacity: 0.3;
 }
 
 .back-text {
-  font-size: 20px;
-  color: #d4af37;
+  font-size: 12px;
+  color: #444;
   letter-spacing: 4px;
 }
 
 .card-front {
-  background: linear-gradient(135deg, #1a1a1a 0%, #0d0d0d 100%);
-  border: 2px solid #444;
+  background: #0a0a0a;
+  border: 1px solid rgba(255,255,255,0.06);
   transform: rotateY(180deg);
 }
 
 .card-id {
-  font-size: 11px;
-  color: #666;
+  font-size: 10px;
+  color: #333;
   align-self: flex-start;
+  letter-spacing: 1px;
 }
 
 .card-name {
-  font-size: 24px;
-  font-weight: bold;
-  color: #f0f0f0;
+  font-size: 20px;
+  font-weight: 400;
+  color: #e8e4dc;
   text-align: center;
-  margin: 8px 0;
+  margin: 12px 0 8px;
+  letter-spacing: 1px;
 }
 
 .card-category {
-  font-size: 13px;
-  color: #d4af37;
-  background: rgba(212, 175, 55, 0.1);
-  padding: 4px 12px;
-  border-radius: 12px;
+  font-size: 11px;
+  color: #c9a84c;
+  background: rgba(201, 168, 76, 0.06);
+  padding: 3px 10px;
+  border-radius: 1px;
+  letter-spacing: 2px;
 }
 
 .card-divider {
-  width: 60%;
+  width: 40px;
   height: 1px;
-  background: #333;
-  margin: 16px 0;
+  background: rgba(201, 168, 76, 0.2);
+  margin: 24px 0;
 }
 
 .card-desc {
-  font-size: 14px;
-  color: #ccc;
+  font-size: 13px;
+  color: #777;
   text-align: center;
-  line-height: 1.6;
+  line-height: 1.8;
 }
 
 .card-effects {
-  margin-top: 12px;
+  margin-top: 20px;
   width: 100%;
 }
 
 .effect-row {
   display: flex;
   justify-content: space-between;
-  padding: 6px 0;
-  border-bottom: 1px solid #222;
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
 }
 
 .effect-factor {
-  font-size: 12px;
-  color: #aaa;
+  font-size: 11px;
+  color: #555;
 }
 
 .effect-value {
-  font-size: 12px;
-  color: #d4af37;
-  font-weight: bold;
+  font-size: 11px;
+  color: #c9a84c;
+  font-weight: 400;
 }
 
 .event-affected {
@@ -211,23 +215,25 @@ onMounted(() => {
 }
 
 .affected-title {
-  font-size: 13px;
-  color: #888;
+  font-size: 10px;
+  color: #444;
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
+  letter-spacing: 3px;
 }
 
 .affected-factors {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   justify-content: center;
 }
 
 .affected-tag {
-  padding: 4px 12px;
-  border-radius: 8px;
+  padding: 3px 10px;
+  border-radius: 1px;
   border: 1px solid;
-  font-size: 12px;
-  color: #f0f0f0;
+  font-size: 10px;
+  color: #888;
+  letter-spacing: 1px;
 }
 </style>

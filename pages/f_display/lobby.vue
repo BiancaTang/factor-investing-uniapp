@@ -1,8 +1,8 @@
 <template>
   <view class="lobby-screen">
     <view class="lobby-header">
-      <text class="lobby-title">🎲 因子博弈沙盘 2.0</text>
-      <text class="lobby-subtitle">Factor Investing Battle Arena</text>
+      <text class="lobby-title">因子博弈沙盘</text>
+      <text class="lobby-subtitle">FACTOR INVESTING BATTLE</text>
     </view>
 
     <view class="lobby-center">
@@ -10,20 +10,20 @@
     </view>
 
     <view class="lobby-status">
-      <text class="status-text">房间 {{ roomName }}</text>
-      <text class="status-players">玩家 {{ readyCount }}/{{ maxPlayers }} 已就绪</text>
+      <text class="status-text">{{ roomName }}</text>
+      <text class="status-players">{{ readyCount }} / {{ maxPlayers }}</text>
     </view>
 
     <view class="lobby-players">
       <view v-for="player in readyPlayers" :key="player.uid" class="ready-chip">
         <image v-if="player.avatar" :src="player.avatar" class="chip-avatar" />
-        <text v-else class="chip-emoji">🎲</text>
+        <text v-else class="chip-dot">◆</text>
         <text class="chip-name">{{ player.nickName }}</text>
       </view>
     </view>
 
     <view class="lobby-quote">
-      <text class="quote-text">"格雷厄姆：安全边际，是我唯一的信仰。"</text>
+      <text class="quote-text">等待管理员开启第一轮</text>
     </view>
   </view>
 </template>
@@ -41,7 +41,6 @@ const props = defineProps({
 const readyPlayers = computed(() => props.players.slice(0, 8))
 const readyCount = computed(() => props.players.length)
 
-// 候场时的演示数据（轻微脉动）
 const demoExposure = computed(() => ({
   fac_size: 0.5,
   fac_beta: -0.3,
@@ -69,44 +68,48 @@ const demoExposure = computed(() => ({
 
 .lobby-header {
   text-align: center;
-  margin-bottom: 24px;
+  margin-bottom: 32px;
 }
 
 .lobby-title {
-  font-size: 32px;
-  font-weight: bold;
-  color: #d4af37;
+  font-size: 28px;
+  font-weight: 300;
+  color: #c9a84c;
   display: block;
+  letter-spacing: 8px;
 }
 
 .lobby-subtitle {
-  font-size: 16px;
-  color: #888;
+  font-size: 12px;
+  color: #444;
   display: block;
-  margin-top: 8px;
+  margin-top: 12px;
+  letter-spacing: 4px;
 }
 
 .lobby-center {
-  margin: 20px 0;
+  margin: 24px 0;
 }
 
 .lobby-status {
   text-align: center;
-  margin: 16px 0;
+  margin: 20px 0;
 }
 
 .status-text {
-  font-size: 14px;
-  color: #aaa;
+  font-size: 12px;
+  color: #555;
   display: block;
+  letter-spacing: 2px;
 }
 
 .status-players {
-  font-size: 18px;
-  font-weight: bold;
-  color: #f0f0f0;
+  font-size: 16px;
+  font-weight: 400;
+  color: #888;
   display: block;
-  margin-top: 4px;
+  margin-top: 8px;
+  letter-spacing: 2px;
 }
 
 .lobby-players {
@@ -114,18 +117,18 @@ const demoExposure = computed(() => ({
   flex-wrap: wrap;
   justify-content: center;
   gap: 8px;
-  margin: 12px 0;
+  margin: 16px 0;
   max-width: 600px;
 }
 
 .ready-chip {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  background: rgba(212, 175, 55, 0.1);
-  border: 1px solid rgba(212, 175, 55, 0.3);
-  border-radius: 16px;
+  gap: 6px;
+  padding: 4px 12px;
+  background: rgba(201, 168, 76, 0.06);
+  border: 1px solid rgba(201, 168, 76, 0.12);
+  border-radius: 2px;
 }
 
 .chip-avatar {
@@ -134,24 +137,26 @@ const demoExposure = computed(() => ({
   border-radius: 50%;
 }
 
-.chip-emoji {
-  font-size: 14px;
+.chip-dot {
+  font-size: 10px;
+  color: #c9a84c;
 }
 
 .chip-name {
-  font-size: 12px;
-  color: #ccc;
+  font-size: 11px;
+  color: #777;
+  letter-spacing: 1px;
 }
 
 .lobby-quote {
   position: absolute;
-  bottom: 60px;
+  bottom: 72px;
   text-align: center;
 }
 
 .quote-text {
-  font-size: 13px;
-  color: #666;
-  font-style: italic;
+  font-size: 11px;
+  color: #333;
+  letter-spacing: 3px;
 }
 </style>

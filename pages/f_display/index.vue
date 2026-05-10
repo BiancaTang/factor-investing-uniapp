@@ -278,14 +278,15 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* === 高维神权 · 黑金主调 === */
 .display-page {
 	width: 100vw;
 	height: 100vh;
-	background: #0a0a0a;
-	color: #f0f0f0;
+	background: #050505;
+	color: #e8e4dc;
 	overflow: hidden;
 	position: relative;
-	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans SC', sans-serif;
 }
 
 .particle-layer {
@@ -298,7 +299,7 @@ onUnmounted(() => {
 
 .display-content {
 	width: 100%;
-	height: calc(100% - 40px);
+	height: calc(100% - 48px);
 	position: relative;
 	z-index: 10;
 }
@@ -308,29 +309,33 @@ onUnmounted(() => {
 	bottom: 0;
 	left: 0;
 	right: 0;
-	height: 40px;
-	background: rgba(0, 0, 0, 0.8);
-	border-top: 1px solid #333;
+	height: 48px;
+	background: rgba(5, 5, 5, 0.85);
+	border-top: 1px solid rgba(201, 168, 76, 0.15);
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: 0 24px;
+	padding: 0 32px;
 	z-index: 50;
+	backdrop-filter: blur(4px);
 }
 
 .footer-room {
 	font-size: 12px;
-	color: #888;
+	color: #555;
+	letter-spacing: 2px;
 }
 
 .footer-round {
 	font-size: 14px;
-	font-weight: bold;
-	color: #d4af37;
+	font-weight: 500;
+	color: #c9a84c;
+	letter-spacing: 2px;
 }
 
 .footer-phase {
 	font-size: 12px;
-	color: #aaa;
+	color: #666;
+	letter-spacing: 2px;
 }
 </style>

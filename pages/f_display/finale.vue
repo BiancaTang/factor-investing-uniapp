@@ -1,15 +1,15 @@
 <template>
   <view class="finale-screen">
     <view class="finale-header">
-      <text class="finale-title">🏆🏆🏆 终局盛典 🏆🏆🏆</text>
+      <text class="finale-title">终局盛典</text>
     </view>
 
     <view class="champion-section">
       <view class="champion-card">
-        <text class="champion-label">冠军</text>
+        <text class="champion-label">CHAMPION</text>
         <view class="champion-avatar" :style="{ borderColor: getFactionColor(champion?.charFaction) }">
           <image v-if="champion?.avatar" :src="champion.avatar" class="champion-img" />
-          <text v-else class="champion-emoji">{{ getFactionEmoji(champion?.charFaction) }}</text>
+          <text v-else class="champion-symbol">◆</text>
         </view>
         <text class="champion-name">{{ champion?.nickName || '待定' }}</text>
         <text class="champion-char">{{ champion?.charName || '' }}</text>
@@ -19,7 +19,7 @@
 
     <view class="podium-section">
       <view v-for="(player, idx) in top3" :key="player.uid" class="podium-item" :class="`podium-${idx + 1}`">
-        <text class="podium-medal">{{ ['🥇', '🥈', '🥉'][idx] }}</text>
+        <text class="podium-medal">{{ ['I', 'II', 'III'][idx] }}</text>
         <text class="podium-name">{{ player.nickName }}</text>
         <text class="podium-nav">{{ player.nav }}</text>
       </view>
@@ -36,7 +36,7 @@
     </view>
 
     <view class="finale-footer">
-      <text class="finale-thanks">感谢参与 · 因子博弈沙盘 2.0</text>
+      <text class="finale-thanks">感谢参与 · 因子博弈沙盘</text>
     </view>
   </view>
 </template>
@@ -53,9 +53,6 @@ const FACTION_COLORS = {
   value: '#4a6fa5', growth: '#43a047', momentum: '#fbc02d',
   stable: '#90a4ae', aggressive: '#e53935'
 }
-const FACTION_EMOJIS = {
-  value: '🏰', growth: '🚀', momentum: '⚡', stable: '🛡️', aggressive: '🔥'
-}
 
 const sortedPlayers = computed(() =>
   [...props.players].sort((a, b) => Number(b.nav) - Number(a.nav))
@@ -65,7 +62,6 @@ const champion = computed(() => sortedPlayers.value[0])
 const top3 = computed(() => sortedPlayers.value.slice(0, 3))
 
 const highlights = computed(() => {
-  // 简化：生成几个假的高光时刻
   const rounds = props.roundHistory.length
   if (rounds === 0) return []
   return [
@@ -76,10 +72,7 @@ const highlights = computed(() => {
 })
 
 function getFactionColor(faction) {
-  return FACTION_COLORS[faction] || '#d4af37'
-}
-function getFactionEmoji(faction) {
-  return FACTION_EMOJIS[faction] || '👑'
+  return FACTION_COLORS[faction] || '#c9a84c'
 }
 </script>
 
@@ -90,59 +83,59 @@ function getFactionEmoji(faction) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 32px;
-  background: radial-gradient(ellipse at center, #1a1a2e 0%, #0a0a0a 60%);
+  padding: 40px;
+  background: #050505;
 }
 
 .finale-header {
-  margin-bottom: 24px;
+  margin-bottom: 32px;
 }
 
 .finale-title {
-  font-size: 26px;
-  font-weight: bold;
-  color: #d4af37;
-  letter-spacing: 4px;
+  font-size: 16px;
+  font-weight: 300;
+  color: #c9a84c;
+  letter-spacing: 8px;
 }
 
 .champion-section {
-  margin-bottom: 24px;
+  margin-bottom: 32px;
 }
 
 .champion-card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 24px 48px;
-  background: rgba(212, 175, 55, 0.08);
-  border: 2px solid rgba(212, 175, 55, 0.3);
-  border-radius: 16px;
+  padding: 32px 56px;
+  background: rgba(201, 168, 76, 0.04);
+  border: 1px solid rgba(201, 168, 76, 0.15);
+  border-radius: 1px;
   animation: championIn 1s ease;
 }
 
 @keyframes championIn {
-  from { opacity: 0; transform: scale(0.8) translateY(20px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .champion-label {
-  font-size: 14px;
-  color: #d4af37;
-  letter-spacing: 4px;
-  margin-bottom: 12px;
+  font-size: 10px;
+  color: #c9a84c;
+  letter-spacing: 6px;
+  margin-bottom: 16px;
 }
 
 .champion-avatar {
-  width: 80px;
-  height: 80px;
+  width: 72px;
+  height: 72px;
   border-radius: 50%;
-  border: 3px solid;
+  border: 1px solid;
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #222;
-  margin-bottom: 12px;
+  background: #0a0a0a;
+  margin-bottom: 16px;
 }
 
 .champion-img {
@@ -151,33 +144,37 @@ function getFactionEmoji(faction) {
   object-fit: cover;
 }
 
-.champion-emoji {
-  font-size: 40px;
+.champion-symbol {
+  font-size: 28px;
+  color: #333;
 }
 
 .champion-name {
-  font-size: 20px;
-  font-weight: bold;
-  color: #f0f0f0;
+  font-size: 18px;
+  font-weight: 400;
+  color: #e8e4dc;
+  letter-spacing: 2px;
 }
 
 .champion-char {
-  font-size: 13px;
-  color: #888;
-  margin: 4px 0;
+  font-size: 11px;
+  color: #555;
+  margin: 6px 0;
+  letter-spacing: 1px;
 }
 
 .champion-nav {
-  font-size: 24px;
-  font-weight: bold;
-  color: #d4af37;
+  font-size: 20px;
+  font-weight: 300;
+  color: #c9a84c;
+  letter-spacing: 2px;
 }
 
 .podium-section {
   display: flex;
   align-items: flex-end;
   gap: 16px;
-  margin-bottom: 24px;
+  margin-bottom: 32px;
 }
 
 .podium-item {
@@ -185,14 +182,14 @@ function getFactionEmoji(faction) {
   flex-direction: column;
   align-items: center;
   padding: 12px 20px;
-  background: rgba(255,255,255,0.05);
-  border-radius: 8px;
+  background: rgba(255,255,255,0.02);
+  border-radius: 1px;
   min-width: 120px;
 }
 
 .podium-1 {
-  background: rgba(212, 175, 55, 0.1);
-  border: 1px solid rgba(212, 175, 55, 0.2);
+  background: rgba(201, 168, 76, 0.05);
+  border: 1px solid rgba(201, 168, 76, 0.1);
   padding-top: 20px;
 }
 
@@ -205,32 +202,35 @@ function getFactionEmoji(faction) {
 }
 
 .podium-medal {
-  font-size: 28px;
-  margin-bottom: 4px;
+  font-size: 18px;
+  color: #c9a84c;
+  font-weight: 300;
+  margin-bottom: 6px;
 }
 
 .podium-name {
-  font-size: 14px;
-  color: #ccc;
+  font-size: 13px;
+  color: #888;
 }
 
 .podium-nav {
-  font-size: 16px;
-  font-weight: bold;
-  color: #d4af37;
+  font-size: 14px;
+  font-weight: 400;
+  color: #c9a84c;
   margin-top: 4px;
 }
 
 .highlights-section {
-  margin-bottom: 24px;
+  margin-bottom: 32px;
 }
 
 .highlights-title {
-  font-size: 14px;
-  color: #888;
+  font-size: 10px;
+  color: #444;
   text-align: center;
   display: block;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
+  letter-spacing: 4px;
 }
 
 .highlights-list {
@@ -239,21 +239,23 @@ function getFactionEmoji(faction) {
 }
 
 .highlight-card {
-  padding: 8px 16px;
-  background: rgba(255,255,255,0.03);
-  border-radius: 8px;
+  padding: 10px 18px;
+  background: rgba(255,255,255,0.015);
+  border-radius: 1px;
   text-align: center;
 }
 
 .highlight-round {
-  font-size: 11px;
-  color: #d4af37;
+  font-size: 10px;
+  color: #c9a84c;
   display: block;
+  letter-spacing: 1px;
 }
 
 .highlight-desc {
-  font-size: 12px;
-  color: #aaa;
+  font-size: 11px;
+  color: #666;
+  margin-top: 4px;
 }
 
 .finale-footer {
@@ -261,7 +263,8 @@ function getFactionEmoji(faction) {
 }
 
 .finale-thanks {
-  font-size: 13px;
-  color: #555;
+  font-size: 11px;
+  color: #333;
+  letter-spacing: 3px;
 }
 </style>

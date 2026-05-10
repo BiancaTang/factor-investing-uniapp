@@ -1,0 +1,60 @@
+{
+  "version": "2.0",
+  "description": "因子博弈沙盘大屏展示系统",
+  "created": "2026-05-10",
+  "files": [
+    {
+      "path": "uniCloud-aliyun/cloudfunctions/f_sync_display_state/index.js",
+      "description": "大屏轮询云函数，聚合房间完整状态"
+    },
+    {
+      "path": "utils/f_displayEngine.js",
+      "description": "动画引擎：缓动函数、粒子系统、数字渐变、环形布局计算"
+    },
+    {
+      "path": "components/f-display/factor-ring.vue",
+      "description": "10因子环形热力图组件"
+    },
+    {
+      "path": "components/f-display/runway.vue",
+      "description": "角色棋子跑道组件"
+    },
+    {
+      "path": "pages/f_display/index.vue",
+      "description": "大屏主框架：6幕剧切换 + 数据轮询 + 粒子层"
+    },
+    {
+      "path": "pages/f_display/lobby.vue",
+      "description": "Act 0 · 候场大厅"
+    },
+    {
+      "path": "pages/f_display/decision.vue",
+      "description": "Act 1 · 决策倒计时 + 因子柱状图"
+    },
+    {
+      "path": "pages/f_display/event.vue",
+      "description": "Act 2 · 事件卡3D翻转动画"
+    },
+    {
+      "path": "pages/f_display/settlement.vue",
+      "description": "Act 3 · 结算演出 + 排名榜单 + 技能弹幕"
+    },
+    {
+      "path": "pages/f_display/review.vue",
+      "description": "Act 4 · 回合复盘（群体偏好 + 净值走势）"
+    },
+    {
+      "path": "pages/f_display/finale.vue",
+      "description": "Act 5 · 终局盛典 + 领奖台"
+    },
+    {
+      "path": "pages.json",
+      "description": "新增大屏展示路由（已修改）"
+    }
+  ],
+  "notes": [
+    "所有文件已本地提交（commit: dfec196）",
+    "GitHub token 权限不足导致 push 失败",
+    "请手动复制这些文件到你的本地仓库后提交"
+  ]
+}

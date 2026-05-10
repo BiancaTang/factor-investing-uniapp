@@ -30,7 +30,7 @@
     </view>
 
     <view class="decision-footer">
-      <text class="submit-status">已提交 {{ submittedCount }}/{{ totalPlayers }}</text>
+      <text class="submit-status">已提交 {{ submittedCount }} / {{ totalPlayers }}</text>
       <view class="submit-avatars">
         <image
           v-for="p in submittedPlayers"
@@ -79,20 +79,22 @@ function formatBarValue(key) {
 function getBarStyle(def) {
   const val = Number(props.groupExposure[def.key] || 0)
   const max = 5
-  const pct = (Math.abs(val) / max) * 50 // 最多占50%宽度（居中）
+  const pct = (Math.abs(val) / max) * 50
   const color = colors[def.internal]
 
   if (val >= 0) {
     return {
       width: pct + '%',
       marginLeft: '50%',
-      backgroundColor: color
+      backgroundColor: color,
+      opacity: 0.6
     }
   } else {
     return {
       width: pct + '%',
       marginLeft: (50 - pct) + '%',
-      backgroundColor: color
+      backgroundColor: color,
+      opacity: 0.6
     }
   }
 }
@@ -104,52 +106,53 @@ function getBarStyle(def) {
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 24px 32px;
+  padding: 32px 40px;
 }
 
 .decision-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
 .round-badge {
-  font-size: 20px;
-  font-weight: bold;
-  color: #d4af37;
-  letter-spacing: 2px;
+  font-size: 14px;
+  font-weight: 400;
+  color: #c9a84c;
+  letter-spacing: 4px;
 }
 
 .countdown {
-  background: rgba(212, 175, 55, 0.15);
-  border: 2px solid #d4af37;
-  border-radius: 8px;
-  padding: 8px 20px;
+  background: rgba(201, 168, 76, 0.06);
+  border: 1px solid rgba(201, 168, 76, 0.2);
+  border-radius: 2px;
+  padding: 6px 16px;
 }
 
 .countdown.urgent {
-  border-color: #f44336;
-  background: rgba(244, 67, 54, 0.15);
-  animation: pulse 1s infinite;
+  border-color: rgba(201, 168, 76, 0.5);
+  background: rgba(201, 168, 76, 0.1);
+  animation: pulse 1.5s infinite;
 }
 
 @keyframes pulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
+  50% { opacity: 0.4; }
 }
 
 .countdown-num {
-  font-size: 28px;
-  font-weight: bold;
-  color: #f0f0f0;
+  font-size: 24px;
+  font-weight: 300;
+  color: #e8e4dc;
   font-variant-numeric: tabular-nums;
+  letter-spacing: 2px;
 }
 
 .decision-body {
   flex: 1;
   display: flex;
-  gap: 24px;
+  gap: 32px;
   min-height: 0;
 }
 
@@ -167,76 +170,76 @@ function getBarStyle(def) {
 
 .exposure-bars {
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
 }
 
 .bar-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 6px 0;
+  gap: 10px;
+  margin: 5px 0;
 }
 
 .bar-label {
   width: 56px;
-  font-size: 12px;
-  color: #aaa;
+  font-size: 11px;
+  color: #555;
   text-align: right;
   flex-shrink: 0;
+  letter-spacing: 1px;
 }
 
 .bar-track {
   flex: 1;
-  height: 16px;
-  background: #222;
-  border-radius: 3px;
+  height: 10px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 1px;
   position: relative;
   overflow: hidden;
 }
 
 .bar-fill {
   height: 100%;
-  border-radius: 3px;
+  border-radius: 1px;
   transition: all 0.8s ease;
-  opacity: 0.8;
 }
 
 .bar-value {
   width: 40px;
-  font-size: 12px;
-  font-weight: bold;
+  font-size: 11px;
+  font-weight: 400;
   text-align: left;
   flex-shrink: 0;
 }
 
 .decision-runway {
-  margin-top: 12px;
+  margin-top: 16px;
 }
 
 .decision-footer {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-top: 12px;
+  margin-top: 16px;
   padding-top: 12px;
-  border-top: 1px solid #333;
+  border-top: 1px solid rgba(255,255,255,0.04);
 }
 
 .submit-status {
-  font-size: 13px;
-  color: #888;
+  font-size: 11px;
+  color: #444;
+  letter-spacing: 1px;
 }
 
 .submit-avatars {
   display: flex;
-  gap: -4px;
 }
 
 .submit-avatar {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
-  border: 2px solid #0a0a0a;
+  border: 1px solid #050505;
   margin-left: -4px;
 }
 </style>

@@ -64,20 +64,19 @@ function formatExposure(key) {
 
 function getSectorStyle(item, index) {
 	const val = Number(props.exposure[item.key] || 0)
-	const intensity = Math.min(Math.abs(val) / 5, 1) // 0~1
-	const baseColor = colors[item.internal] || '#888'
+	const intensity = Math.min(Math.abs(val) / 5, 1)
+	const baseColor = colors[item.internal] || '#555'
 
-	// 计算位置：从中心向外偏移
-	const offset = 25 + intensity * 30 // 25~55px 偏移
+	const offset = 25 + intensity * 30
 	const rad = item.angle
 	const x = Math.cos(rad) * offset
 	const y = Math.sin(rad) * offset
 
 	return {
 		transform: `translate(${x}px, ${y}px)`,
-		borderColor: baseColor,
-		backgroundColor: `${baseColor}${Math.round(intensity * 40).toString(16).padStart(2, '0')}`,
-		boxShadow: intensity > 0.3 ? `0 0 ${intensity * 20}px ${baseColor}40` : 'none'
+		borderColor: `${baseColor}30`,
+		backgroundColor: `${baseColor}${Math.round(intensity * 20).toString(16).padStart(2, '0')}`,
+		boxShadow: intensity > 0.3 ? `0 0 ${intensity * 12}px ${baseColor}20` : 'none'
 	}
 }
 
@@ -90,7 +89,8 @@ function getConnectorStyle(item) {
 		top: (props.size / 2) + 'px',
 		transform: `rotate(${(rad * 180 / Math.PI)}deg)`,
 		transformOrigin: 'left center',
-		backgroundColor: colors[item.internal] || '#444'
+		backgroundColor: colors[item.internal] || '#222',
+		opacity: 0.2
 	}
 }
 </script>
@@ -105,8 +105,8 @@ function getConnectorStyle(item) {
 .ring-container {
 	position: relative;
 	border-radius: 50%;
-	border: 2px solid #333;
-	background: radial-gradient(circle at center, #1a1a1a 0%, #0a0a0a 70%);
+	border: 1px solid rgba(255,255,255,0.04);
+	background: radial-gradient(circle at center, rgba(201,168,76,0.02) 0%, transparent 70%);
 }
 
 .ring-center {
@@ -119,29 +119,31 @@ function getConnectorStyle(item) {
 }
 
 .center-label {
-	font-size: 14px;
-	color: #888;
+	font-size: 11px;
+	color: #444;
 	display: block;
+	letter-spacing: 2px;
 }
 
 .center-round {
-	font-size: 24px;
-	font-weight: bold;
-	color: #d4af37;
+	font-size: 20px;
+	font-weight: 300;
+	color: #c9a84c;
 	display: block;
 	margin-top: 4px;
+	letter-spacing: 1px;
 }
 
 .sector {
 	position: absolute;
 	left: 50%;
 	top: 50%;
-	width: 72px;
-	height: 72px;
-	margin-left: -36px;
-	margin-top: -36px;
-	border-radius: 12px;
-	border: 2px solid;
+	width: 64px;
+	height: 64px;
+	margin-left: -32px;
+	margin-top: -32px;
+	border-radius: 1px;
+	border: 1px solid;
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -154,14 +156,15 @@ function getConnectorStyle(item) {
 }
 
 .sector-label {
-	font-size: 11px;
-	color: #aaa;
+	font-size: 10px;
+	color: #555;
 	display: block;
+	letter-spacing: 1px;
 }
 
 .sector-value {
-	font-size: 14px;
-	font-weight: bold;
+	font-size: 12px;
+	font-weight: 400;
 	display: block;
 	margin-top: 2px;
 }
@@ -169,7 +172,6 @@ function getConnectorStyle(item) {
 .connector {
 	position: absolute;
 	height: 1px;
-	opacity: 0.3;
 	z-index: 1;
 }
 </style>
