@@ -45,7 +45,8 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { F_FACTOR_COLORS, F_FACTOR_DEFS } from '@/utils/f_gameFactorSpec.js'
+import { F_FACTOR_DEFS } from '@/utils/f_gameFactorSpec.js'
+import { F_FACTOR_COLORS } from '@/utils/f_factorPalette.js'
 
 const props = defineProps({
   event: { type: Object, default: null }

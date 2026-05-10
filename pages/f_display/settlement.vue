@@ -54,7 +54,8 @@
 
 <script setup>
 import { computed } from 'vue'
-import { F_FACTOR_DEFS, F_FACTOR_COLORS } from '@/utils/f_gameFactorSpec.js'
+import { F_FACTOR_DEFS } from '@/utils/f_gameFactorSpec.js'
+import { F_FACTOR_COLORS } from '@/utils/f_factorPalette.js'
 
 const props = defineProps({
   roundIndex: { type: Number, default: 0 },
