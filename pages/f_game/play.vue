@@ -60,7 +60,7 @@
 		</view>
 
 		<view v-else-if="phase === 'input'" class="card">
-			<text class="section-title">第 {{ nextRoundIndex }} / {{ totalRoundsLabel }} 轮 · 设置五个因子（-5～5）</text>
+			<text class="section-title">第 {{ nextRoundIndex }} / {{ totalRoundsLabel }} 轮 · 设置十个因子（-5～5）</text>
 			<view v-if="history.length" class="wait-charts">
 				<f-game-charts
 					:key="'i-' + chartRefreshKey"
@@ -142,7 +142,7 @@
 import { computed, onUnmounted, reactive, ref, watch } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import FGameCharts from '../../components/f-game-charts/f-game-charts.vue'
-import { F_FACTOR_DEFS } from '../../utils/f_gameLogic.js'
+import { F_FACTOR_DEFS, f_navReturnDbKey } from '../../utils/f_gameLogic.js'
 import { f_getStoredUser } from '../../utils/f_userStorage.js'
 import {
 	f_getRoomInCloud,
@@ -151,7 +151,7 @@ import {
 	f_getRoomMemberStatusInCloud
 } from '../../utils/f_gameApi.js'
 import { f_buildJointNavCompareChartData, f_simulatePythonFactorGame } from '../../utils/f_factorEngine.js'
-import { F_FACTOR_COLORS } from '../../utils/f_factorPalette.js'
+import { F_FACTOR_COLOR_BY_FAC_KEY } from '../../utils/f_factorPalette.js'
 
 const roomCode = ref('')
 const totalRounds = ref(1)
@@ -169,46 +169,16 @@ const chartRefreshKey = ref(0)
 const tick = ref(Date.now())
 let timer = null
 
-const factorIntroItems = [
-	{
-		key: 'size',
-		title: 'size - 市值因子',
-		desc: '衡量公司规模。通常在 A 股中，小市值长期更容易出现超额收益，但波动也更大。',
-		color: F_FACTOR_COLORS.size
-	},
-	{
-		key: 'momentum',
-		title: 'momentum - 动量因子',
-		desc: '衡量近期趋势强弱。趋势更强通常打分更高，但过热后也可能出现反转。',
-		color: F_FACTOR_COLORS.momentum
-	},
-	{
-		key: 'book_to_price',
-		title: 'book_to_price - 净市率因子',
-		desc: '可理解为市净率（P/B）的倒数，越高表示估值相对更便宜。',
-		color: F_FACTOR_COLORS.book_to_price
-	},
-	{
-		key: 'growth',
-		title: 'growth - 成长因子',
-		desc: '衡量公司成长性。成长越高一般打分越高，但也要警惕估值过贵带来的回撤。',
-		color: F_FACTOR_COLORS.growth
-	},
-	{
-		key: 'residual_volatility',
-		title: 'residual_volatility - 残差波动因子',
-		desc: '衡量个股特异性波动。低残差波动通常更稳健，高残差波动弹性更高。',
-		color: F_FACTOR_COLORS.residual_volatility
-	}
-]
+const factorIntroItems = computed(() =>
+	F_FACTOR_DEFS.map((d) => ({
+		key: d.internal,
+		title: d.introTitle,
+		desc: d.introDesc,
+		color: F_FACTOR_COLOR_BY_FAC_KEY[d.key]
+	}))
+)
 
-const factors = reactive({
-	fac_size: 0,
-	fac_momentum: 0,
-	fac_book_to_price: 0,
-	fac_growth: 0,
-	fac_residual_volatility: 0
-})
+const factors = reactive(Object.fromEntries(F_FACTOR_DEFS.map((d) => [d.key, 0])))
 
 const roomGroupCount = computed(() => {
 	const g = roomInfo.value && roomInfo.value.f_group_count
@@ -533,22 +503,19 @@ async function submitRound() {
 		const payload = {
 			f_room_code: roomCode.value,
 			f_player_uid: u.f_uid,
-			f_round_index: cr,
-			fac_size: factors.fac_size,
-			fac_momentum: factors.fac_momentum,
-			fac_book_to_price: factors.fac_book_to_price,
-			fac_growth: factors.fac_growth,
-			fac_residual_volatility: factors.fac_residual_volatility
+			f_round_index: cr
+		}
+		for (const d of F_FACTOR_DEFS) {
+			payload[d.key] = factors[d.key]
 		}
 		const metric = buildRoundMetricsForSubmit(payload)
 		if (metric) {
 			payload.f_nav = metric.f_nav
 			payload.f_total_return = metric.f_total_return
-			payload.f_size_return = metric.f_size_return
-			payload.f_momentum_return = metric.f_momentum_return
-			payload.f_book_to_price_return = metric.f_book_to_price_return
-			payload.f_growth_return = metric.f_growth_return
-			payload.f_residual_volatility_return = metric.f_residual_volatility_return
+			for (const d of F_FACTOR_DEFS) {
+				const rk = f_navReturnDbKey(d.internal)
+				if (metric[rk] != null) payload[rk] = metric[rk]
+			}
 		}
 		const res = await f_submitGameRoundInCloud(payload)
 		const body = res.result || {}
@@ -596,11 +563,7 @@ function buildRoundMetricsForSubmit(payload) {
 				p.player_id === uid
 					? {
 							f_round_index: round,
-							fac_size: payload.fac_size,
-							fac_momentum: payload.fac_momentum,
-							fac_book_to_price: payload.fac_book_to_price,
-							fac_growth: payload.fac_growth,
-							fac_residual_volatility: payload.fac_residual_volatility
+							...Object.fromEntries(F_FACTOR_DEFS.map((d) => [d.key, payload[d.key]]))
 						}
 					: null
 			]
@@ -616,15 +579,16 @@ function buildRoundMetricsForSubmit(payload) {
 	const rows = sim.attributionRowsByPlayerId.get(uid) || []
 	const hit = rows.find((r) => parseInt(r.round, 10) === round)
 	if (!hit) return null
-	return {
+	const metric = {
 		f_nav: Number(hit.nav),
-		f_total_return: Number(hit.total_return),
-		f_size_return: Number(hit.size_return),
-		f_momentum_return: Number(hit.momentum_return),
-		f_book_to_price_return: Number(hit.book_to_price_return),
-		f_growth_return: Number(hit.growth_return),
-		f_residual_volatility_return: Number(hit.residual_volatility_return)
+		f_total_return: Number(hit.total_return)
 	}
+	for (const d of F_FACTOR_DEFS) {
+		const rk = f_navReturnDbKey(d.internal)
+		const v = hit[`${d.internal}_return`]
+		metric[rk] = Number.isFinite(Number(v)) ? Number(v) : 0
+	}
+	return metric
 }
 
 async function goNextRound() {

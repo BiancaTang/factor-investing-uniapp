@@ -74,7 +74,7 @@
 			</view>
 			<!-- #endif -->
 			<view v-if="factorInputRows.length" class="block">
-				<text class="sub">玩家输入的五个因子值</text>
+				<text class="sub">玩家输入的十个因子值</text>
 				<view class="factor-table">
 					<view class="factor-head">
 						<text class="c-round">轮次</text>
@@ -94,6 +94,7 @@
 
 <script setup>
 import { computed, watch, onMounted, getCurrentInstance } from 'vue'
+import { F_FACTOR_DEFS } from '../../utils/f_gameLogic.js'
 
 /** 小程序端用 px 高度，避免部分机型上 rpx 导致 canvas 实际高度为 0 */
 const canvasStyle = computed(() => {
@@ -132,7 +133,7 @@ const props = defineProps({
 		type: Boolean,
 		default: false
 	},
-	/** all: 三图+表；factorOnly: 仅因子收益率曲线+五因子表 */
+	/** all: 三图+表；factorOnly: 仅因子收益率曲线+十因子表 */
 	displayMode: {
 		type: String,
 		default: 'all'
@@ -235,30 +236,20 @@ const hasData = computed(() => {
 	return false
 })
 
-const factorColumns = [
-	{ key: 'fac_size', label: '规模' },
-	{ key: 'fac_momentum', label: '动量' },
-	{ key: 'fac_book_to_price', label: '账面市值比' },
-	{ key: 'fac_growth', label: '成长' },
-	{ key: 'fac_residual_volatility', label: '残差波动' }
-]
+const factorColumns = F_FACTOR_DEFS.map((d) => ({ key: d.key, label: d.label }))
 
 const factorInputRows = computed(() => {
 	const rows = Array.isArray(props.history) ? props.history : []
 	return [...rows]
 		.filter((r) => Number.isFinite(parseInt(r.f_round_index, 10)))
-		.map((r) => ({
-			f_round_index: parseInt(r.f_round_index, 10),
-			fac_size: Number.isFinite(Number(r.fac_size)) ? Math.round(Number(r.fac_size)) : 0,
-			fac_momentum: Number.isFinite(Number(r.fac_momentum)) ? Math.round(Number(r.fac_momentum)) : 0,
-			fac_book_to_price: Number.isFinite(Number(r.fac_book_to_price))
-				? Math.round(Number(r.fac_book_to_price))
-				: 0,
-			fac_growth: Number.isFinite(Number(r.fac_growth)) ? Math.round(Number(r.fac_growth)) : 0,
-			fac_residual_volatility: Number.isFinite(Number(r.fac_residual_volatility))
-				? Math.round(Number(r.fac_residual_volatility))
-				: 0
-		}))
+		.map((r) => {
+			const out = { f_round_index: parseInt(r.f_round_index, 10) }
+			for (const d of F_FACTOR_DEFS) {
+				const v = Number(r[d.key])
+				out[d.key] = Number.isFinite(v) ? Math.round(v) : 0
+			}
+			return out
+		})
 		.sort((a, b) => a.f_round_index - b.f_round_index)
 })
 
@@ -350,7 +341,8 @@ onMounted(() => {
 
 .c-val {
 	flex: 1;
-	font-size: 22rpx;
+	min-width: 0;
+	font-size: 20rpx;
 	color: #f5e6b3;
 	text-align: center;
 }

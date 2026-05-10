@@ -1,5 +1,10 @@
 'use strict'
 
+const {
+	F_FACTOR_DEFS,
+	f_navReturnDbKey
+} = require('../common/f_gameFactorSpec.js')
+
 const db = uniCloud.database()
 const f_rooms = db.collection('f_room')
 const f_rounds = db.collection('f_game_round')
@@ -26,18 +31,17 @@ exports.main = async (event) => {
 	const f_player_uid = event.f_player_uid != null ? String(event.f_player_uid).trim() : ''
 	const f_round_index = parseInt(event.f_round_index, 10)
 
-	const fac_size = f_intFactor(event.fac_size)
-	const fac_momentum = f_intFactor(event.fac_momentum)
-	const fac_book_to_price = f_intFactor(event.fac_book_to_price)
-	const fac_growth = f_intFactor(event.fac_growth)
-	const fac_residual_volatility = f_intFactor(event.fac_residual_volatility)
+	const facByKey = {}
+	for (const d of F_FACTOR_DEFS) {
+		facByKey[d.key] = f_intFactor(event[d.key])
+	}
+	const facVals = F_FACTOR_DEFS.map((d) => facByKey[d.key])
 	const f_nav = f_numOrNull(event.f_nav)
 	const f_total_return = f_numOrNull(event.f_total_return)
-	const f_size_return = f_numOrNull(event.f_size_return)
-	const f_momentum_return = f_numOrNull(event.f_momentum_return)
-	const f_book_to_price_return = f_numOrNull(event.f_book_to_price_return)
-	const f_growth_return = f_numOrNull(event.f_growth_return)
-	const f_residual_volatility_return = f_numOrNull(event.f_residual_volatility_return)
+	const retByKey = {}
+	for (const d of F_FACTOR_DEFS) {
+		retByKey[f_navReturnDbKey(d.internal)] = f_numOrNull(event[f_navReturnDbKey(d.internal)])
+	}
 
 	if (!/^\d{4}$/.test(f_room_code) || !f_isPlayerUid(f_player_uid)) {
 		return { f_code: 400, f_message: '房间号或玩家标识无效', f_data: null }
@@ -47,8 +51,8 @@ exports.main = async (event) => {
 		return { f_code: 400, f_message: '轮次无效', f_data: null }
 	}
 
-	if ([fac_size, fac_momentum, fac_book_to_price, fac_growth, fac_residual_volatility].some((x) => x === null)) {
-		return { f_code: 400, f_message: '五因子须为 -5～5 的整数', f_data: null }
+	if (facVals.some((x) => x === null)) {
+		return { f_code: 400, f_message: '十因子须为 -5～5 的整数', f_data: null }
 	}
 
 	const mem = await f_members.where({ f_room_code, f_player_uid }).limit(1).get()
@@ -80,7 +84,6 @@ exports.main = async (event) => {
 		}
 	}
 
-	// 轮次倒计时：默认 300 秒；开启时记录开始时间
 	const dur = parseInt(roomRow.f_round_duration_sec, 10)
 	const durationSec = Number.isFinite(dur) && dur > 0 ? dur : 300
 	const startedAt =
@@ -101,20 +104,17 @@ exports.main = async (event) => {
 		f_room_code,
 		f_player_uid,
 		f_round_index,
-		fac_size,
-		fac_momentum,
-		fac_book_to_price,
-		fac_growth,
-		fac_residual_volatility,
 		f_updated_at: f_now
+	}
+	for (const d of F_FACTOR_DEFS) {
+		doc[d.key] = facByKey[d.key]
 	}
 	if (f_nav !== null) doc.f_nav = f_nav
 	if (f_total_return !== null) doc.f_total_return = f_total_return
-	if (f_size_return !== null) doc.f_size_return = f_size_return
-	if (f_momentum_return !== null) doc.f_momentum_return = f_momentum_return
-	if (f_book_to_price_return !== null) doc.f_book_to_price_return = f_book_to_price_return
-	if (f_growth_return !== null) doc.f_growth_return = f_growth_return
-	if (f_residual_volatility_return !== null) doc.f_residual_volatility_return = f_residual_volatility_return
+	for (const d of F_FACTOR_DEFS) {
+		const rk = f_navReturnDbKey(d.internal)
+		if (retByKey[rk] !== null) doc[rk] = retByKey[rk]
+	}
 
 	const exist = await f_rounds
 		.where({ f_room_code, f_player_uid, f_round_index })

@@ -9,26 +9,16 @@
  * 图表仍由 ECharts 消费本文件产出的数据结构。
  */
 
+import { F_FACTOR_DEFS } from './f_gameFactorSpec.js'
+
 /** 管理员作为庄家时的图例名 */
 export const F_BANKER_CHART_LABEL = '庄家'
 
-const FACTORS = ['size', 'momentum', 'book_to_price', 'growth', 'residual_volatility']
-
-const FAC_TO_INTERNAL = {
-	fac_size: 'size',
-	fac_momentum: 'momentum',
-	fac_book_to_price: 'book_to_price',
-	fac_growth: 'growth',
-	fac_residual_volatility: 'residual_volatility'
-}
-
-const FACTOR_UNIT_RETURNS = {
-	size: 0.05,
-	momentum: 0.02,
-	book_to_price: 0.01,
-	growth: 0.03,
-	residual_volatility: 0.01
-}
+const FACTORS = F_FACTOR_DEFS.map((d) => d.internal)
+const FAC_TO_INTERNAL = Object.fromEntries(F_FACTOR_DEFS.map((d) => [d.key, d.internal]))
+const FACTOR_UNIT_RETURNS = Object.fromEntries(
+	F_FACTOR_DEFS.map((d) => [d.internal, d.unitReturn])
+)
 
 function f_clampInt(v) {
 	const n = Math.round(Number(v))

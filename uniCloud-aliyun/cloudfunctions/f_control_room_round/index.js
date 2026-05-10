@@ -1,5 +1,7 @@
 'use strict'
 
+const { F_FACTOR_DEFS } = require('../common/f_gameFactorSpec.js')
+
 const db = uniCloud.database()
 const f_rooms = db.collection('f_room')
 const f_members = db.collection('f_room_member')
@@ -68,6 +70,7 @@ exports.main = async (event) => {
 				})
 				.get()
 			const submitted = new Set((existing.data || []).map((r) => r.f_player_uid).filter(Boolean))
+			const blankFac = Object.fromEntries(F_FACTOR_DEFS.map((d) => [d.key, 0]))
 			const toInsert = []
 			for (const f_player_uid of uids) {
 				if (submitted.has(f_player_uid)) continue
@@ -75,11 +78,7 @@ exports.main = async (event) => {
 					f_room_code,
 					f_player_uid,
 					f_round_index: curOpen,
-					fac_size: 0,
-					fac_momentum: 0,
-					fac_book_to_price: 0,
-					fac_growth: 0,
-					fac_residual_volatility: 0,
+					...blankFac,
 					f_updated_at: f_now,
 					f_created_at: f_now
 				})

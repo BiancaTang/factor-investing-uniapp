@@ -1,5 +1,7 @@
 'use strict'
 
+const { f_pickFacFromRow, f_pickReturnFromRow } = require('../common/f_gameFactorSpec.js')
+
 /**
  * 房间成员查看全员进度与各玩家 f_game_round 历史（与 f_get_room_player_status 的 f_data 结构一致），
  * 用于玩家端绘制与管理员相同的「多人净值对比」曲线。
@@ -63,18 +65,10 @@ exports.main = async (event) => {
 		if (!listByUid[p]) listByUid[p] = []
 		listByUid[p].push({
 			f_round_index: ri,
-			fac_size: g.fac_size,
-			fac_momentum: g.fac_momentum,
-			fac_book_to_price: g.fac_book_to_price,
-			fac_growth: g.fac_growth,
-			fac_residual_volatility: g.fac_residual_volatility,
+			...f_pickFacFromRow(g),
 			f_nav: g.f_nav,
 			f_total_return: g.f_total_return,
-			f_size_return: g.f_size_return,
-			f_momentum_return: g.f_momentum_return,
-			f_book_to_price_return: g.f_book_to_price_return,
-			f_growth_return: g.f_growth_return,
-			f_residual_volatility_return: g.f_residual_volatility_return
+			...f_pickReturnFromRow(g)
 		})
 	}
 	for (const p of Object.keys(listByUid)) {

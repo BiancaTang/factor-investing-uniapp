@@ -6,15 +6,22 @@
  * 故统一使用 plain + 纵向/紧凑横向图例，避免分页控件。
  */
 
-const FACTOR_KEYS = ['size', 'momentum', 'book_to_price', 'growth', 'residual_volatility']
 import { F_FACTOR_COLORS, F_FACTOR_COLOR_LIST } from './f_factorPalette.js'
+import { F_FACTOR_INTERNAL_KEYS } from './f_gameFactorSpec.js'
+
+const FACTOR_KEYS = F_FACTOR_INTERNAL_KEYS
 
 /** 缩短图例文案，避免一行挤不下又去依赖 scroll */
 const FACTOR_LEGEND_NAME = {
 	size: 'size',
+	beta: 'beta',
 	momentum: 'mom',
+	non_linear_size: 'nls',
 	book_to_price: 'B/P',
+	earnings_yield: 'EY',
 	growth: 'grow',
+	leverage: 'lev',
+	liquidity: 'liq',
 	residual_volatility: 'res_vol'
 }
 
@@ -132,12 +139,12 @@ export function buildFactorCumOption(chartData) {
 			orient: 'horizontal',
 			left: 'center',
 			bottom: 2,
-			itemGap: 10,
+			itemGap: 8,
 			itemWidth: 10,
 			itemHeight: 8,
-			textStyle: { fontSize: 9 }
+			textStyle: { fontSize: 8 }
 		},
-		grid: { left: 44, right: 12, top: 28, bottom: 52 },
+		grid: { left: 44, right: 12, top: 28, bottom: 56 },
 		xAxis: { type: 'value', name: '回合', scale: true },
 		yAxis: { type: 'value', name: '累积' },
 		series
@@ -182,12 +189,12 @@ export function buildAttributionOption(chartData) {
 			orient: 'horizontal',
 			left: 'center',
 			bottom: 2,
-			itemGap: 10,
+			itemGap: 8,
 			itemWidth: 10,
 			itemHeight: 8,
-			textStyle: { fontSize: 9 }
+			textStyle: { fontSize: 8 }
 		},
-		grid: { left: 44, right: 12, top: 40, bottom: 52 },
+		grid: { left: 44, right: 12, top: 40, bottom: 56 },
 		xAxis: { type: 'value', name: '回合', scale: true },
 		yAxis: { type: 'value', name: '收益率' },
 		series

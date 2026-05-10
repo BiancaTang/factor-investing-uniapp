@@ -38,28 +38,23 @@ async function f_loadPdfFont(pdfDoc) {
 	return { font: f, safeText: f_safeWinAnsiText }
 }
 
-const FACTORS = ['size', 'momentum', 'book_to_price', 'growth', 'residual_volatility']
-const FAC_TO_INTERNAL = {
-	fac_size: 'size',
-	fac_momentum: 'momentum',
-	fac_book_to_price: 'book_to_price',
-	fac_growth: 'growth',
-	fac_residual_volatility: 'residual_volatility'
-}
-const FACTOR_UNIT_RETURNS = {
-	size: 0.05,
-	momentum: 0.02,
-	book_to_price: 0.01,
-	growth: 0.03,
-	residual_volatility: 0.01
-}
+const {
+	FACTORS,
+	FAC_TO_INTERNAL,
+	FACTOR_UNIT_RETURNS
+} = require('../common/f_gameFactorSpec.js')
 
 const LINE_COLORS = [
 	rgb(0.33, 0.44, 0.78),
 	rgb(0.57, 0.8, 0.45),
 	rgb(0.99, 0.76, 0.35),
 	rgb(0.93, 0.4, 0.4),
-	rgb(0.45, 0.75, 0.87)
+	rgb(0.45, 0.75, 0.87),
+	rgb(0.75, 0.55, 0.9),
+	rgb(0.4, 0.82, 0.65),
+	rgb(0.85, 0.5, 0.25),
+	rgb(0.55, 0.6, 0.72),
+	rgb(0.9, 0.35, 0.55)
 ]
 
 function f_clampInt(v) {

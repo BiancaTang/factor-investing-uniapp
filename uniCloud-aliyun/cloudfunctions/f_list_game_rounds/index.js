@@ -1,5 +1,7 @@
 'use strict'
 
+const { F_FACTOR_DEFS, f_navReturnDbKey } = require('../common/f_gameFactorSpec.js')
+
 const db = uniCloud.database()
 const f_rounds = db.collection('f_game_round')
 
@@ -18,21 +20,18 @@ exports.main = async (event) => {
 	const r = await f_rounds.where({ f_room_code, f_player_uid }).get()
 	const rows = (r.data || []).sort((a, b) => a.f_round_index - b.f_round_index)
 
-	const list = rows.map((row) => ({
-		f_round_index: row.f_round_index,
-		fac_size: row.fac_size,
-		fac_momentum: row.fac_momentum,
-		fac_book_to_price: row.fac_book_to_price,
-		fac_growth: row.fac_growth,
-		fac_residual_volatility: row.fac_residual_volatility,
-		f_nav: row.f_nav,
-		f_total_return: row.f_total_return,
-		f_size_return: row.f_size_return,
-		f_momentum_return: row.f_momentum_return,
-		f_book_to_price_return: row.f_book_to_price_return,
-		f_growth_return: row.f_growth_return,
-		f_residual_volatility_return: row.f_residual_volatility_return
-	}))
+	const list = rows.map((row) => {
+		const o = {
+			f_round_index: row.f_round_index,
+			f_nav: row.f_nav,
+			f_total_return: row.f_total_return
+		}
+		for (const d of F_FACTOR_DEFS) {
+			o[d.key] = row[d.key]
+			o[f_navReturnDbKey(d.internal)] = row[f_navReturnDbKey(d.internal)]
+		}
+		return o
+	})
 
 	return { f_code: 0, f_message: 'ok', f_data: { f_list: list } }
 }
