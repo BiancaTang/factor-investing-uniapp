@@ -44,6 +44,13 @@
 			}
 		},
 		{
+			"path": "pages/f_display/index",
+			"style": {
+				"navigationBarTitleText": "大屏展示",
+				"navigationStyle": "custom"
+			}
+		},
+		{
 			"path": "pages/f_admin/data_purge",
 			"style": {
 				"navigationBarTitleText": "清空数据库"
