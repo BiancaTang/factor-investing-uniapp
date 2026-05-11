@@ -42,7 +42,7 @@ const {
 	FACTORS,
 	FAC_TO_INTERNAL,
 	FACTOR_UNIT_RETURNS
-} = require('../common/f_gameFactorSpec.js')
+} = require('./f_gameFactorSpec.js')
 
 const LINE_COLORS = [
 	rgb(0.33, 0.44, 0.78),

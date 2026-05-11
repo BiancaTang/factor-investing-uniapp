@@ -1,6 +1,6 @@
 'use strict'
 
-const { F_FACTOR_DEFS, f_navReturnDbKey } = require('../common/f_gameFactorSpec.js')
+const { F_FACTOR_DEFS, f_navReturnDbKey } = require('./f_gameFactorSpec.js')
 
 const db = uniCloud.database()
 const f_rounds = db.collection('f_game_round')

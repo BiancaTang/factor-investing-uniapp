@@ -3,7 +3,7 @@
 const {
 	F_FACTOR_DEFS,
 	f_navReturnDbKey
-} = require('../common/f_gameFactorSpec.js')
+} = require('./f_gameFactorSpec.js')
 
 const db = uniCloud.database()
 const f_rooms = db.collection('f_room')

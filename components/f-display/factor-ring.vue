@@ -7,12 +7,12 @@
 				<text class="center-round">R{{ currentRound }}</text>
 			</view>
 
-			<!-- 10因子扇区 -->
+			<!-- 10因子扇区：按布局圆上的坐标摆放，避免全部堆在圆心 -->
 			<view
-				v-for="(item, index) in layout"
+				v-for="item in layout"
 				:key="item.key"
 				class="sector"
-				:style="getSectorStyle(item, index)"
+				:style="[getSectorLayoutStyle(item), getSectorVisualStyle(item)]"
 			>
 				<view class="sector-content">
 					<text class="sector-label">{{ item.label }}</text>
@@ -22,10 +22,9 @@
 				</view>
 			</view>
 
-			<!-- 连接线（从中心到每个因子） -->
 			<view
 				v-for="item in layout"
-				:key="'line-'+item.key"
+				:key="'line-' + item.key"
 				class="connector"
 				:style="getConnectorStyle(item)"
 			/>
@@ -46,13 +45,16 @@ const props = defineProps({
 
 const colors = F_FACTOR_COLORS
 
+/** 因子块相对圆心的半径（与 computeFactorRingLayout 使用同一半径） */
+const ringRadius = computed(() => props.size * 0.38)
+
 const containerStyle = computed(() => ({
 	width: props.size + 'px',
 	height: props.size + 'px'
 }))
 
 const layout = computed(() =>
-	computeFactorRingLayout(props.size * 0.35, props.size / 2, props.size / 2)
+	computeFactorRingLayout(ringRadius.value, props.size / 2, props.size / 2)
 )
 
 function formatExposure(key) {
@@ -62,35 +64,44 @@ function formatExposure(key) {
 	return n > 0 ? `+${n.toFixed(1)}` : n.toFixed(1)
 }
 
-function getSectorStyle(item, index) {
+/** 扇区中心落在布局计算出的圆上 */
+function getSectorLayoutStyle(item) {
+	return {
+		left: item.x + 'px',
+		top: item.y + 'px',
+		transform: 'translate(-50%, -50%)'
+	}
+}
+
+/** 随暴露强度微调描边与背景，不再用极小 translate 挤在中间 */
+function getSectorVisualStyle(item) {
 	const val = Number(props.exposure[item.key] || 0)
 	const intensity = Math.min(Math.abs(val) / 5, 1)
 	const baseColor = colors[item.internal] || '#555'
-
-	const offset = 25 + intensity * 30
-	const rad = item.angle
-	const x = Math.cos(rad) * offset
-	const y = Math.sin(rad) * offset
+	const alphaHex = Math.round(intensity * 34 + 8)
+		.toString(16)
+		.padStart(2, '0')
 
 	return {
-		transform: `translate(${x}px, ${y}px)`,
-		borderColor: `${baseColor}30`,
-		backgroundColor: `${baseColor}${Math.round(intensity * 20).toString(16).padStart(2, '0')}`,
-		boxShadow: intensity > 0.3 ? `0 0 ${intensity * 12}px ${baseColor}20` : 'none'
+		borderColor: `${baseColor}55`,
+		backgroundColor: `${baseColor}${alphaHex}`,
+		boxShadow: intensity > 0.25 ? `0 0 ${8 + intensity * 14}px ${baseColor}28` : 'none'
 	}
 }
 
 function getConnectorStyle(item) {
-	const length = 50
-	const rad = item.angle
+	const cx = props.size / 2
+	const cy = props.size / 2
+	const len = Math.max(24, ringRadius.value - 36)
+	const deg = (item.angle * 180) / Math.PI
 	return {
-		width: length + 'px',
-		left: (props.size / 2) + 'px',
-		top: (props.size / 2) + 'px',
-		transform: `rotate(${(rad * 180 / Math.PI)}deg)`,
+		width: len + 'px',
+		left: cx + 'px',
+		top: cy + 'px',
+		transform: `translate(0, -50%) rotate(${deg}deg)`,
 		transformOrigin: 'left center',
 		backgroundColor: colors[item.internal] || '#222',
-		opacity: 0.2
+		opacity: 0.25
 	}
 }
 </script>
@@ -100,13 +111,16 @@ function getConnectorStyle(item) {
 	display: flex;
 	justify-content: center;
 	align-items: center;
+	padding: 8px;
+	box-sizing: border-box;
 }
 
 .ring-container {
 	position: relative;
 	border-radius: 50%;
-	border: 1px solid rgba(255,255,255,0.04);
-	background: radial-gradient(circle at center, rgba(201,168,76,0.02) 0%, transparent 70%);
+	border: 1px solid rgba(255, 255, 255, 0.06);
+	background: radial-gradient(circle at center, rgba(201, 168, 76, 0.04) 0%, transparent 72%);
+	box-sizing: border-box;
 }
 
 .ring-center {
@@ -116,62 +130,66 @@ function getConnectorStyle(item) {
 	transform: translate(-50%, -50%);
 	text-align: center;
 	z-index: 10;
+	pointer-events: none;
 }
 
 .center-label {
-	font-size: 11px;
-	color: #444;
+	font-size: 12px;
+	color: #6a6358;
 	display: block;
-	letter-spacing: 2px;
+	letter-spacing: 3px;
 }
 
 .center-round {
-	font-size: 20px;
+	font-size: 26px;
 	font-weight: 300;
 	color: #c9a84c;
 	display: block;
-	margin-top: 4px;
-	letter-spacing: 1px;
+	margin-top: 6px;
+	letter-spacing: 2px;
 }
 
 .sector {
 	position: absolute;
-	left: 50%;
-	top: 50%;
-	width: 64px;
-	height: 64px;
-	margin-left: -32px;
-	margin-top: -32px;
-	border-radius: 1px;
+	min-width: 72px;
+	max-width: 88px;
+	padding: 8px 6px;
+	box-sizing: border-box;
+	border-radius: 4px;
 	border: 1px solid;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	transition: all 0.6s ease;
+	transition: border-color 0.4s ease, background-color 0.4s ease, box-shadow 0.4s ease;
 	z-index: 5;
 }
 
 .sector-content {
 	text-align: center;
+	width: 100%;
 }
 
 .sector-label {
 	font-size: 10px;
-	color: #555;
+	color: #8a8275;
 	display: block;
-	letter-spacing: 1px;
+	letter-spacing: 0.5px;
+	line-height: 1.25;
+	word-break: keep-all;
 }
 
 .sector-value {
-	font-size: 12px;
-	font-weight: 400;
+	font-size: 13px;
+	font-weight: 500;
 	display: block;
-	margin-top: 2px;
+	margin-top: 4px;
+	letter-spacing: 0.5px;
 }
 
 .connector {
 	position: absolute;
 	height: 1px;
 	z-index: 1;
+	pointer-events: none;
 }
 </style>

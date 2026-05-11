@@ -1,6 +1,6 @@
 'use strict'
 
-const { F_FACTOR_DEFS } = require('../common/f_gameFactorSpec.js')
+const { F_FACTOR_DEFS } = require('./f_gameFactorSpec.js')
 
 const db = uniCloud.database()
 const f_rooms = db.collection('f_room')

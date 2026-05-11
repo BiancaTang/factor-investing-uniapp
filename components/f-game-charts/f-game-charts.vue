@@ -7,7 +7,7 @@
 				<view class="block">
 					<text class="sub">{{ navChartTitle }}</text>
 					<view class="chart-box">
-						<view :id="idNav" class="chart-inner"></view>
+						<view :id="idNav" class="chart-inner" :style="chartInnerStyle"></view>
 					</view>
 				</view>
 			</template>
@@ -15,7 +15,7 @@
 				<view class="block">
 					<text class="sub">因子收益率曲线（累积）</text>
 					<view class="chart-box">
-						<view :id="idFc" class="chart-inner"></view>
+						<view :id="idFc" class="chart-inner" :style="chartInnerStyle"></view>
 					</view>
 				</view>
 			</template>
@@ -23,7 +23,7 @@
 				<view class="block">
 					<text class="sub">收益归因</text>
 					<view class="chart-box">
-						<view :id="idAtt" class="chart-inner"></view>
+						<view :id="idAtt" class="chart-inner" :style="chartInnerStyle"></view>
 					</view>
 				</view>
 			</template>
@@ -93,17 +93,8 @@
 </template>
 
 <script setup>
-import { computed, watch, onMounted, getCurrentInstance } from 'vue'
+import { computed, watch, onMounted, getCurrentInstance, nextTick } from 'vue'
 import { F_FACTOR_DEFS } from '../../utils/f_gameLogic.js'
-
-/** 小程序端用 px 高度，避免部分机型上 rpx 导致 canvas 实际高度为 0 */
-const canvasStyle = computed(() => {
-	let h = 240
-	try {
-		h = typeof uni.upx2px === 'function' ? uni.upx2px(480) : 240
-	} catch (e) {}
-	return { width: '100%', height: h + 'px' }
-})
 import { f_getStoredUser } from '../../utils/f_userStorage.js'
 import { f_buildChartDataFromHistory } from '../../utils/f_factorEngine.js'
 import { useFGameCharts } from '../../composables/useFGameCharts.js'
@@ -168,7 +159,29 @@ const props = defineProps({
 	roomAdminUid: {
 		type: String,
 		default: ''
+	},
+	/** >0 时固定图表区域高度（px），大屏等场景便于读数；0 表示用默认 rpx 高度 */
+	chartInnerHeightPx: {
+		type: Number,
+		default: 0
 	}
+})
+
+const chartInnerStyle = computed(() => {
+	const n = parseInt(props.chartInnerHeightPx, 10)
+	if (Number.isFinite(n) && n > 0) return { height: n + 'px' }
+	return {}
+})
+
+/** 小程序端用 px 高度，避免部分机型上 rpx 导致 canvas 实际高度为 0 */
+const canvasStyle = computed(() => {
+	let h = 240
+	try {
+		h = typeof uni.upx2px === 'function' ? uni.upx2px(480) : 240
+	} catch (e) {}
+	const n = parseInt(props.chartInnerHeightPx, 10)
+	if (Number.isFinite(n) && n > 0) h = n
+	return { width: '100%', height: h + 'px' }
 })
 
 const effectiveMode = computed(() => {
@@ -268,6 +281,16 @@ watch(
 		if (hasData.value) renderCharts()
 	},
 	{ deep: true }
+)
+
+watch(
+	() => props.chartInnerHeightPx,
+	() => {
+		if (!hasData.value) return
+		nextTick(() => {
+			setTimeout(() => renderCharts(), 80)
+		})
+	}
 )
 
 onMounted(() => {

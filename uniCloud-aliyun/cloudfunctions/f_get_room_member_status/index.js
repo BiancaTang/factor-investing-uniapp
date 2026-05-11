@@ -1,6 +1,6 @@
 'use strict'
 
-const { f_pickFacFromRow, f_pickReturnFromRow } = require('../common/f_gameFactorSpec.js')
+const { f_pickFacFromRow, f_pickReturnFromRow } = require('./f_gameFactorSpec.js')
 
 /**
  * 房间成员查看全员进度与各玩家 f_game_round 历史（与 f_get_room_player_status 的 f_data 结构一致），

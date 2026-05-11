@@ -1,7 +1,8 @@
 'use strict'
 
 /**
- * 与 utils/f_gameFactorSpec.js 保持键名、顺序、unitReturn 一致（云函数无法直接 import 前端目录）。
+ * 与 utils/f_gameFactorSpec.js 保持键名、顺序、unitReturn 一致。
+ * 须与本云函数 index.js 同目录：阿里云/微信上传仅打包单函数目录，不能使用 cloudfunctions/common。
  */
 
 const F_FACTOR_DEFS = [

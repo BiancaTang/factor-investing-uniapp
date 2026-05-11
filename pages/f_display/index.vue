@@ -5,56 +5,116 @@
 
 		<!-- 主内容区 -->
 		<view class="display-content">
-			<!-- Act 0: 候场大厅 -->
-			<LobbyScreen
-				v-if="state.currentPhase === 'lobby'"
-				:room-name="state.roomName"
-				:players="state.players"
-				:max-players="state.maxPlayers"
-			/>
+			<view class="display-stage">
+				<!-- Act 0: 候场大厅 -->
+				<LobbyScreen
+					v-if="state.currentPhase === 'lobby'"
+					:room-name="state.roomName"
+					:players="state.players"
+					:max-players="state.maxPlayers"
+				/>
 
-			<!-- Act 1: 决策倒计时 -->
-			<DecisionScreen
-				v-else-if="state.currentPhase === 'decision'"
-				:round-index="state.currentRoundIndex"
-				:time-left="state.timeLeft"
-				:players="state.players"
-				:group-exposure="state.groupExposure"
-				:submitted-count="state.submittedCount"
-				:total-players="state.totalPlayers"
-			/>
+				<!-- Act 1: 决策倒计时 -->
+				<DecisionScreen
+					v-else-if="state.currentPhase === 'decision'"
+					:round-index="state.currentRoundIndex"
+					:time-left="state.timeLeft"
+					:players="state.players"
+					:group-exposure="state.groupExposure"
+					:submitted-count="state.submittedCount"
+					:total-players="state.totalPlayers"
+				/>
 
-			<!-- Act 2: 事件降临 -->
-			<EventScreen
-				v-else-if="state.currentPhase === 'event'"
-				:event="state.currentEvent"
-			/>
+				<!-- Act 2: 事件降临 -->
+				<EventScreen
+					v-else-if="state.currentPhase === 'event'"
+					:event="state.currentEvent"
+				/>
 
-			<!-- Act 3: 结算演出 -->
-			<SettlementScreen
-				v-else-if="state.currentPhase === 'settlement'"
-				:round-index="state.currentRoundIndex"
-				:players="state.players"
-				:skill-log="state.skillLog"
-			/>
+				<!-- Act 3: 结算演出 -->
+				<SettlementScreen
+					v-else-if="state.currentPhase === 'settlement'"
+					:round-index="state.currentRoundIndex"
+					:players="state.players"
+					:skill-log="state.skillLog"
+				/>
 
-			<!-- Act 4: 回合复盘 -->
-			<ReviewScreen
-				v-else-if="state.currentPhase === 'review'"
-				:round-index="state.currentRoundIndex"
-				:group-exposure="state.groupExposure"
-				:event="state.currentEvent"
-				:skill-log="state.skillLog"
-				:round-history="state.roundHistory"
-				:players="state.players"
-			/>
+				<!-- Act 4: 回合复盘 -->
+				<ReviewScreen
+					v-else-if="state.currentPhase === 'review'"
+					:round-index="state.currentRoundIndex"
+					:group-exposure="state.groupExposure"
+					:event="state.currentEvent"
+					:skill-log="state.skillLog"
+					:round-history="state.roundHistory"
+					:players="state.players"
+				/>
 
-			<!-- Act 5: 终局盛典 -->
-			<FinaleScreen
-				v-else-if="state.currentPhase === 'finale'"
-				:players="state.players"
-				:round-history="state.roundHistory"
-			/>
+				<!-- Act 5: 终局盛典 -->
+				<FinaleScreen
+					v-else-if="state.currentPhase === 'finale'"
+					:players="state.players"
+					:round-history="state.roundHistory"
+				/>
+			</view>
+
+			<!-- 仅在本轮结束后（候场/终局）显示入口；决策中不占屏 -->
+			<view v-if="showChartDock" class="display-chart-dock">
+				<view class="dock-row">
+					<text class="dock-label">回合复盘</text>
+					<view class="dock-actions">
+						<button type="button" class="dock-btn" @click="openChartLightbox('nav')">
+							净值对比
+						</button>
+						<button type="button" class="dock-btn" @click="openChartLightbox('factor')">
+							因子累积收益
+						</button>
+					</view>
+				</view>
+				<text class="dock-hint">管理员已结束本轮后可用 · 点击展开大图</text>
+			</view>
+		</view>
+
+		<!-- 全屏查看单张图，便于投屏分析 -->
+		<view
+			v-if="lightboxChart"
+			class="chart-lightbox"
+			@click="closeChartLightbox"
+		>
+			<view class="chart-lightbox-panel" @click.stop>
+				<view class="chart-lightbox-head">
+					<text class="chart-lightbox-title">{{ lightboxTitle }}</text>
+					<button type="button" class="chart-lightbox-close" @click="closeChartLightbox">关闭</button>
+				</view>
+				<view class="chart-lightbox-body">
+					<FGameCharts
+						v-if="lightboxChart === 'nav'"
+						key="lb-nav"
+						:history="[]"
+						:nav-chart-data="compareNavChartData"
+						nav-chart-title="玩家净值对比（已提交玩家）"
+						only-nav
+						:if-banker="!!state.ifBanker"
+						:f-group-count="displayGroupCount"
+						:room-admin-uid="state.roomAdminUid || ''"
+						:simulation-players="simulationPlayersForCharts"
+						:attribution-player-id="displayAttributionPlayerId"
+						:chart-inner-height-px="lightboxChartInnerPx"
+					/>
+					<FGameCharts
+						v-else-if="lightboxChart === 'factor'"
+						key="lb-fc"
+						:history="[]"
+						display-mode="factorOnly"
+						:if-banker="!!state.ifBanker"
+						:f-group-count="displayGroupCount"
+						:room-admin-uid="state.roomAdminUid || ''"
+						:simulation-players="simulationPlayersForCharts"
+						:attribution-player-id="displayAttributionPlayerId"
+						:chart-inner-height-px="lightboxChartInnerPx"
+					/>
+				</view>
+			</view>
 		</view>
 
 		<!-- 底部状态栏 -->
@@ -67,8 +127,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import { ParticleSystem } from '@/utils/f_displayEngine.js'
+import { f_buildJointNavCompareChartData } from '@/utils/f_factorEngine.js'
+import FGameCharts from '@/components/f-game-charts/f-game-charts.vue'
 
 import LobbyScreen from './lobby.vue'
 import DecisionScreen from './decision.vue'
@@ -77,13 +140,23 @@ import SettlementScreen from './settlement.vue'
 import ReviewScreen from './review.vue'
 import FinaleScreen from './finale.vue'
 
-const props = defineProps({
-	roomId: { type: String, required: true }
+/** 4 位房间号，来自路由参数 roomId / code（与 f_room.f_room_code 一致） */
+const roomCode = ref('')
+
+onLoad((options) => {
+	const q = options && (options.roomId || options.code || options.room)
+	roomCode.value = String(q || '')
+		.replace(/\D/g, '')
+		.slice(0, 4)
+	if (!/^\d{4}$/.test(roomCode.value)) {
+		uni.showToast({ title: '请使用 ?roomId=四位房间号 打开大屏', icon: 'none', duration: 2800 })
+	}
+	tryStartPolling()
 })
 
 // 大屏状态
 const state = ref({
-	roomId: props.roomId,
+	roomId: '',
 	roomName: '',
 	maxPlayers: 20,
 	currentPhase: 'lobby',
@@ -97,7 +170,84 @@ const state = ref({
 	currentEvent: null,
 	skillLog: [],
 	roundHistory: [],
+	ifBanker: false,
+	fGroupCount: 20,
+	roomAdminUid: '',
+	simulationPlayers: [],
+	chartsReviewUnlocked: false,
 	timestamp: 0
+})
+
+/** 弹层内图表高度（px），随窗口变化 */
+const lightboxChartInnerPx = ref(420)
+
+const lightboxChart = ref(null)
+
+function openChartLightbox(kind) {
+	lightboxChart.value = kind === 'factor' ? 'factor' : 'nav'
+}
+
+function closeChartLightbox() {
+	lightboxChart.value = null
+}
+
+const lightboxTitle = computed(() =>
+	lightboxChart.value === 'factor' ? '因子收益率曲线（累积）' : '玩家净值对比（已提交玩家）'
+)
+
+const simulationPlayersForCharts = computed(() => {
+	const raw = state.value.simulationPlayers
+	if (!Array.isArray(raw)) return []
+	return raw.map((p) => ({
+		player_id: p.player_id != null ? String(p.player_id) : '',
+		label: p.label != null ? String(p.label) : '',
+		history: Array.isArray(p.history) ? p.history : []
+	}))
+})
+
+const playersWithChartHistory = computed(() =>
+	simulationPlayersForCharts.value.filter((p) => p.history && p.history.length > 0)
+)
+
+/** 管理员已结束本轮（openRound=0）且库中有历史轮次；决策中不展示 */
+const showChartDock = computed(
+	() => !!state.value.chartsReviewUnlocked && playersWithChartHistory.value.length > 0
+)
+
+watch(
+	() => state.value.chartsReviewUnlocked,
+	(v) => {
+		if (!v) closeChartLightbox()
+	}
+)
+
+const displayGroupCount = computed(() => {
+	const g = state.value.fGroupCount
+	const n = typeof g === 'number' ? g : parseInt(g, 10)
+	return Number.isFinite(n) && n >= 1 ? n : 20
+})
+
+const displayAttributionPlayerId = computed(() => {
+	const list = playersWithChartHistory.value
+	if (!list.length) return ''
+	return String(list[0].player_id || '')
+})
+
+const compareNavChartData = computed(() => {
+	const list = playersWithChartHistory.value
+	if (list.length < 2) return null
+	return f_buildJointNavCompareChartData(
+		list.map((p) => ({
+			player_id: p.player_id,
+			history: p.history,
+			label: p.label || p.player_id
+		})),
+		{
+			if_banker: !!state.value.ifBanker,
+			f_group_count: displayGroupCount.value,
+			f_admin_uid: state.value.roomAdminUid || ''
+		}
+	)
 })
 
 const phaseLabel = computed(() => ({
@@ -130,11 +280,14 @@ const POLL_INTERVAL = {
 // 数据获取
 async function fetchDisplayState() {
 	if (isAnimating) return // 动画期间跳过
+	if (!/^\d{4}$/.test(roomCode.value)) {
+		return
+	}
 
 	try {
 		const res = await uniCloud.callFunction({
 			name: 'f_sync_display_state',
-			data: { f_room_id: props.roomId }
+			data: { f_room_code: roomCode.value }
 		})
 
 		if (res.result?.code !== 0) {
@@ -235,6 +388,14 @@ function startFinaleParticles() {
 }
 
 // 启动轮询
+let pollStarted = false
+function tryStartPolling() {
+	if (pollStarted) return
+	if (!/^\d{4}$/.test(roomCode.value)) return
+	pollStarted = true
+	startPolling()
+}
+
 function startPolling() {
 	fetchDisplayState() // 立即执行一次
 	const interval = () => POLL_INTERVAL[state.value.currentPhase] || 3000
@@ -253,6 +414,8 @@ function stopPolling() {
 	}
 }
 
+let chartResizeHandler = null
+
 // 初始化
 onMounted(() => {
 	// 初始化粒子系统
@@ -261,17 +424,28 @@ onMounted(() => {
 		particleSystem.value.start()
 	}
 
-	// 全屏适配
-	canvasStyle.value = {
-		width: window.innerWidth + 'px',
-		height: window.innerHeight + 'px'
+	// 全屏适配（H5）
+	if (typeof window !== 'undefined') {
+		canvasStyle.value = {
+			width: window.innerWidth + 'px',
+			height: window.innerHeight + 'px'
+		}
+		chartResizeHandler = () => {
+			const h = window.innerHeight
+			lightboxChartInnerPx.value = Math.min(720, Math.max(360, Math.floor(h * 0.58)))
+		}
+		chartResizeHandler()
+		window.addEventListener('resize', chartResizeHandler)
 	}
 
-	// 启动数据轮询
-	startPolling()
+	tryStartPolling()
 })
 
 onUnmounted(() => {
+	if (typeof window !== 'undefined' && chartResizeHandler) {
+		window.removeEventListener('resize', chartResizeHandler)
+		chartResizeHandler = null
+	}
 	stopPolling()
 	particleSystem.value?.stop()
 })
@@ -298,10 +472,150 @@ onUnmounted(() => {
 }
 
 .display-content {
+	display: flex;
+	flex-direction: column;
 	width: 100%;
 	height: calc(100% - 48px);
 	position: relative;
 	z-index: 10;
+	overflow-x: hidden;
+	overflow-y: auto;
+}
+
+.display-stage {
+	flex: 1;
+	min-height: 0;
+	position: relative;
+}
+
+.display-chart-dock {
+	flex-shrink: 0;
+	padding: 8px 20px 10px;
+	border-top: 1px solid rgba(201, 168, 76, 0.22);
+	background: rgba(8, 7, 4, 0.88);
+}
+
+.dock-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16px;
+	flex-wrap: wrap;
+}
+
+.dock-label {
+	font-size: 12px;
+	letter-spacing: 0.28em;
+	color: rgba(201, 168, 76, 0.75);
+	white-space: nowrap;
+}
+
+.dock-actions {
+	display: flex;
+	gap: 10px;
+	flex-wrap: wrap;
+}
+
+.dock-btn {
+	margin: 0;
+	padding: 8px 18px;
+	font-size: 13px;
+	color: #f0e6c8;
+	background: rgba(32, 28, 18, 0.95);
+	border: 1px solid rgba(201, 168, 76, 0.42);
+	border-radius: 999px;
+	cursor: pointer;
+	letter-spacing: 0.06em;
+	transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.dock-btn:hover {
+	background: rgba(48, 42, 26, 0.98);
+	border-color: rgba(212, 175, 55, 0.65);
+}
+
+.dock-hint {
+	display: block;
+	margin-top: 6px;
+	font-size: 11px;
+	color: rgba(160, 150, 130, 0.75);
+	letter-spacing: 0.04em;
+}
+
+.chart-lightbox {
+	position: fixed;
+	inset: 0;
+	z-index: 220;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 24px 20px 56px;
+	background: rgba(0, 0, 0, 0.78);
+	backdrop-filter: blur(6px);
+}
+
+.chart-lightbox-panel {
+	width: min(1120px, 96vw);
+	max-height: calc(100vh - 80px);
+	display: flex;
+	flex-direction: column;
+	border-radius: 14px;
+	border: 1px solid rgba(201, 168, 76, 0.35);
+	background: linear-gradient(165deg, #12100a 0%, #070605 100%);
+	box-shadow: 0 24px 80px rgba(0, 0, 0, 0.65);
+	overflow: hidden;
+}
+
+.chart-lightbox-head {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	padding: 12px 16px;
+	border-bottom: 1px solid rgba(201, 168, 76, 0.18);
+}
+
+.chart-lightbox-title {
+	font-size: 15px;
+	font-weight: 500;
+	color: #e8d9a8;
+	letter-spacing: 0.04em;
+}
+
+.chart-lightbox-close {
+	margin: 0;
+	padding: 6px 14px;
+	font-size: 12px;
+	color: #c9a84c;
+	background: transparent;
+	border: 1px solid rgba(201, 168, 76, 0.35);
+	border-radius: 8px;
+	cursor: pointer;
+}
+
+.chart-lightbox-close:hover {
+	border-color: rgba(201, 168, 76, 0.55);
+	color: #e8d9a8;
+}
+
+.chart-lightbox-body {
+	padding: 12px 14px 16px;
+	overflow: auto;
+	min-height: 0;
+}
+
+.chart-lightbox-body :deep(.charts) {
+	margin-top: 0;
+}
+
+.chart-lightbox-body :deep(.block) {
+	margin-bottom: 0;
+}
+
+.chart-lightbox-body :deep(.sub) {
+	font-size: 14px;
+	color: #dcc58a;
+	margin-bottom: 8px;
 }
 
 .display-footer {

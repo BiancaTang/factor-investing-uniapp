@@ -1,5 +1,9 @@
 node_modules/
+dist/
 unpackage/
+
+# 仅本地 CLI 从 vite.uni-cli.example.mjs 复制；勿提交，避免 HBuilderX 在未 npm i 时强读该文件
+vite.config.mjs
 .DS_Store
 *.log
 .hbuilderx/

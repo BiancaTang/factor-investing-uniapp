@@ -1,6 +1,6 @@
 'use strict'
 
-const { f_pickFacFromRow, f_pickReturnFromRow } = require('../common/f_gameFactorSpec.js')
+const { f_pickFacFromRow, f_pickReturnFromRow } = require('./f_gameFactorSpec.js')
 
 const db = uniCloud.database()
 const f_rooms = db.collection('f_room')

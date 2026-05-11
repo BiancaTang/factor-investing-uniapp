@@ -1,6 +1,10 @@
 /**
  * 十因子定义：与 FastAPI 示例 DataFrame 列顺序一致（fac_*）。
  * 仿真 internal 键用于 f_factorEngine 与归因字段 `${internal}_return`。
+ *
+ * 修改 unitReturn/键名后须同步各云函数目录内同名文件 f_gameFactorSpec.js（上传不打包 cloudfunctions/common）：
+ * f_get_room_player_status、f_get_room_member_status、f_submit_game_round、
+ * f_list_game_rounds、f_control_room_round、f_export_score_pdf
  */
 
 /** @typedef {{ key: string, internal: string, label: string, unitReturn: number, introTitle: string, introDesc: string }} FFactorDef */
