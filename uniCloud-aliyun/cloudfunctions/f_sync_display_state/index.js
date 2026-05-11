@@ -3,6 +3,19 @@
 const db = uniCloud.database()
 const dbCmd = db.command
 
+const ROLES = [
+	{ id: 1, name: '萤火', subtitle: '小市值成长', mainFactor: '规模', subFactor: '成长' },
+	{ id: 2, name: '追风', subtitle: '牛市猎手', mainFactor: '贝塔', subFactor: '动量' },
+	{ id: 3, name: '盾墙', subtitle: '熊市防守', mainFactor: '残差波动', subFactor: '市净' },
+	{ id: 4, name: '刀客', subtitle: '涨停敢死队', mainFactor: '动量', subFactor: '流动性' },
+	{ id: 5, name: '掘墓人', subtitle: '深度价值', mainFactor: '市净', subFactor: '盈利收益' },
+	{ id: 6, name: '磐石', subtitle: '质量稳健', mainFactor: '盈利收益', subFactor: '杠杆' },
+	{ id: 7, name: '夹缝', subtitle: '中盘掘金', mainFactor: '非线性规模', subFactor: '成长' },
+	{ id: 8, name: '秤砣', subtitle: 'GARP策略', mainFactor: '成长', subFactor: '市净' },
+	{ id: 9, name: '刺猬', subtitle: '小盘防御', mainFactor: '规模', subFactor: '残差波动' },
+	{ id: 10, name: '走钢丝', subtitle: '杠铃策略', mainFactor: '动量', subFactor: '市净' }
+]
+
 /**
  * 大屏展示状态同步云函数
  * 聚合房间当前完整状态，供大屏页轮询使用
@@ -26,17 +39,21 @@ exports.main = async (event, context) => {
 		}
 
 		const room = roomRes.data[0]
+		const f_room_code = room.f_room_code
 
 		// 2. 获取玩家列表（含角色信息）
 		const membersRes = await db.collection('f_room_member')
-			.where({ f_room_id })
+			.where({ f_room_code })
 			.orderBy('f_nav', 'desc')
 			.get()
 
-		const players = (membersRes.data || []).map((m, idx) => ({
+		const members = membersRes.data || []
+		const players = members.map((m, idx) => ({
 			uid: m.f_player_uid,
 			nickName: m.f_nick_name || `玩家${idx + 1}`,
 			avatar: m.f_avatar_url || '',
+			roleId: m.f_role_id || null,
+			roleName: m.f_role_name || null,
 			charId: m.f_character_id || null,
 			charName: m.f_character_name || null,
 			charFaction: m.f_character_faction || null,
@@ -46,7 +63,15 @@ exports.main = async (event, context) => {
 			hasSubmitted: !!m.f_last_round_index && m.f_last_round_index === room.f_current_round_index
 		}))
 
-		// 3. 获取当前轮次信息
+		// 3. 获取角色选择状态
+		const takenRoleIds = members.map(m => m.f_role_id).filter(Boolean)
+		const roleSelectStatus = ROLES.map(r => ({
+			...r,
+			selected: takenRoleIds.includes(r.id),
+			selectedBy: members.find(m => m.f_role_id === r.id)?.f_nick_name || null
+		}))
+
+		// 4. 获取当前轮次信息
 		let currentRound = null
 		let groupExposure = {}
 		let skillLog = []
@@ -84,7 +109,7 @@ exports.main = async (event, context) => {
 			skillLog = currentRound?.f_skill_uses || []
 		}
 
-		// 4. 获取历史轮次（用于复盘和净值曲线）
+		// 5. 获取历史轮次（用于复盘和净值曲线）
 		const historyRes = await db.collection('f_game_round')
 			.where({ f_room_id })
 			.orderBy('f_round_index', 'asc')
@@ -100,7 +125,7 @@ exports.main = async (event, context) => {
 			skillUses: r.f_skill_uses || []
 		}))
 
-		// 5. 获取当前事件卡信息
+		// 6. 获取当前事件卡信息
 		let currentEvent = null
 		if (currentRound?.f_event_card_id) {
 			const eventRes = await db.collection('f_event_card')
@@ -112,15 +137,16 @@ exports.main = async (event, context) => {
 			}
 		}
 
-		// 6. 组装返回数据
+		// 7. 组装返回数据
 		const displayState = {
 			// 基础信息
 			roomId: f_room_id,
+			roomCode: f_room_code,
 			roomName: room.f_room_name || f_room_id,
 			maxPlayers: room.f_max_players || 20,
 			
 			// 阶段信息
-			currentPhase: room.f_display_phase || 'lobby', // lobby | decision | event | settlement | review | finale
+			currentPhase: room.f_display_phase || 'lobby', // lobby | role_select | decision | event | settlement | review | finale
 			currentRoundIndex: room.f_current_round_index || 0,
 			maxRounds: room.f_max_rounds || 8,
 			timeLeft: room.f_decision_time_left || 0,
@@ -129,6 +155,10 @@ exports.main = async (event, context) => {
 			players,
 			submittedCount: players.filter(p => p.hasSubmitted).length,
 			totalPlayers: players.length,
+			
+			// 角色选择数据
+			roleSelectStatus,
+			roleSelectCount: takenRoleIds.length,
 			
 			// 因子数据
 			groupExposure,

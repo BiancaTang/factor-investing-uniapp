@@ -1,0 +1,6 @@
+{
+  "name": "f_select_role",
+  "version": "1.0.0",
+  "description": "玩家选择角色",
+  "main": "index.js"
+}
