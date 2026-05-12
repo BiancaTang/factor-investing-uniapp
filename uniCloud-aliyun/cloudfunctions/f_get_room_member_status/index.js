@@ -102,6 +102,7 @@ exports.main = async (event) => {
 			f_join_locked: !!row.f_join_locked,
 			f_player_seat_used,
 			f_player_seat_max: 10,
+			f_playing_started: row.f_playing_started === true,
 			f_players
 		}
 	}

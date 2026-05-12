@@ -56,3 +56,5 @@
 - `f_room.f_join_locked`：为 true 时拒绝新成员加入；满 **10 名非庄家** `f_room_member` 时由 `f_join_room` 自动置 true。
 - 新建房间：`f_group_count` 固定为 **10**（与玩家席上限一致）；创建页已去掉「组数」输入。
 - 云函数 `f_set_room_join_lock`：房间创建管理员可手动锁定/解锁加入；房间观测页提供按钮。
+- **选角与开始博弈**：`f_room.f_playing_started` 为 false 且已 `f_join_locked` 时，玩家可调用 `f_select_role` / `f_get_role_status`；管理员在观测页点「开始博弈」调用 `f_start_playing_phase` 后置 true 并锁定角色；`f_control_room_round` 的 `start` 在已锁加入且尚未开始博弈时会拒绝（旧房间未锁加入则不受影响）。
+- `f_room_member`：`f_role_id` / `f_role_name` / `f_role_selected_at`；小程序 `pages/f_role_select/index`、大屏 `pages/f_display/role-select`；公共角色表 `uniCloud-aliyun/cloudfunctions/common/f_gameRolesSpec.js` 与 `utils/f_gameRolesSpec.js`（立绘 CDN 与手册顺序一致）。

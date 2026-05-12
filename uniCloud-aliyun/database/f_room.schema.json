@@ -15,6 +15,10 @@
 			"bsonType": "bool",
 			"description": "为 true 时禁止新玩家加入；满 10 名非庄家成员时自动置 true，或由管理员手动锁定"
 		},
+		"f_playing_started": {
+			"bsonType": "bool",
+			"description": "为 true 表示管理员已「开始博弈」，角色锁定并可开启正式轮次；新建房为 false"
+		},
 		"f_created_at": { "bsonType": "timestamp" },
 		"f_updated_at": { "bsonType": "timestamp" }
 	}

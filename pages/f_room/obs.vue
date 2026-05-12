@@ -19,6 +19,7 @@
 				<text class="st">当前开放轮次：{{ openLabel }}</text>
 				<text v-if="status.f_open_round_index" class="st">本轮剩余时间：{{ roundCountdownLabel }}</text>
 				<text class="st">加入：{{ joinLockLabel }} · 玩家席 {{ playerSeatLabel }} · Banker：{{ status.f_banker_intervene ? '开' : '关' }}</text>
+				<text v-if="!status.f_game_ended" class="st">博弈：{{ status.f_playing_started ? '已开始（角色已锁定）' : '未开始（可选角）' }}</text>
 				<text v-if="status.f_game_ended" class="st">游戏状态：已结束</text>
 			</view>
 			<view v-if="status && !status.f_game_ended" class="ctrl join-ctrl">
@@ -28,7 +29,7 @@
 					:loading="acting && lastAction === 'lock_join'"
 					@click="onLockJoin"
 				>
-					锁定加入（不可再进）
+					锁定加入
 				</button>
 				<button
 					class="btn ghost"
@@ -37,6 +38,14 @@
 					@click="onUnlockJoin"
 				>
 					解锁加入
+				</button>
+				<button
+					class="btn primary"
+					:disabled="acting || !status.f_join_locked || status.f_playing_started"
+					:loading="acting && lastAction === 'start_play'"
+					@click="onStartPlayingPhase"
+				>
+					开始博弈
 				</button>
 			</view>
 			<view class="ctrl">
@@ -118,7 +127,8 @@ import { f_isAdmin } from '../../utils/f_role.js'
 import {
 	f_controlRoomRoundInCloud,
 	f_getRoomPlayerStatusInCloud,
-	f_setRoomJoinLockInCloud
+	f_setRoomJoinLockInCloud,
+	f_startPlayingPhaseInCloud
 } from '../../utils/f_roomAdminApi.js'
 
 const roomCode = ref('')
@@ -210,7 +220,10 @@ watch(
 const canStart = computed(() => {
 	if (!status.value) return false
 	if (status.value.f_game_ended) return false
-	return status.value.f_open_round_index === 0
+	if (status.value.f_open_round_index !== 0) return false
+	if (status.value.f_playing_started === true) return true
+	if (status.value.f_join_locked !== true) return true
+	return false
 })
 
 const nextRoundToStart = computed(() => {
@@ -357,6 +370,34 @@ async function refresh() {
 		uni.showToast({ title: '请上传云函数 f_get_room_player_status', icon: 'none' })
 	} finally {
 		loading.value = false
+	}
+}
+
+async function onStartPlayingPhase() {
+	const u = f_getStoredUser()
+	if (!u || !u.f_uid) return
+	const rc = String(roomCode.value || '').replace(/\D/g, '').slice(0, 4)
+	if (!/^\d{4}$/.test(rc)) return
+	acting.value = true
+	lastAction.value = 'start_play'
+	try {
+		const res = await f_startPlayingPhaseInCloud({
+			f_admin_uid: u.f_uid,
+			f_room_code: rc
+		})
+		const body = res.result || {}
+		if (body.f_code !== 0) {
+			uni.showToast({ title: body.f_message || '失败', icon: 'none' })
+			return
+		}
+		uni.showToast({ title: '已开始博弈', icon: 'success' })
+		await refresh()
+	} catch (e) {
+		console.error(e)
+		uni.showToast({ title: '请上传云函数 f_start_playing_phase', icon: 'none' })
+	} finally {
+		acting.value = false
+		lastAction.value = ''
 	}
 }
 

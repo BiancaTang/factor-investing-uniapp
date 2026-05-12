@@ -8,6 +8,14 @@
 
 		<view v-if="loading" class="loading">加载中…</view>
 
+		<view v-else-if="phase === 'role_prep'" class="card">
+			<text class="section-title">选角阶段</text>
+			<text class="wait-tip">房间已锁定加入。管理员在「房间观测」点击「开始博弈」前，你可随时修改角色。</text>
+			<button v-if="!isRoomAdmin" class="btn primary" @click="goRoleSelect">去选择 / 修改角色</button>
+			<text v-else class="wait-tip">你是管理员：请在「房间观测」中点击「开始博弈」以锁定角色；玩家即可进入正式轮次。</text>
+			<button class="btn ghost" :loading="refreshing" @click="refreshStatus">刷新状态</button>
+		</view>
+
 		<view v-else-if="phase === 'complete'" class="card">
 			<text class="done-title">{{ roomEnded ? '游戏已结束' : `已完成全部 ${totalRoundsLabel} 轮` }}</text>
 			<f-game-charts
@@ -192,6 +200,17 @@ const currentUserUid = computed(() => {
 	const u = f_getStoredUser()
 	return u && u.f_uid ? String(u.f_uid) : ''
 })
+
+const isRoomAdmin = computed(() => {
+	const a = roomInfo.value && roomInfo.value.f_admin_uid
+	return !!(a && currentUserUid.value && String(a) === currentUserUid.value)
+})
+
+function goRoleSelect() {
+	const rc = String(roomCode.value || '').replace(/\D/g, '').slice(0, 4)
+	if (!/^\d{4}$/.test(rc)) return
+	uni.navigateTo({ url: '/pages/f_role_select/index?code=' + encodeURIComponent(rc) })
+}
 
 const simulationPlayersForChart = computed(() => {
 	const ps = roomSnapshot.value && roomSnapshot.value.f_players
@@ -381,6 +400,13 @@ function applyPhaseAfterLoad(preserveReview) {
 
 	if (roomEnded.value) {
 		phase.value = 'complete'
+		return
+	}
+
+	const joinLocked = roomInfo.value?.f_join_locked === true
+	const playingStarted = roomInfo.value?.f_playing_started === true
+	if (!roomEnded.value && joinLocked && !playingStarted) {
+		phase.value = 'role_prep'
 		return
 	}
 	if (!isUnlimitedRounds.value && h >= total) {

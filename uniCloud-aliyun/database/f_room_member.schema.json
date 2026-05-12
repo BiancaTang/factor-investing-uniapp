@@ -5,6 +5,9 @@
 		"f_room_code": { "bsonType": "string" },
 		"f_player_uid": { "bsonType": "string", "description": "玩家 f_uid" },
 		"f_nick_name": { "bsonType": "string", "description": "加入房间时的昵称快照（展示用）" },
-		"f_joined_at": { "bsonType": "timestamp" }
+		"f_joined_at": { "bsonType": "timestamp" },
+		"f_role_id": { "bsonType": "int", "description": "1～10 游戏角色，与 docs/factor_game_roles.html 顺序一致" },
+		"f_role_name": { "bsonType": "string", "description": "角色名称快照" },
+		"f_role_selected_at": { "bsonType": "timestamp", "description": "最近一次选角或改选时间" }
 	}
 }

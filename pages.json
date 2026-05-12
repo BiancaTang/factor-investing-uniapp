@@ -44,9 +44,24 @@
 			}
 		},
 		{
+			"path": "pages/f_role_select/index",
+			"style": {
+				"navigationBarTitleText": "选择角色",
+				"navigationBarBackgroundColor": "#0b0b0d",
+				"navigationBarTextStyle": "white"
+			}
+		},
+		{
 			"path": "pages/f_display/index",
 			"style": {
 				"navigationBarTitleText": "大屏展示",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/f_display/role-select",
+			"style": {
+				"navigationBarTitleText": "选角大屏",
 				"navigationStyle": "custom"
 			}
 		},

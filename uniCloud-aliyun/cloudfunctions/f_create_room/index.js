@@ -53,6 +53,7 @@ exports.main = async (event) => {
 		f_game_ended: false,
 		f_game_ended_at: 0,
 		f_join_locked: false,
+		f_playing_started: false,
 		f_admin_uid,
 		/** 管理员当前开启的轮次，0 表示未开启，玩家不可提交 */
 		f_open_round_index: 0,

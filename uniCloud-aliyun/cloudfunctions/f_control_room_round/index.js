@@ -59,6 +59,16 @@ exports.main = async (event) => {
 		return { f_code: 400, f_message: '游戏已结束，不能再开启或结束轮次', f_data: null }
 	}
 
+	if (f_action === 'start') {
+		if (row.f_join_locked === true && row.f_playing_started !== true) {
+			return {
+				f_code: 400,
+				f_message: '请先在房间观测中点击「开始博弈」锁定角色后再开启轮次',
+				f_data: null
+			}
+		}
+	}
+
 	if (f_action === 'end') {
 		if (curOpen > 0) {
 			const mem = await f_members.where({ f_room_code }).get()
