@@ -27,6 +27,10 @@
 		"f_leverage_return": { "bsonType": "double" },
 		"f_liquidity_return": { "bsonType": "double" },
 		"f_residual_volatility_return": { "bsonType": "double" },
+		"f_passive_adjusted": {
+			"bsonType": "bool",
+			"description": "为 true 表示本轮净值/因子收益已按角色被动做过第二波调整（有角色席时写入）"
+		},
 		"f_created_at": { "bsonType": "timestamp" },
 		"f_updated_at": { "bsonType": "timestamp" }
 	}

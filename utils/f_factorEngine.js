@@ -10,6 +10,7 @@
  */
 
 import { F_FACTOR_DEFS } from './f_gameFactorSpec.js'
+import { f_applyPassiveToFactorReturns } from './f_rolePassives.js'
 
 /** 管理员作为庄家时的图例名 */
 export const F_BANKER_CHART_LABEL = '庄家'
@@ -34,7 +35,8 @@ function f_emptyExposureRow() {
 
 /**
  * @param {Array<{ player_id: string, history: any[] }>} allPlayerHistories
- * @param {{ if_banker?: boolean, f_group_count?: number, player_nm?: number, f_admin_uid?: string }} options
+ * @param {{ if_banker?: boolean, f_group_count?: number, player_nm?: number, f_admin_uid?: string, roleIdByPlayerId?: Record<string, number> }} options
+ *        roleIdByPlayerId：玩家 uid -> 角色 id（1～10）；有则每轮在基础因子收益上套用被动（第二波），再计入净值。
  *        若开启 Banker 且提供 f_admin_uid：房间管理员参与对局时占用槽位 0（庄家）；第一轮结算后庄家 nav=1；图表中显示为「庄家」。
  * @returns {{
  *   df_far_return: Array<Record<string, number>>,
@@ -45,6 +47,7 @@ function f_emptyExposureRow() {
  */
 export function f_simulatePythonFactorGame(allPlayerHistories, options = {}) {
 	const if_banker = !!options.if_banker
+	const roleIdByPlayerId = options.roleIdByPlayerId && typeof options.roleIdByPlayerId === 'object' ? options.roleIdByPlayerId : null
 	const player_nm = Math.max(1, parseInt(options.f_group_count ?? options.player_nm ?? 20, 10) || 20)
 	const banker_nav0 = Math.floor(player_nm / 3)
 	const adminUid =
@@ -133,13 +136,23 @@ export function f_simulatePythonFactorGame(allPlayerHistories, options = {}) {
 		const slotFactorRet = Array.from({ length: player_nm }, () => ({}))
 
 		for (let i = 0; i < player_nm; i++) {
-			let totalReturn = 0
 			const factorReturns = {}
+			let totalReturn = 0
 			for (const f of FACTORS) {
 				const exposure = exp[i][f] || 0
-				const fr = exposure * factor_return[f]
-				factorReturns[f] = fr
-				totalReturn += fr
+				factorReturns[f] = exposure * factor_return[f]
+				totalReturn += factorReturns[f]
+			}
+			const uid = uidBySlot[i]
+			if (uid && uid !== '__banker__' && roleIdByPlayerId) {
+				const rid = roleIdByPlayerId[uid]
+				if (Number.isFinite(rid) && rid >= 1 && rid <= 10) {
+					const adj = f_applyPassiveToFactorReturns(exp[i], factorReturns, rid)
+					for (const f of FACTORS) {
+						factorReturns[f] = adj.factorReturns[f]
+					}
+					totalReturn = adj.totalReturn
+				}
 			}
 			slotTotalReturn[i] = totalReturn
 			for (const f of FACTORS) slotFactorRet[i][f] = factorReturns[f]

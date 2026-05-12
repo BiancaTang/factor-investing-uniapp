@@ -222,6 +222,17 @@ const simulationPlayersForChart = computed(() => {
 	}))
 })
 
+function f_roleIdByPlayerIdFromSnapshot() {
+	const ps = (roomSnapshot.value && roomSnapshot.value.f_players) || []
+	const m = {}
+	for (const p of ps) {
+		const rid = parseInt(p.f_role_id, 10)
+		if (!p.f_player_uid || !Number.isFinite(rid) || rid < 1 || rid > 10) continue
+		m[String(p.f_player_uid)] = rid
+	}
+	return m
+}
+
 const rankingList = computed(() => {
 	const ps = (roomSnapshot.value && roomSnapshot.value.f_players) || []
 	const ifBanker = !!(roomInfo.value && roomInfo.value.f_banker_intervene)
@@ -235,7 +246,8 @@ const rankingList = computed(() => {
 		{
 			if_banker: ifBanker,
 			f_group_count: roomGroupCount.value,
-			f_admin_uid: adminUid
+			f_admin_uid: adminUid,
+			roleIdByPlayerId: f_roleIdByPlayerIdFromSnapshot()
 		}
 	)
 	const rows = ps.map((p) => {
@@ -292,7 +304,8 @@ const compareNavChartData = computed(() => {
 		{
 			if_banker: roomIfBanker.value,
 			f_group_count: roomGroupCount.value,
-			f_admin_uid: roomInfo.value?.f_admin_uid || ''
+			f_admin_uid: roomInfo.value?.f_admin_uid || '',
+			roleIdByPlayerId: f_roleIdByPlayerIdFromSnapshot()
 		}
 	)
 })
@@ -600,7 +613,8 @@ function buildRoundMetricsForSubmit(payload) {
 	const sim = f_simulatePythonFactorGame(list, {
 		if_banker: roomIfBanker.value,
 		f_group_count: roomGroupCount.value,
-		f_admin_uid: roomInfo.value?.f_admin_uid || ''
+		f_admin_uid: roomInfo.value?.f_admin_uid || '',
+		roleIdByPlayerId: f_roleIdByPlayerIdFromSnapshot()
 	})
 	const rows = sim.attributionRowsByPlayerId.get(uid) || []
 	const hit = rows.find((r) => parseInt(r.round, 10) === round)

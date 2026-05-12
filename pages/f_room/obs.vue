@@ -263,6 +263,17 @@ const playersWithHistory = computed(() => {
 	return ps.filter((p) => p.f_history && p.f_history.length > 0)
 })
 
+function f_roleMapFromObsPlayers() {
+	const ps = (status.value && status.value.f_players) || []
+	const m = {}
+	for (const p of ps) {
+		const rid = parseInt(p.f_role_id, 10)
+		if (!p.f_player_uid || !Number.isFinite(rid) || rid < 1 || rid > 10) continue
+		m[String(p.f_player_uid)] = rid
+	}
+	return m
+}
+
 const compareChartData = computed(() => {
 	const list = playersWithHistory.value
 	if (list.length < 2) return null
@@ -275,7 +286,8 @@ const compareChartData = computed(() => {
 		{
 			if_banker: roomIfBanker.value,
 			f_group_count: roomGroupCount.value,
-			f_admin_uid: status.value?.f_admin_uid || ''
+			f_admin_uid: status.value?.f_admin_uid || '',
+			roleIdByPlayerId: f_roleMapFromObsPlayers()
 		}
 	)
 })
@@ -302,7 +314,8 @@ const rankingList = computed(() => {
 		{
 			if_banker: ifBanker,
 			f_group_count: roomGroupCount.value,
-			f_admin_uid: adminUid
+			f_admin_uid: adminUid,
+			roleIdByPlayerId: f_roleMapFromObsPlayers()
 		}
 	)
 	const rows = ps.map((p) => {

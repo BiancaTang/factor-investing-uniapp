@@ -69,6 +69,18 @@ exports.main = async (event) => {
 	if (roomRow.f_game_ended) {
 		return { f_code: 403, f_message: '游戏已结束，不能继续提交', f_data: null }
 	}
+
+	let f_passive_adjusted = false
+	try {
+		const mall = await f_members.where({ f_room_code }).get()
+		f_passive_adjusted = (mall.data || []).some((m) => {
+			const r = parseInt(m.f_role_id, 10)
+			return Number.isFinite(r) && r >= 1 && r <= 10
+		})
+	} catch (_) {
+		f_passive_adjusted = false
+	}
+
 	const maxR = roomRow.f_round_count
 	if (Number.isFinite(maxR) && maxR > 0 && f_round_index > maxR) {
 		return { f_code: 400, f_message: '超过房间设定轮次', f_data: null }
@@ -111,6 +123,7 @@ exports.main = async (event) => {
 	}
 	if (f_nav !== null) doc.f_nav = f_nav
 	if (f_total_return !== null) doc.f_total_return = f_total_return
+	doc.f_passive_adjusted = !!f_passive_adjusted
 	for (const d of F_FACTOR_DEFS) {
 		const rk = f_navReturnDbKey(d.internal)
 		if (retByKey[rk] !== null) doc[rk] = retByKey[rk]
