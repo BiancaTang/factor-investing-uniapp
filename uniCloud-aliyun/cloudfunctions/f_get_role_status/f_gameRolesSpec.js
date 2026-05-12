@@ -1,6 +1,7 @@
 'use strict'
 
-/** 与 docs/factor_game_roles.html 顺序一致；立绘见 uniCloud 静态托管 */
+/** 与 utils/f_gameRolesSpec.js、docs/factor_game_roles.html 一致；置于本目录：单函数上传不含 ../common */
+
 const F_CDN = 'https://mp-97b2aa2e-12fb-4d19-b974-f61aadc80368.cdn.bspapp.com/f_static/pic'
 const F_SLUGS = [
 	'yinghuo',

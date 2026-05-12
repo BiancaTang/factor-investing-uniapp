@@ -1,6 +1,6 @@
 'use strict'
 
-const { F_ROLES, f_roleById } = require('../common/f_gameRolesSpec.js')
+const { F_ROLES, f_roleById } = require('./f_gameRolesSpec.js')
 
 const db = uniCloud.database()
 const f_rooms = db.collection('f_room')

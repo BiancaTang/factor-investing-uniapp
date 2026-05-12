@@ -1,4 +1,7 @@
-/** 与 docs/factor_game_roles.html 一致；云函数侧同内容在 f_get_role_status、f_select_role 目录内（单函数上传不含 ../common） */
+'use strict'
+
+/** 与 utils/f_gameRolesSpec.js、docs/factor_game_roles.html 一致；置于本目录：单函数上传不含 ../common */
+
 const F_CDN = 'https://mp-97b2aa2e-12fb-4d19-b974-f61aadc80368.cdn.bspapp.com/f_static/pic'
 const F_SLUGS = [
 	'yinghuo',
@@ -13,7 +16,7 @@ const F_SLUGS = [
 	'zougangsi'
 ]
 
-export const F_GAME_ROLES = [
+const F_ROLES = [
 	{ id: 1, name: '萤火', subtitle: '小市值成长', mainFactor: '规模', subFactor: '成长' },
 	{ id: 2, name: '追风', subtitle: '牛市猎手', mainFactor: '贝塔', subFactor: '动量' },
 	{ id: 3, name: '盾墙', subtitle: '熊市防守', mainFactor: '残差波动', subFactor: '市净' },
@@ -26,9 +29,20 @@ export const F_GAME_ROLES = [
 	{ id: 10, name: '走钢丝', subtitle: '杠铃策略', mainFactor: '动量', subFactor: '市净' }
 ]
 
-export function f_gameRolePortraitUrl(roleId) {
+function f_rolePortraitUrl(roleId) {
 	const n = parseInt(roleId, 10)
 	const slug = Number.isFinite(n) && n >= 1 && n <= 10 ? F_SLUGS[n - 1] : F_SLUGS[0]
 	const id = Number.isFinite(n) && n >= 1 && n <= 10 ? n : 1
 	return `${F_CDN}/${slug}_${id}.png`
+}
+
+function f_roleById(roleId) {
+	const n = parseInt(roleId, 10)
+	return F_ROLES.find((r) => r.id === n) || null
+}
+
+module.exports = {
+	F_ROLES,
+	f_rolePortraitUrl,
+	f_roleById
 }

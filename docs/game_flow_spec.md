@@ -57,4 +57,4 @@
 - 新建房间：`f_group_count` 固定为 **10**（与玩家席上限一致）；创建页已去掉「组数」输入。
 - 云函数 `f_set_room_join_lock`：房间创建管理员可手动锁定/解锁加入；房间观测页提供按钮。
 - **运行阶段被动（第三刀）**：`utils/f_rolePassives.js` + `f_simulatePythonFactorGame(..., { roleIdByPlayerId })`：在每期市场因子收益确定后，对每个有角色的玩家按手册调整其「主因子」当期贡献（×2 或 ×0.5），再重算该玩家 `total_return` 与净值链。`f_get_room_*` 的 `f_players` 带 `f_role_id`；`f_game_round` 可写 `f_passive_adjusted`。
-- `f_room_member`：`f_role_id` / `f_role_name` / `f_role_selected_at`；小程序 `pages/f_role_select/index`、大屏 `pages/f_display/role-select`；公共角色表 `uniCloud-aliyun/cloudfunctions/common/f_gameRolesSpec.js` 与 `utils/f_gameRolesSpec.js`（立绘 CDN 与手册顺序一致）。
+- `f_room_member`：`f_role_id` / `f_role_name` / `f_role_selected_at`；小程序 `pages/f_role_select/index`、大屏 `pages/f_display/role-select`；公共角色表与 `utils/f_gameRolesSpec.js` 一致；云函数 `f_get_role_status`、`f_select_role` 目录内各有一份 `f_gameRolesSpec.js`（与 `f_gameFactorSpec` 同理，单函数上传不含 `../common`）。
