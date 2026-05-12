@@ -434,6 +434,9 @@ async function onLockJoin() {
 		}
 		uni.showToast({ title: '已锁定加入', icon: 'success' })
 		await refresh()
+		uni.navigateTo({
+			url: '/pages/f_display/role-showcase?code=' + encodeURIComponent(rc)
+		})
 	} catch (e) {
 		console.error(e)
 		uni.showToast({ title: '请上传云函数 f_set_room_join_lock', icon: 'none' })
