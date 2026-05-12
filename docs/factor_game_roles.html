@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>因子投资博弈沙盘 - 角色技能手册</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #1a1a2e;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        /* 流程说明 */
+        .phase-section {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        
+        .phase-section h2 {
+            color: #1a1a2e;
+            font-size: 20px;
+            margin-bottom: 16px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e8ecf1;
+        }
+        
+        .phase-list {
+            list-style: none;
+            counter-reset: phase;
+        }
+        
+        .phase-list li {
+            padding: 10px 0;
+            padding-left: 36px;
+            position: relative;
+            border-bottom: 1px solid #f0f2f5;
+        }
+        
+        .phase-list li:last-child {
+            border-bottom: none;
+        }
+        
+        .phase-list li::before {
+            counter-increment: phase;
+            content: counter(phase);
+            position: absolute;
+            left: 0;
+            top: 10px;
+            width: 24px;
+            height: 24px;
+            background: #4a90e2;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .phase-title {
+            font-weight: 600;
+            color: #1a1a2e;
+            font-size: 16px;
+        }
+        
+        .phase-desc {
+            color: #666;
+            font-size: 14px;
+            margin-top: 4px;
+        }
+        
+        /* 角色卡片 */
+        .character-grid {
+            display: grid;
+            gap: 20px;
+        }
+        
+        .character-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            border-left: 4px solid;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .character-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+        }
+        
+        /* 角色颜色 */
+        .card-yinghuo { border-left-color: #ff6b6b; }
+        .card-zhuifeng { border-left-color: #feca57; }
+        .card-dunqiang { border-left-color: #48dbfb; }
+        .card-daoke { border-left-color: #ff9ff3; }
+        .card-juemu { border-left-color: #54a0ff; }
+        .card-panshi { border-left-color: #5f27cd; }
+        .card-jiafeng { border-left-color: #00d2d3; }
+        .card-chengtuo { border-left-color: #1dd1a1; }
+        .card-ciwei { border-left-color: #ff9f43; }
+        .card-zougangsi { border-left-color: #ee5a6f; }
+        
+        .character-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+        
+        .character-name {
+            font-size: 20px;
+            font-weight: 700;
+            color: #1a1a2e;
+        }
+        
+        .character-strategy {
+            font-size: 14px;
+            color: #666;
+            margin-top: 2px;
+        }
+        
+        .factor-tags {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        
+        .tag {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .tag-main {
+            background: #1a1a2e;
+            color: white;
+        }
+        
+        .tag-sub {
+            background: #e8ecf1;
+            color: #555;
+        }
+        
+        .skill-section {
+            margin-top: 16px;
+            padding: 16px;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        
+        .skill-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        
+        .skill-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+        
+        .icon-active {
+            background: #4a90e2;
+            color: white;
+        }
+        
+        .icon-locked {
+            background: #1a1a2e;
+            color: white;
+        }
+        
+        .skill-name {
+            font-weight: 700;
+            font-size: 15px;
+            color: #1a1a2e;
+        }
+        
+        .skill-phase {
+            font-size: 11px;
+            color: #999;
+            margin-left: auto;
+            padding: 2px 8px;
+            background: #e8ecf1;
+            border-radius: 4px;
+        }
+        
+        .skill-desc {
+            color: #555;
+            font-size: 14px;
+            padding-left: 36px;
+        }
+        
+        .divider {
+            height: 1px;
+            background: #e8ecf1;
+            margin: 16px 0;
+        }
+        
+        @media (max-width: 600px) {
+            .character-header {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .factor-tags {
+                align-self: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>因子投资博弈沙盘</h1>
+        <p class="subtitle">SAIF 金融教学工具 · 角色技能手册</p>
+        
+        <!-- 游戏规则 -->
+        <div class="phase-section">
+            <h2>📋 游戏流程</h2>
+            <ul class="phase-list">
+                <li>
+                    <div class="phase-title">配置阶段</div>
+                    <div class="phase-desc">庄家先配置十个因子 → 玩家配置因子 → 公示庄家与上轮第一的配置 → 玩家选择是否发动主动技能</div>
+                </li>
+                <li>
+                    <div class="phase-title">运行阶段</div>
+                    <div class="phase-desc">结合庄家与玩家配置的因子，市场运行生成本轮产品净值 → 锁定技自动生效</div>
+                </li>
+            </ul>
+        </div>
+        
+        <!-- 角色列表 -->
+        <div class="character-grid">
+            
+            <!-- 1. 萤火 -->
+            <div class="character-card card-yinghuo">
+                <div class="character-header">
+                    <div>
+                        <div class="character-name">萤火</div>
+                        <div class="character-strategy">小市值成长</div>
+                    </div>
+                    <div class="factor-tags">
+                        <span class="tag tag-main">主：规模</span>
+                        <span class="tag tag-sub">副：成长</span>
+                    </div>
+                </div>
+                
+                <div class="skill-section">
+                    <div class="skill-header">
+                        <div class="skill-icon icon-active">主</div>
+                        <div class="skill-name">借势</div>
+                        <div class="skill-phase">配置阶段</div>
+                    </div>
+                    <div class="skill-desc">
+                        你可选择发动。发动后，若庄家「规模」≥ 0，你的「规模」改为 <strong>-5</strong>；若庄家 &lt; 0，改为 <strong>-3</strong>。
+                    </div>
+                </div>
+                
+                <div class="divider"></div>
+                
+                <div class="skill-section">
+                    <div class="skill-header">
+                        <div class="skill-icon icon-locked">被</div>
+                        <div class="skill-name">轻身</div>
+                        <div class="skill-phase">运行阶段</div>
+                    </div>
+                    <div class="skill-desc">
+                        若「成长」> 0，规模收益 <strong>×2</strong>；否则 <strong>×0.5</strong>。
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 2. 追风 -->
+            <div class="character-card card-zhuifeng">
+                <div class="character-header">
+                    <div>
+                        <div class="character-name">追风</div>
+                        <div class="character-strategy">牛市猎手</div>
+                    </div>
+                    <div class="factor-tags">
+                        <span class="tag tag-main">主：贝塔</span>
+                        <span class="tag tag-sub">副：动量</span>
+                    </div>
+                </div>
+                
+                <div class="skill-section">
+                    <div class="skill-header">
+                        <div class="skill-icon icon-active">主</div>
+                        <div class="skill-name">逐浪</div>
+                        <div class="skill-phase">配置阶段</div>
+                    </div>
+                    <div class="skill-desc">
+                        你可选择将自己的「贝塔」改为 <strong>场上平均值 + 2</strong>，或改为 <strong>场上最大值</strong>。二选一。
+                    </div>
+                </div>
+                
+                <div class="divider"></div>
+                
+                <div class="skill-section">
+                    <div class="skill-header">
+                        <div class="skill-icon icon-locked">被</div>
+                        <div class="skill-name">乘势</div>
+                        <div class="skill-phase">运行阶段</div>
+                    </div>
+                    <div class="skill-desc">
+                        若「动量」> 0，贝塔收益 <strong>×2</strong>；否则 <strong>×0.5</strong>。
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 3. 盾墙 -->
+            <div class="character-card card-dunqiang">
+                <div class="character-header">
+                    <div>
+                        <div class="character-name">盾墙</div>
+                        <div class="character-strategy">熊市防守</div>
+                    </div>
+                    <div class="factor-tags">
+                        <span class="tag tag-main">主：残差波动</span>
+                        <span class="tag tag-sub">副：市净</span>
+                    </div>
+                </div>
+                
+                <div class="skill-section">
+                    <div class="skill-header">
+                        <div class="skill-icon icon-active">主</div>
+                        <div class="skill-name">预判</div>
+                        <div class="skill-phase">配置阶段</div>
+                    </div>
+                    <div class="skill-desc">
+                        你可选择将自己的「残差波动」改为 <strong>-4</strong>，或改为 <strong>场上最低值 - 1</strong>（最低锁 -5）。二选一。
+                    </div>
+                </div>
+                
+                <div class="divider"></div>
+                
+                <div class="skill-section">
+                    <div class="skill-header">
+                        <div class="skill-icon icon-locked">被</div>
+                        <div class="skill-name">铁壁</div>
+                        <div class="skill-phase">运行阶段</div>
+                    </div>
+                    <div class="skill-desc">
+                        若「市净」> 0，残差波动收益 <strong>×2</strong>；否则 <strong>×0.5</strong>。
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 4. 刀客 -->
+            <div class="character-card card-daoke">
+                <div class="character-header">
+                    <div>
+                        <div class="character-name">刀客</div>
+                        <div class="character-strategy">涨停敢死队</div>
+                    </div>
+                    <div class="factor-tags">
+                        <span class="tag tag-main">主：动量</span>
+                        <span class="tag tag-sub">副：流动性</span>
+                    </div>
+                </div>
+                
+                <div class="skill-section">
+                    <div class="skill-header">
+                        <div class="skill-icon icon-active">主</div>
+                        <div class="skill-name">追涨</div>
+                        <div class="skill-phase">配置阶段</div>
+                    </div>
+                    <div class="skill-desc">
+                        你可选择将自己的「动量」改为 <strong>场上最大值 + 1</strong>（上限 5），或改为 <strong>庄家动量 + 2</strong>（上限 5）。二选一。
+                    </div>
+                </div>
+                
+                <div class="divider"></div>
+                
+                <div class="skill-section">
+                    <div class="skill-header">
+                        <div class="skill-icon icon-locked">被</div>
+                        <div class="skill-name">嗜血</div>
+                        <div class="skill-phase">运行阶段</div>
+                    </div>
+                    <div class="skill-desc">
+                        若「流动性」> 0，动量收益 <strong>×2</strong>；否则 <strong>×0.5</strong>。
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 5. 掘墓人 -->
+            <div class="character-card card-juemu">
+                <div class="character-header">
+                    <div>
+                        <div class="character-name">掘墓人</div>
+                        <div class="character-strategy">深度价值</div>
+                    </div>
+                    <div class="factor-tags">
+                        <span class="tag tag-main">主：市净</span>
+                        <span class="tag tag-sub">副：盈利收益</span>
+                    </div>
+                </div>
+                
+                <div class="skill-section">
+                    <div class="skill-header">
+                        <div class="skill-icon icon-active">主</div>
+                        <div class="skill-name">左侧</div>
+                        <div class="skill-phase">配置阶段</div>
+                    </div>
+                    <div class="skill-desc">
+                        你可选择将自己的「市净」改为 <strong>+4</strong> 或 <strong>+5</strong>。二选一。
+                    </div>
+                </div>
+                
+                <div class="divider"></div>
+                
+                <div class="skill-section">
+                    <div class="skill-header">
+                        <div class="skill-icon icon-locked">被</div>
+                        <div class="skill-name">捡漏</div>
+                        <div class="skill-phase">运行阶段</div>
+                    </div>
+                    <div class="skill-desc">
+                        若「盈利收益」> 0，市净收益 <strong>×2</strong>；否则 <strong>×0.5</strong>。
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 6. 磐石 -->
+            <div class="character-card card-panshi">
+                <div class="character-header">
+                    <div>
+                        <div class="character-name">磐石</div>
+                        <div class="character-strategy">质量稳健</div>
+                    </div>
+                    <div class="factor-tags">
+                        <span class="tag tag-main">主：盈利收益</span>
+                        <span class="tag tag-sub">副：杠杆</span>
+                    </div>
+                </div>
+                
+                <div class="skill-section">
+                    <div class="skill-header">
+                        <div class="skill-icon icon-active">主</div>
+                        <div class="skill-name">避险</div>
+                        <div class="skill-phase">配置阶段</div>
+                    </div>
+                    <div class="skill-desc">
+                        你可选择将自己的「盈利收益」改为 <strong>场上平均值 + 1</strong>，或改为 <strong>场上平均值 + 2</strong>。二选一。
+                    </div>
+                </div>
+                
+                <div class="divider"></div>
+                
+                <div class="skill-section">
+                    <div class="skill-header">
+                        <div class="skill-icon icon-locked">被</div>
+                        <div class="skill-name">厚利</div>
+                        <div class="skill-phase">运行阶段</div>
+                    </div>
+                    <div class="skill-desc">
+                        若「杠杆」< 0，盈利收益 <strong>×2</strong>；否则 <strong>×0.5</strong>。
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 7. 夹缝 -->
+            <div class="character-card card-jiafeng">
+                <div class="character-header">
+                    <div>
+                        <div class="character-name">夹缝</div>
+                        <div class="character-strategy">中盘掘金</div>
+                    </div>
+                    <div class="factor-tags">
+                        <span class="tag tag-main">主：非线性规模</span>
+                        <span class="tag tag-sub">副：成长</span>
+                    </div>
+                </div>
+                
+                <div class="skill-section">
+                    <div class="skill-header">
+                        <div class="skill-icon icon-active">主</div>
+                        <div class="skill-name">腾挪</div>
+                        <div class="skill-phase">配置阶段</div>
+                    </div>
+                    <div class="skill-desc">
+                        你可选择将自己的「非线性规模」改为 <strong>0</strong>，或改为 <strong>庄家该因子的相反数</strong>。二选一。
+                    </div>
+                </div>
+                
+                <div class="divider"></div>
+                
+                <div class="skill-section">
+                    <div class="skill-header">
+                        <div class="skill-icon icon-locked">被</div>
+                        <div class="skill-name">中坚</div>
+                        <div class="skill-phase">运行阶段</div>
+                    </div>
+                    <div class="skill-desc">
+                        若「成长」> 0，非线性规模收益 <strong>×2</strong>；否则 <strong>×0.5</strong>。
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 8. 秤砣 -->
+            <div class="character-card card-chengtuo">
+                <div class="character-header">
+                    <div>
+                        <div class="character-name">秤砣</div>
+                        <div class="character-strategy">GARP策略</div>
+                    </div>
+                    <div class="factor-tags">
+                        <span class="tag tag-main">主：成长</span>
+                        <span class="tag tag-sub">副：市净</span>
+                    </div>
+                </div>
+                
+                <div class="skill-section">
+                    <div class="skill-header">
+                        <div class="skill-icon icon-active">主</div>
+                        <div class="skill-name">纠偏</div>
+                        <div class="skill-phase">配置阶段</div>
+                    </div>
+                    <div class="skill-desc">
+                        你可选择将自己的「成长」改为 <strong>场上平均值</strong>，或改为 <strong>庄家值</strong>。二选一。
+                    </div>
+                </div>
+                
+                <div class="divider"></div>
+                
+                <div class="skill-section">
+                    <div class="skill-header">
+                        <div class="skill-icon icon-locked">被</div>
+                        <div class="skill-name">平衡</div>
+                        <div class="skill-phase">运行阶段</div>
+                    </div>
+                    <div class="skill-desc">
+                        若「市净」> 0，成长收益 <strong>×2</strong>；否则 <strong>×0.5</strong>。
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 9. 刺猬 -->
+            <div class="character-card card-ciwei">
+                <div class="character-header">
+                    <div>
+                        <div class="character-name">刺猬</div>
+                        <div class="character-strategy">小盘防御</div>
+                    </div>
+                    <div class="factor-tags">
+                        <span class="tag tag-main">主：规模</span>
+                        <span class="tag tag-sub">副：残差波动</span>
+                    </div>
+                </div>
+                
+                <div class="skill-section">
+                    <div class="skill-header">
+                        <div class="skill-icon icon-active">主</div>
+                        <div class="skill-name">缩壳</div>
+                        <div class="skill-phase">配置阶段</div>
+                    </div>
+                    <div class="skill-desc">
+                        你可选择将自己的「规模」改为 <strong>-3</strong> 或 <strong>-4</strong>。二选一。
+                    </div>
+                </div>
+                
+                <div class="divider"></div>
+                
+                <div class="skill-section">
+                    <div class="skill-header">
+                        <div class="skill-icon icon-locked">被</div>
+                        <div class="skill-name">抱团</div>
+                        <div class="skill-phase">运行阶段</div>
+                    </div>
+                    <div class="skill-desc">
+                        若「残差波动」< 0，规模收益 <strong>×2</strong>；否则 <strong>×0.5</strong>。
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 10. 走钢丝 -->
+            <div class="character-card card-zougangsi">
+                <div class="character-header">
+                    <div>
+                        <div class="character-name">走钢丝</div>
+                        <div class="character-strategy">杠铃策略</div>
+                    </div>
+                    <div class="factor-tags">
+                        <span class="tag tag-main">主：动量</span>
+                        <span class="tag tag-sub">副：市净</span>
+                    </div>
+                </div>
+                
+                <div class="skill-section">
+                    <div class="skill-header">
+                        <div class="skill-icon icon-active">主</div>
+                        <div class="skill-name">切换</div>
+                        <div class="skill-phase">配置阶段</div>
+                    </div>
+                    <div class="skill-desc">
+                        你可选择将自己的「动量」改为 <strong>场上最大值</strong>，或改为 <strong>场上最小值</strong>。二选一。
+                    </div>
+                </div>
+                
+                <div class="divider"></div>
+                
+                <div class="skill-section">
+                    <div class="skill-header">
+                        <div class="skill-icon icon-locked">被</div>
+                        <div class="skill-name">两端</div>
+                        <div class="skill-phase">运行阶段</div>
+                    </div>
+                    <div class="skill-desc">
+                        若「市净」> 0，动量收益 <strong>×2</strong>；否则 <strong>×0.5</strong>。
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+</body>
+</html>
