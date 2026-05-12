@@ -61,7 +61,7 @@ async function submit() {
 			icon: 'success'
 		})
 		setTimeout(
-			() => uni.redirectTo({ url: '/pages/f_role_select/index?code=' + encodeURIComponent(f_room_code) }),
+			() => uni.redirectTo({ url: '/pages/f_game/play?code=' + encodeURIComponent(f_room_code) }),
 			350
 		)
 	} catch (err) {
