@@ -11,6 +11,10 @@
 		"f_game_ended": { "bsonType": "bool", "description": "游戏是否已结束（管理员点击结束游戏）" },
 		"f_game_ended_at": { "bsonType": "timestamp", "description": "游戏结束时间（毫秒时间戳）" },
 		"f_admin_uid": { "bsonType": "string", "description": "创建者管理员 f_uid" },
+		"f_join_locked": {
+			"bsonType": "bool",
+			"description": "为 true 时禁止新玩家加入；满 10 名非庄家成员时自动置 true，或由管理员手动锁定"
+		},
 		"f_created_at": { "bsonType": "timestamp" },
 		"f_updated_at": { "bsonType": "timestamp" }
 	}

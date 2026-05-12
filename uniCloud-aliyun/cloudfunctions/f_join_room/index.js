@@ -40,6 +40,12 @@ exports.main = async (event) => {
 		return { f_code: 404, f_message: '房间不存在', f_data: null }
 	}
 
+	const roomRow = room.data[0]
+	const adminUid = String(roomRow.f_admin_uid || '').trim()
+	if (roomRow.f_join_locked) {
+		return { f_code: 403, f_message: '房间已锁定，无法加入', f_data: null }
+	}
+
 	const exist = await f_members
 		.where({ f_room_code, f_player_uid })
 		.limit(1)
@@ -53,6 +59,13 @@ exports.main = async (event) => {
 		}
 	}
 
+	const allMem = await f_members.where({ f_room_code }).get()
+	const rows = allMem.data || []
+	const playerSeatUsed = rows.filter((m) => m.f_player_uid && m.f_player_uid !== adminUid).length
+	if (f_player_uid !== adminUid && playerSeatUsed >= 10) {
+		return { f_code: 409, f_message: '玩家席已满（最多 10 人，不含庄家）', f_data: null }
+	}
+
 	const f_now = Date.now()
 	await f_members.add({
 		f_room_code,
@@ -61,9 +74,21 @@ exports.main = async (event) => {
 		f_joined_at: f_now
 	})
 
+	let f_join_locked_after = !!roomRow.f_join_locked
+	if (f_player_uid !== adminUid) {
+		const nextCount = playerSeatUsed + 1
+		if (nextCount >= 10) {
+			await f_rooms.where({ f_room_code }).update({
+				f_join_locked: true,
+				f_updated_at: f_now
+			})
+			f_join_locked_after = true
+		}
+	}
+
 	return {
 		f_code: 0,
 		f_message: 'ok',
-		f_data: { f_action: 'joined', f_room_code }
+		f_data: { f_action: 'joined', f_room_code, f_join_locked: f_join_locked_after }
 	}
 }

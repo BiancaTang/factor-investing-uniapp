@@ -1,0 +1,6 @@
+{
+	"name": "f_set_room_join_lock",
+	"version": "1.0.0",
+	"main": "index.js",
+	"dependencies": {}
+}

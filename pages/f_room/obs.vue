@@ -18,8 +18,26 @@
 				<text class="st">总轮次：{{ totalRoundsLabel }}</text>
 				<text class="st">当前开放轮次：{{ openLabel }}</text>
 				<text v-if="status.f_open_round_index" class="st">本轮剩余时间：{{ roundCountdownLabel }}</text>
-				<text class="st">组数(player_nm)：{{ roomGroupCount }} · Banker：{{ status.f_banker_intervene ? '开' : '关' }}</text>
+				<text class="st">加入：{{ joinLockLabel }} · 玩家席 {{ playerSeatLabel }} · Banker：{{ status.f_banker_intervene ? '开' : '关' }}</text>
 				<text v-if="status.f_game_ended" class="st">游戏状态：已结束</text>
+			</view>
+			<view v-if="status && !status.f_game_ended" class="ctrl join-ctrl">
+				<button
+					class="btn"
+					:disabled="acting || status.f_join_locked"
+					:loading="acting && lastAction === 'lock_join'"
+					@click="onLockJoin"
+				>
+					锁定加入（不可再进）
+				</button>
+				<button
+					class="btn ghost"
+					:disabled="acting || !status.f_join_locked"
+					:loading="acting && lastAction === 'unlock_join'"
+					@click="onUnlockJoin"
+				>
+					解锁加入
+				</button>
 			</view>
 			<view class="ctrl">
 				<button
@@ -99,7 +117,8 @@ import { f_getStoredUser } from '../../utils/f_userStorage.js'
 import { f_isAdmin } from '../../utils/f_role.js'
 import {
 	f_controlRoomRoundInCloud,
-	f_getRoomPlayerStatusInCloud
+	f_getRoomPlayerStatusInCloud,
+	f_setRoomJoinLockInCloud
 } from '../../utils/f_roomAdminApi.js'
 
 const roomCode = ref('')
@@ -208,6 +227,19 @@ const roomGroupCount = computed(() => {
 	const g = status.value && status.value.f_group_count
 	const n = parseInt(g, 10)
 	return Number.isFinite(n) && n >= 1 ? n : 20
+})
+
+const joinLockLabel = computed(() => {
+	if (!status.value) return '-'
+	return status.value.f_join_locked ? '已锁定' : '开放'
+})
+
+const playerSeatLabel = computed(() => {
+	if (!status.value) return '-'
+	const u = status.value.f_player_seat_used
+	const m = status.value.f_player_seat_max
+	if (typeof u === 'number' && typeof m === 'number') return `${u}/${m}`
+	return '-'
 })
 
 const roomIfBanker = computed(() => !!(status.value && status.value.f_banker_intervene))
@@ -328,6 +360,64 @@ async function refresh() {
 	}
 }
 
+async function onLockJoin() {
+	const u = f_getStoredUser()
+	if (!u || !u.f_uid) return
+	const rc = String(roomCode.value || '').replace(/\D/g, '').slice(0, 4)
+	if (!/^\d{4}$/.test(rc)) return
+	acting.value = true
+	lastAction.value = 'lock_join'
+	try {
+		const res = await f_setRoomJoinLockInCloud({
+			f_admin_uid: u.f_uid,
+			f_room_code: rc,
+			f_join_locked: true
+		})
+		const body = res.result || {}
+		if (body.f_code !== 0) {
+			uni.showToast({ title: body.f_message || '失败', icon: 'none' })
+			return
+		}
+		uni.showToast({ title: '已锁定加入', icon: 'success' })
+		await refresh()
+	} catch (e) {
+		console.error(e)
+		uni.showToast({ title: '请上传云函数 f_set_room_join_lock', icon: 'none' })
+	} finally {
+		acting.value = false
+		lastAction.value = ''
+	}
+}
+
+async function onUnlockJoin() {
+	const u = f_getStoredUser()
+	if (!u || !u.f_uid) return
+	const rc = String(roomCode.value || '').replace(/\D/g, '').slice(0, 4)
+	if (!/^\d{4}$/.test(rc)) return
+	acting.value = true
+	lastAction.value = 'unlock_join'
+	try {
+		const res = await f_setRoomJoinLockInCloud({
+			f_admin_uid: u.f_uid,
+			f_room_code: rc,
+			f_join_locked: false
+		})
+		const body = res.result || {}
+		if (body.f_code !== 0) {
+			uni.showToast({ title: body.f_message || '失败', icon: 'none' })
+			return
+		}
+		uni.showToast({ title: '已开放加入', icon: 'success' })
+		await refresh()
+	} catch (e) {
+		console.error(e)
+		uni.showToast({ title: '请上传云函数 f_set_room_join_lock', icon: 'none' })
+	} finally {
+		acting.value = false
+		lastAction.value = ''
+	}
+}
+
 async function onStartRound() {
 	const u = f_getStoredUser()
 	if (!u || !u.f_uid) return
@@ -422,6 +512,13 @@ async function onFinishGame() {
 </script>
 
 <style scoped>
+.join-ctrl {
+	margin-bottom: 16rpx;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 16rpx;
+}
+
 .charts-wrap {
 	margin-top: 28rpx;
 	padding-top: 24rpx;

@@ -13,16 +13,6 @@
 				/>
 			</view>
 			<view class="row">
-				<text class="label">组数</text>
-				<input
-					class="field"
-					type="number"
-					:value="groupCount"
-					placeholder="参与游戏的组数"
-					@input="onGroupCount"
-				/>
-			</view>
-			<view class="row">
 				<text class="label">轮次</text>
 				<text class="hint">默认无限轮（由管理员手动结束游戏）</text>
 			</view>
@@ -37,7 +27,7 @@
 			<button class="btn" :disabled="!canSubmit || saving" :loading="saving" @click="submit">
 				保存房间
 			</button>
-			<text class="tips">数据写入集合 f_room；房间号全局不可重复。</text>
+			<text class="tips">数据写入集合 f_room；房间号全局不可重复。玩家席固定最多 10 人（不含庄家），满员或管理员锁定后不可再加入。</text>
 		</view>
 	</view>
 </template>
@@ -50,7 +40,6 @@ import { f_isAdmin } from '../../utils/f_role.js'
 import { f_createRoomInCloud } from '../../utils/f_roomApi.js'
 
 const roomCode = ref('')
-const groupCount = ref('')
 const bankerIntervene = ref(false)
 const saving = ref(false)
 
@@ -64,16 +53,11 @@ onLoad(() => {
 
 const canSubmit = computed(() => {
 	const code = String(roomCode.value || '').replace(/\D/g, '').slice(0, 4)
-	const g = parseInt(groupCount.value, 10)
-	return code.length === 4 && g >= 1 && g <= 999
+	return code.length === 4
 })
 
 function onRoomCode(e) {
 	roomCode.value = String(e.detail.value || '').replace(/\D/g, '').slice(0, 4)
-}
-
-function onGroupCount(e) {
-	groupCount.value = e.detail.value || ''
 }
 
 function onBankerChange(e) {
@@ -93,7 +77,6 @@ async function submit() {
 		const res = await f_createRoomInCloud({
 			f_admin_uid: u.f_uid,
 			f_room_code,
-			f_group_count: parseInt(groupCount.value, 10),
 			f_round_count: 0,
 			f_banker_intervene: bankerIntervene.value
 		})

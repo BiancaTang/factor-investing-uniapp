@@ -82,6 +82,9 @@ exports.main = async (event) => {
 		f_history: listByUid[uid] || []
 	}))
 
+	const adminUid = String(row.f_admin_uid || '').trim()
+	const f_player_seat_used = memRows.filter((m) => m.f_player_uid && m.f_player_uid !== adminUid).length
+
 	return {
 		f_code: 0,
 		f_message: 'ok',
@@ -96,6 +99,9 @@ exports.main = async (event) => {
 			f_game_ended: !!row.f_game_ended,
 			f_game_ended_at: row.f_game_ended_at || 0,
 			f_admin_uid: row.f_admin_uid || '',
+			f_join_locked: !!row.f_join_locked,
+			f_player_seat_used,
+			f_player_seat_max: 10,
 			f_players
 		}
 	}

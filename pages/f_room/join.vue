@@ -56,10 +56,18 @@ async function submit() {
 		}
 		f_saveUserLocal({ f_current_room_code: f_room_code })
 		const act = body.f_data && body.f_data.f_action
-		uni.showToast({
-			title: act === 'already_in' ? '已在该房间中' : '加入成功',
-			icon: 'success'
-		})
+		if (body.f_data && body.f_data.f_join_locked) {
+			uni.showToast({
+				title: act === 'already_in' ? '已在该房间中' : '加入成功，房间已满员已自动锁定',
+				icon: 'success',
+				duration: 2200
+			})
+		} else {
+			uni.showToast({
+				title: act === 'already_in' ? '已在该房间中' : '加入成功',
+				icon: 'success'
+			})
+		}
 		setTimeout(
 			() => uni.redirectTo({ url: '/pages/f_game/play?code=' + encodeURIComponent(f_room_code) }),
 			350

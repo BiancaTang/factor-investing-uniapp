@@ -48,3 +48,11 @@
 
 - 角色列表、主被动描述、因子标签：`docs/factor_game_roles.html`
 - 立绘 URL：与 CSV / CDN 规则一致（文件名 `_1`～`_10` 与角色顺序对应）。
+
+---
+
+## 已实现（代码）
+
+- `f_room.f_join_locked`：为 true 时拒绝新成员加入；满 **10 名非庄家** `f_room_member` 时由 `f_join_room` 自动置 true。
+- 新建房间：`f_group_count` 固定为 **10**（与玩家席上限一致）；创建页已去掉「组数」输入。
+- 云函数 `f_set_room_join_lock`：房间创建管理员可手动锁定/解锁加入；房间观测页提供按钮。

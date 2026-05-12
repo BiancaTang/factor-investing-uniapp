@@ -19,8 +19,9 @@ async function f_requireAdmin(f_uid) {
 exports.main = async (event) => {
 	const f_admin_uid = event.f_admin_uid != null ? String(event.f_admin_uid).trim() : ''
 	const f_room_code = event.f_room_code != null ? String(event.f_room_code).trim() : ''
-	const f_group_count = parseInt(event.f_group_count, 10)
 	const f_banker_intervene = !!event.f_banker_intervene
+	/** 玩家席上限（不含庄家），与 10 角色一致；不再由创建页传入 */
+	const f_group_count = 10
 
 	if (!f_isPlayerUid(f_admin_uid)) {
 		return { f_code: 400, f_message: '缺少或无效的 f_admin_uid', f_data: null }
@@ -33,10 +34,6 @@ exports.main = async (event) => {
 
 	if (!/^\d{4}$/.test(f_room_code)) {
 		return { f_code: 400, f_message: '房间号须为 4 位数字', f_data: null }
-	}
-
-	if (!Number.isFinite(f_group_count) || f_group_count < 1 || f_group_count > 999) {
-		return { f_code: 400, f_message: '组数须为 1～999 的整数', f_data: null }
 	}
 
 	const dup = await f_rooms.where({ f_room_code }).limit(1).get()
@@ -55,6 +52,7 @@ exports.main = async (event) => {
 		f_round_duration_sec: 300,
 		f_game_ended: false,
 		f_game_ended_at: 0,
+		f_join_locked: false,
 		f_admin_uid,
 		/** 管理员当前开启的轮次，0 表示未开启，玩家不可提交 */
 		f_open_round_index: 0,
