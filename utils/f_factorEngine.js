@@ -36,8 +36,8 @@ function f_emptyExposureRow() {
 
 /**
  * @param {Array<{ player_id: string, history: any[] }>} allPlayerHistories
- * @param {{ if_banker?: boolean, f_group_count?: number, player_nm?: number, f_admin_uid?: string, roleIdByPlayerId?: Record<string, number> }} options
- *        roleIdByPlayerId：玩家 uid -> 角色 id（1～11，11 为测试角色）；有则每轮在基础因子收益上套用角色规则，再计入净值。
+ * @param {{ if_banker?: boolean, f_group_count?: number, player_nm?: number, f_admin_uid?: string, roleIdByPlayerId?: Record<string, number>, role11ActiveRoundByPlayerId?: Record<string, number> }} options
+ *        role11ActiveRoundByPlayerId：角色 11 的玩家 uid -> 其本局发动主动的轮次号；仅在该轮对该玩家应用「收益修型」主动。
  *        若开启 Banker 且提供 f_admin_uid：房间管理员参与对局时占用槽位 0（庄家）；第一轮结算后庄家 nav=1；图表中显示为「庄家」。
  * @returns {{
  *   df_far_return: Array<Record<string, number>>,
@@ -49,6 +49,10 @@ function f_emptyExposureRow() {
 export function f_simulatePythonFactorGame(allPlayerHistories, options = {}) {
 	const if_banker = !!options.if_banker
 	const roleIdByPlayerId = options.roleIdByPlayerId && typeof options.roleIdByPlayerId === 'object' ? options.roleIdByPlayerId : null
+	const role11ActiveRoundByPlayerId =
+		options.role11ActiveRoundByPlayerId && typeof options.role11ActiveRoundByPlayerId === 'object'
+			? options.role11ActiveRoundByPlayerId
+			: null
 	const player_nm = Math.max(1, parseInt(options.f_group_count ?? options.player_nm ?? 20, 10) || 20)
 	const banker_nav0 = Math.floor(player_nm / 3)
 	const adminUid =
@@ -150,9 +154,15 @@ export function f_simulatePythonFactorGame(allPlayerHistories, options = {}) {
 			if (uid && uid !== '__banker__' && roleIdByPlayerId) {
 				const rid = roleIdByPlayerId[uid]
 				if (Number.isFinite(rid) && rid === F_TEST_ROLE_ID) {
-					const adjA = f_applyTestRoleActiveToFactorReturns(fr)
-					fr = adjA.factorReturns
-					tr = adjA.totalReturn
+					const ar =
+						role11ActiveRoundByPlayerId && Number.isFinite(role11ActiveRoundByPlayerId[uid])
+							? role11ActiveRoundByPlayerId[uid]
+							: NaN
+					if (Number.isFinite(ar) && ar === round) {
+						const adjA = f_applyTestRoleActiveToFactorReturns(fr)
+						fr = adjA.factorReturns
+						tr = adjA.totalReturn
+					}
 				} else if (Number.isFinite(rid) && rid >= 1 && rid <= 10) {
 					const adj = f_applyPassiveToFactorReturns(exp[i], fr, rid)
 					fr = adj.factorReturns

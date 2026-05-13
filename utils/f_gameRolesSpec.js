@@ -161,9 +161,9 @@ export const F_GAME_ROLES = [
 		roleIntro: '不参与正式数值平衡，仅用于验证结算链路与 UI。',
 		activeSkillName: '收益修型',
 		activeSkillDesc:
-			'每轮自动：在当期各因子收益贡献中，将最低的一项改为与最高项相同（测试用，无需手动点选）。',
+			'博弈页本轮提交前打开开关：本局仅可发动一次；发动当轮将各因子收益贡献中最低的一项改为与最高项相同。',
 		passiveSkillName: '净值的回响',
-		passiveSkillDesc: '仅第 2 轮：该轮净值相对上一轮按 ×2 结算（仅此一轮触发一次被动放大）。'
+		passiveSkillDesc: '仅全局轮次号为 2 的一轮：该轮净值步长额外 ×2（自动，无按钮）。'
 	}
 ]
 

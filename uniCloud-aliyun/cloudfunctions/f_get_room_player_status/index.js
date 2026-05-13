@@ -72,12 +72,14 @@ exports.main = async (event) => {
 	const f_players = uids.map((f_player_uid) => {
 		const m = memRows.find((x) => x.f_player_uid === f_player_uid)
 		const rid = m ? parseInt(m.f_role_id, 10) : NaN
+		const r11 = m ? parseInt(m.f_role11_active_round, 10) : NaN
 		return {
 			f_player_uid,
 			f_nick_name: nickByUid[f_player_uid] || f_player_uid.slice(0, 8),
 			f_max_round_index: maxByUid[f_player_uid] || 0,
 			f_history: listByUid[f_player_uid] || [],
-			f_role_id: Number.isFinite(rid) && rid >= 1 && rid <= 11 ? rid : null
+			f_role_id: Number.isFinite(rid) && rid >= 1 && rid <= 11 ? rid : null,
+			f_role11_active_round: Number.isFinite(r11) && r11 >= 0 ? r11 : 0
 		}
 	})
 

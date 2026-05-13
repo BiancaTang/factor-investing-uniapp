@@ -94,6 +94,7 @@
 
 			<view v-if="compareChartData" class="charts-wrap">
 				<f-game-charts
+					v-bind="chartSimRoleOptsObs"
 					:chart-data="compareChartData"
 					:only-nav="true"
 					nav-chart-title="玩家净值对比（已提交玩家）"
@@ -102,6 +103,7 @@
 			<view v-for="p in playersWithHistory" :key="p.f_player_uid" class="player-charts">
 				<text class="player-h">{{ p.f_nick_name }}</text>
 				<f-game-charts
+					v-bind="chartSimRoleOptsObs"
 					:history="p.f_history"
 					:if-banker="roomIfBanker"
 					:f-group-count="roomGroupCount"
@@ -124,6 +126,7 @@ import FGameCharts from '../../components/f-game-charts/f-game-charts.vue'
 import { f_buildJointNavCompareChartData, f_simulatePythonFactorGame } from '../../utils/f_factorEngine.js'
 import { f_getStoredUser } from '../../utils/f_userStorage.js'
 import { f_isAdmin } from '../../utils/f_role.js'
+import { F_TEST_ROLE_ID } from '../../utils/f_roleTestRole.js'
 import {
 	f_controlRoomRoundInCloud,
 	f_getRoomPlayerStatusInCloud,
@@ -274,6 +277,23 @@ function f_roleMapFromObsPlayers() {
 	return m
 }
 
+function f_role11ActiveRoundByPlayerIdFromObs() {
+	const ps = (status.value && status.value.f_players) || []
+	const o = {}
+	for (const p of ps) {
+		const rid = parseInt(p.f_role_id, 10)
+		if (rid !== F_TEST_ROLE_ID || !p.f_player_uid) continue
+		const r11 = parseInt(p.f_role11_active_round, 10)
+		if (Number.isFinite(r11) && r11 >= 1) o[String(p.f_player_uid)] = r11
+	}
+	return o
+}
+
+const chartSimRoleOptsObs = computed(() => ({
+	roleIdByPlayerId: f_roleMapFromObsPlayers(),
+	role11ActiveRoundByPlayerId: f_role11ActiveRoundByPlayerIdFromObs()
+}))
+
 const compareChartData = computed(() => {
 	const list = playersWithHistory.value
 	if (list.length < 2) return null
@@ -287,7 +307,8 @@ const compareChartData = computed(() => {
 			if_banker: roomIfBanker.value,
 			f_group_count: roomGroupCount.value,
 			f_admin_uid: status.value?.f_admin_uid || '',
-			roleIdByPlayerId: f_roleMapFromObsPlayers()
+			roleIdByPlayerId: f_roleMapFromObsPlayers(),
+			role11ActiveRoundByPlayerId: f_role11ActiveRoundByPlayerIdFromObs()
 		}
 	)
 })
@@ -315,7 +336,8 @@ const rankingList = computed(() => {
 			if_banker: ifBanker,
 			f_group_count: roomGroupCount.value,
 			f_admin_uid: adminUid,
-			roleIdByPlayerId: f_roleMapFromObsPlayers()
+			roleIdByPlayerId: f_roleMapFromObsPlayers(),
+			role11ActiveRoundByPlayerId: f_role11ActiveRoundByPlayerIdFromObs()
 		}
 	)
 	const rows = ps.map((p) => {

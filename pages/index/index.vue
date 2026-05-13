@@ -29,7 +29,7 @@
 
 			<button v-if="user && user.f_current_room_code" class="action secondary" @click="goRoleSelect">选择角色</button>
 
-			<button v-if="isAdmin" class="action game" @click="goPlayDirect">直接进入游戏</button>
+			<button v-if="user && user.f_current_room_code" class="action game" @click="goPlayDirect">{{ isAdmin ? '直接进入游戏' : '进入游戏' }}</button>
 
 			<button v-if="isAdmin" class="action danger" @click="goDataPurge">清空数据库</button>
 

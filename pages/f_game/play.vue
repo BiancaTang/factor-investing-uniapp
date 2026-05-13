@@ -20,6 +20,7 @@
 			<text class="done-title">{{ roomEnded ? '游戏已结束' : `已完成全部 ${totalRoundsLabel} 轮` }}</text>
 			<f-game-charts
 				:key="'c-' + chartRefreshKey"
+				v-bind="chartSimRoleOpts"
 				:history="history"
 				:nav-chart-data="compareNavChartData"
 				nav-chart-title="玩家净值对比（已提交玩家）"
@@ -61,6 +62,7 @@
 			<view v-if="history.length" class="wait-charts">
 				<f-game-charts
 					:key="'w-' + chartRefreshKey"
+					v-bind="chartSimRoleOpts"
 					:history="history"
 					:nav-chart-data="compareNavChartData"
 					nav-chart-title="玩家净值对比（已提交玩家）"
@@ -86,14 +88,24 @@
 			<view v-if="myRoleIdFromSnapshot === F_TEST_ROLE_ID" class="test-role-tip">
 				<text class="test-role-tip-title">测试角色（11 号）</text>
 				<text class="test-role-tip-body">
-					主动：每轮提交前自动把「因子收益贡献」里最低的一项改成与最高项相同。被动：仅当本轮轮次号为
-					2 时触发，净值步长额外 ×2（无单独按钮）。
+					主动：打开下方开关并在本轮点击「确认本轮」后生效——将「因子收益贡献」中最低的一项提至与最高项相同；本局每名玩家限
+					1 次。被动：仅第 2 轮全局生效，净值步长额外 ×2（无单独开关）。
 				</text>
-				<text v-if="nextRoundIndex === 2" class="test-role-tip-warn">当前将提交第 2 轮：提交成功后会提示被动是否生效。</text>
+				<text v-if="role11ActiveConsumed && role11ActiveUsedRound != null" class="test-role-tip-warn">
+					测试主动已在第 {{ role11ActiveUsedRound }} 轮使用。
+				</text>
+				<view v-else class="role11-active-row">
+					<text class="role11-active-label">本轮使用测试主动（本局 1 次）</text>
+					<switch :checked="role11ActiveChecked" color="#3d7a52" @change="onRole11ActiveChange" />
+				</view>
+				<text v-if="nextRoundIndex === 2" class="test-role-tip-warn">
+					当前将提交第 2 轮：被动已计入上方仿真；提交成功后会再次提示。
+				</text>
 			</view>
 			<view v-if="history.length" class="wait-charts">
 				<f-game-charts
 					:key="'i-' + chartRefreshKey"
+					v-bind="chartSimRoleOpts"
 					:history="history"
 					:nav-chart-data="compareNavChartData"
 					display-mode="factorOnly"
@@ -150,6 +162,7 @@
 			</view>
 			<f-game-charts
 				:key="'r-' + chartRefreshKey"
+				v-bind="chartSimRoleOpts"
 				:history="history"
 				:nav-chart-data="compareNavChartData"
 				nav-chart-title="玩家净值对比（已提交玩家）"
@@ -208,6 +221,8 @@ const roomSnapshot = ref(null)
 /** 刷新数据后递增，小程序端强制重绘图表 */
 const chartRefreshKey = ref(0)
 const tick = ref(Date.now())
+/** 11 号测试主动：本轮提交是否勾选（每轮重置） */
+const role11ActiveChecked = ref(false)
 let timer = null
 
 const factorIntroItems = computed(() =>
@@ -263,6 +278,10 @@ function goRoleSelect() {
 	uni.navigateTo({ url: '/pages/f_role_select/index?code=' + encodeURIComponent(rc) })
 }
 
+function onRole11ActiveChange(e) {
+	role11ActiveChecked.value = !!(e && e.detail && e.detail.value)
+}
+
 const simulationPlayersForChart = computed(() => {
 	const ps = roomSnapshot.value && roomSnapshot.value.f_players
 	if (!ps || !ps.length) return []
@@ -284,6 +303,24 @@ function f_roleIdByPlayerIdFromSnapshot() {
 	return m
 }
 
+/** 角色 11 已登记发动主动的轮次（来自成员表快照） */
+function f_role11ActiveRoundByPlayerIdFromSnapshot() {
+	const ps = (roomSnapshot.value && roomSnapshot.value.f_players) || []
+	const o = {}
+	for (const p of ps) {
+		const rid = parseInt(p.f_role_id, 10)
+		if (rid !== F_TEST_ROLE_ID || !p.f_player_uid) continue
+		const r11 = parseInt(p.f_role11_active_round, 10)
+		if (Number.isFinite(r11) && r11 >= 1) o[String(p.f_player_uid)] = r11
+	}
+	return o
+}
+
+const chartSimRoleOpts = computed(() => ({
+	roleIdByPlayerId: f_roleIdByPlayerIdFromSnapshot(),
+	role11ActiveRoundByPlayerId: f_role11ActiveRoundByPlayerIdFromSnapshot()
+}))
+
 const rankingList = computed(() => {
 	const ps = (roomSnapshot.value && roomSnapshot.value.f_players) || []
 	const ifBanker = !!(roomInfo.value && roomInfo.value.f_banker_intervene)
@@ -298,7 +335,8 @@ const rankingList = computed(() => {
 			if_banker: ifBanker,
 			f_group_count: roomGroupCount.value,
 			f_admin_uid: adminUid,
-			roleIdByPlayerId: f_roleIdByPlayerIdFromSnapshot()
+			roleIdByPlayerId: f_roleIdByPlayerIdFromSnapshot(),
+			role11ActiveRoundByPlayerId: f_role11ActiveRoundByPlayerIdFromSnapshot()
 		}
 	)
 	const rows = ps.map((p) => {
@@ -356,12 +394,17 @@ const compareNavChartData = computed(() => {
 			if_banker: roomIfBanker.value,
 			f_group_count: roomGroupCount.value,
 			f_admin_uid: roomInfo.value?.f_admin_uid || '',
-			roleIdByPlayerId: f_roleIdByPlayerIdFromSnapshot()
+			roleIdByPlayerId: f_roleIdByPlayerIdFromSnapshot(),
+			role11ActiveRoundByPlayerId: f_role11ActiveRoundByPlayerIdFromSnapshot()
 		}
 	)
 })
 
 const nextRoundIndex = computed(() => history.value.length + 1)
+
+watch(nextRoundIndex, () => {
+	role11ActiveChecked.value = false
+})
 const roomEnded = computed(() => !!(roomInfo.value && roomInfo.value.f_game_ended))
 const isUnlimitedRounds = computed(() => {
 	const n = roomInfo.value ? parseInt(roomInfo.value.f_round_count, 10) : 0
@@ -381,6 +424,27 @@ const testRolePassiveReviewHint = computed(
 		myRoleIdFromSnapshot.value === F_TEST_ROLE_ID &&
 		Number(lastCompletedRound.value) === 2
 )
+
+const role11ActiveConsumed = computed(() => {
+	const uid = currentUserUid.value
+	if (!uid) return false
+	const ps = (roomSnapshot.value && roomSnapshot.value.f_players) || []
+	const me = ps.find((p) => String(p.f_player_uid || '') === uid)
+	if (!me || parseInt(me.f_role_id, 10) !== F_TEST_ROLE_ID) return false
+	const r = parseInt(me.f_role11_active_round, 10)
+	return Number.isFinite(r) && r >= 1
+})
+
+/** 已使用测试主动的轮次号（仅当为 11 号且已用时有效） */
+const role11ActiveUsedRound = computed(() => {
+	const uid = currentUserUid.value
+	if (!uid) return null
+	const ps = (roomSnapshot.value && roomSnapshot.value.f_players) || []
+	const me = ps.find((p) => String(p.f_player_uid || '') === uid)
+	if (!me || parseInt(me.f_role_id, 10) !== F_TEST_ROLE_ID) return null
+	const r = parseInt(me.f_role11_active_round, 10)
+	return Number.isFinite(r) && r >= 1 ? r : null
+})
 
 const canContinue = computed(() => {
 	if (roomEnded.value) return false
@@ -597,10 +661,15 @@ async function submitRound() {
 	if (!isUnlimitedRounds.value && cr > totalRounds.value) return
 	submitting.value = true
 	try {
+		const applyR11 =
+			role11ActiveChecked.value &&
+			myRoleIdFromSnapshot.value === F_TEST_ROLE_ID &&
+			!role11ActiveConsumed.value
 		const payload = {
 			f_room_code: roomCode.value,
 			f_player_uid: u.f_uid,
-			f_round_index: cr
+			f_round_index: cr,
+			f_apply_role11_active: !!applyR11
 		}
 		for (const d of F_FACTOR_DEFS) {
 			payload[d.key] = factors[d.key]
@@ -631,11 +700,24 @@ async function submitRound() {
 		await fetchRoomSnapshot(roomCode.value)
 		chartRefreshKey.value++
 		const ridSubmit = myRoleIdFromSnapshot.value
-		if (ridSubmit === F_TEST_ROLE_ID && cr === 2) {
+		const passive2 = ridSubmit === F_TEST_ROLE_ID && cr === 2
+		if (passive2 && applyR11) {
+			uni.showToast({
+				title: '第2轮：被动净值步长×2；测试主动已发动（本局已用）',
+				icon: 'none',
+				duration: 3600
+			})
+		} else if (passive2) {
 			uni.showToast({
 				title: '测试角色被动已触发：第2轮净值步长×2',
 				icon: 'none',
 				duration: 3200
+			})
+		} else if (applyR11) {
+			uni.showToast({
+				title: `测试主动已发动（第 ${cr} 轮），本局已用`,
+				icon: 'none',
+				duration: 2800
 			})
 		}
 	} catch (err) {
@@ -676,11 +758,23 @@ function buildRoundMetricsForSubmit(payload) {
 				.sort((a, b) => parseInt(a.f_round_index, 10) - parseInt(b.f_round_index, 10))
 		}))
 
+	const r11Base = f_role11ActiveRoundByPlayerIdFromSnapshot()
+	const r11Map = { ...r11Base }
+	if (
+		role11ActiveChecked.value &&
+		uid &&
+		myRoleIdFromSnapshot.value === F_TEST_ROLE_ID &&
+		!(Number.isFinite(r11Map[uid]) && r11Map[uid] >= 1)
+	) {
+		r11Map[uid] = round
+	}
+
 	const sim = f_simulatePythonFactorGame(list, {
 		if_banker: roomIfBanker.value,
 		f_group_count: roomGroupCount.value,
 		f_admin_uid: roomInfo.value?.f_admin_uid || '',
-		roleIdByPlayerId: f_roleIdByPlayerIdFromSnapshot()
+		roleIdByPlayerId: f_roleIdByPlayerIdFromSnapshot(),
+		role11ActiveRoundByPlayerId: r11Map
 	})
 	const rows = sim.attributionRowsByPlayerId.get(uid) || []
 	const hit = rows.find((r) => parseInt(r.round, 10) === round)
@@ -924,6 +1018,23 @@ function backHome() {
 	margin-top: 10rpx;
 	color: #e6c86a;
 	font-weight: 600;
+}
+
+.role11-active-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	margin-top: 14rpx;
+	padding-top: 12rpx;
+	border-top: 1rpx solid rgba(125, 206, 158, 0.25);
+}
+
+.role11-active-label {
+	flex: 1;
+	font-size: 24rpx;
+	color: #c8e6d0;
+	line-height: 1.45;
+	padding-right: 16rpx;
 }
 
 .passive-banner {

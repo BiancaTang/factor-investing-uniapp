@@ -87,7 +87,8 @@ exports.main = async (event) => {
 	await f_members.where({ f_room_code, f_player_uid }).update({
 		f_role_id: finalRoleId,
 		f_role_name: role.name,
-		f_role_selected_at: f_now
+		f_role_selected_at: f_now,
+		f_role11_active_round: 0
 	})
 
 	return {

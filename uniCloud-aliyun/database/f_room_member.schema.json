@@ -8,6 +8,10 @@
 		"f_joined_at": { "bsonType": "timestamp" },
 		"f_role_id": { "bsonType": "int", "description": "1～11 游戏角色（11=测试角色），与 docs/factor_game_roles.html 及 utils/f_gameRolesSpec.js 一致" },
 		"f_role_name": { "bsonType": "string", "description": "角色名称快照" },
-		"f_role_selected_at": { "bsonType": "timestamp", "description": "最近一次选角或改选时间" }
+		"f_role_selected_at": { "bsonType": "timestamp", "description": "最近一次选角或改选时间" },
+		"f_role11_active_round": {
+			"bsonType": "int",
+			"description": "仅角色 11：本局测试主动已发动的 f_round_index；0 或未设表示未发动"
+		}
 	}
 }

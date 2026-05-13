@@ -38,7 +38,34 @@
 					<text class="modal-title">{{ detail.name }} · {{ detail.subtitle }}</text>
 					<button type="button" class="modal-close" @click="closeDetail">×</button>
 				</view>
-				<scroll-view scroll-y class="modal-scroll" :show-scrollbar="false">
+				<!-- #ifdef H5 -->
+				<view class="modal-scroll modal-scroll--h5" :style="{ maxHeight: modalScrollPx + 'px' }">
+					<image class="hero" :src="detail.image" mode="widthFix" />
+					<view class="tag-row">
+						<text class="tag main">主：{{ detail.mainFactor }}</text>
+						<text class="tag sub">副：{{ detail.subFactor }}</text>
+					</view>
+					<text v-if="detail.selectedBy" class="lock-line">当前已被「{{ detail.selectedBy }}」锁定</text>
+					<text v-else class="lock-line dim">尚未被锁定</text>
+
+					<text class="sec-label">角色介绍</text>
+					<text class="sec-body">{{ detail.roleIntro }}</text>
+
+					<text class="sec-label">配置阶段 · {{ detail.activeSkillName }}</text>
+					<text class="sec-body">{{ detail.activeSkillDesc }}</text>
+
+					<text class="sec-label">运行阶段 · {{ detail.passiveSkillName }}</text>
+					<text class="sec-body">{{ detail.passiveSkillDesc }}</text>
+				</view>
+				<!-- #endif -->
+				<!-- #ifndef H5 -->
+				<scroll-view
+					scroll-y
+					class="modal-scroll"
+					:show-scrollbar="false"
+					:enable-flex="true"
+					:style="{ height: modalScrollPx + 'px' }"
+				>
 					<image class="hero" :src="detail.image" mode="widthFix" />
 					<view class="tag-row">
 						<text class="tag main">主：{{ detail.mainFactor }}</text>
@@ -56,6 +83,7 @@
 					<text class="sec-label">运行阶段 · {{ detail.passiveSkillName }}</text>
 					<text class="sec-body">{{ detail.passiveSkillDesc }}</text>
 				</scroll-view>
+				<!-- #endif -->
 			</view>
 		</view>
 	</view>
@@ -69,7 +97,26 @@ import { F_GAME_ROLES, f_gameRolePortraitUrl } from '@/utils/f_gameRolesSpec.js'
 const roomCode = ref('')
 const liveRoles = ref([])
 const detailId = ref(null)
+/** 小程序 scroll-y 须明确像素高度，否则无法滚动 */
+const modalScrollPx = ref(420)
 let timer = null
+
+function f_updateModalScrollHeight() {
+	try {
+		let wh = 600
+		if (typeof window !== 'undefined' && Number(window.innerHeight)) {
+			wh = window.innerHeight
+		} else {
+			const sys = typeof uni.getWindowInfo === 'function' ? uni.getWindowInfo() : uni.getSystemInfoSync()
+			wh = Number(sys.windowHeight) || 600
+		}
+		const headPx = uni.upx2px ? uni.upx2px(120) : 60
+		const padPx = uni.upx2px ? uni.upx2px(64) : 32
+		modalScrollPx.value = Math.max(240, Math.floor(wh * 0.82 - headPx - padPx))
+	} catch (_) {
+		modalScrollPx.value = 420
+	}
+}
 
 const roomOk = computed(() => /^\d{4}$/.test(roomCode.value))
 
@@ -95,6 +142,7 @@ const detail = computed(() => {
 })
 
 function openDetail(r) {
+	f_updateModalScrollHeight()
 	detailId.value = r.id
 }
 
@@ -128,6 +176,7 @@ function startPoll() {
 }
 
 onLoad((options) => {
+	f_updateModalScrollHeight()
 	const q = options && (options.roomId || options.code || options.room)
 	roomCode.value = String(q || '')
 		.replace(/\D/g, '')
@@ -312,13 +361,14 @@ onUnload(() => {
 .modal-panel {
 	width: 100%;
 	max-width: 720px;
-	max-height: 88vh;
+	max-height: 90vh;
 	background: #14141c;
 	border: 2rpx solid #6d5825;
 	border-radius: 24rpx;
 	overflow: hidden;
 	display: flex;
 	flex-direction: column;
+	min-height: 0;
 }
 
 .modal-head {
@@ -356,10 +406,26 @@ onUnload(() => {
 
 .modal-scroll {
 	flex: 1;
-	height: 58vh;
-	padding: 20rpx 28rpx 36rpx;
+	min-height: 0;
+	width: 100%;
+	padding: 20rpx 28rpx calc(36rpx + env(safe-area-inset-bottom));
 	box-sizing: border-box;
 }
+
+/* #ifdef H5 */
+/* Chrome / 大屏：uni scroll-view 常无法滚轮滚动；用原生 overflow */
+.modal-scroll--h5 {
+	overflow-x: hidden;
+	overflow-y: auto;
+	-webkit-overflow-scrolling: touch;
+	overscroll-behavior: contain;
+	flex: 1 1 auto;
+	min-height: 0;
+	width: 100%;
+	padding: 20rpx 28rpx calc(36rpx + env(safe-area-inset-bottom));
+	box-sizing: border-box;
+}
+/* #endif */
 
 .hero {
 	width: 100%;

@@ -38,6 +38,7 @@ exports.main = async (event) => {
 	const facVals = F_FACTOR_DEFS.map((d) => facByKey[d.key])
 	const f_nav = f_numOrNull(event.f_nav)
 	const f_total_return = f_numOrNull(event.f_total_return)
+	const f_apply_role11_active = !!event.f_apply_role11_active
 	const retByKey = {}
 	for (const d of F_FACTOR_DEFS) {
 		retByKey[f_navReturnDbKey(d.internal)] = f_numOrNull(event[f_navReturnDbKey(d.internal)])
@@ -58,6 +59,22 @@ exports.main = async (event) => {
 	const mem = await f_members.where({ f_room_code, f_player_uid }).limit(1).get()
 	if (!mem.data || !mem.data.length) {
 		return { f_code: 403, f_message: '非本房间成员不可提交', f_data: null }
+	}
+
+	const memRow0 = mem.data[0]
+	const memRoleId = parseInt(memRow0.f_role_id, 10)
+	const memActiveR = parseInt(memRow0.f_role11_active_round, 10)
+	if (f_apply_role11_active) {
+		if (!Number.isFinite(memRoleId) || memRoleId !== 11) {
+			return { f_code: 400, f_message: '仅测试角色（11号）可发动该主动', f_data: null }
+		}
+		if (Number.isFinite(memActiveR) && memActiveR >= 1 && memActiveR !== f_round_index) {
+			return {
+				f_code: 400,
+				f_message: `本局测试主动已在第 ${memActiveR} 轮使用，不可重复发动`,
+				f_data: null
+			}
+		}
 	}
 
 	const room = await f_rooms.where({ f_room_code }).limit(1).get()
@@ -136,10 +153,20 @@ exports.main = async (event) => {
 
 	if (exist.data && exist.data.length) {
 		await f_rounds.doc(exist.data[0]._id).update(doc)
+		if (f_apply_role11_active && Number.isFinite(memRoleId) && memRoleId === 11) {
+			if (!Number.isFinite(memActiveR) || memActiveR < 1) {
+				await f_members.doc(memRow0._id).update({ f_role11_active_round: f_round_index })
+			}
+		}
 		return { f_code: 0, f_message: 'ok', f_data: { f_action: 'update', f_id: exist.data[0]._id } }
 	}
 
 	doc.f_created_at = f_now
 	const add = await f_rounds.add(doc)
+	if (f_apply_role11_active && Number.isFinite(memRoleId) && memRoleId === 11) {
+		if (!Number.isFinite(memActiveR) || memActiveR < 1) {
+			await f_members.doc(memRow0._id).update({ f_role11_active_round: f_round_index })
+		}
+	}
 	return { f_code: 0, f_message: 'ok', f_data: { f_action: 'insert', f_id: add.id } }
 }

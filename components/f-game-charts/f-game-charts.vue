@@ -160,6 +160,16 @@ const props = defineProps({
 		type: String,
 		default: ''
 	},
+	/** 与 f_simulatePythonFactorGame 一致：uid -> f_role_id，用于被动/主动与多人仿真对齐 */
+	roleIdByPlayerId: {
+		type: Object,
+		default: null
+	},
+	/** 角色 11：uid -> 已发动主动的轮次号 */
+	role11ActiveRoundByPlayerId: {
+		type: Object,
+		default: null
+	},
 	/** >0 时固定图表区域高度（px），大屏等场景便于读数；0 表示用默认 rpx 高度 */
 	chartInnerHeightPx: {
 		type: Number,
@@ -206,6 +216,12 @@ const chartPayload = computed(() => {
 		targetPlayerId: targetId,
 		...(props.roomAdminUid && String(props.roomAdminUid).trim()
 			? { f_admin_uid: String(props.roomAdminUid).trim() }
+			: {}),
+		...(props.roleIdByPlayerId && typeof props.roleIdByPlayerId === 'object'
+			? { roleIdByPlayerId: props.roleIdByPlayerId }
+			: {}),
+		...(props.role11ActiveRoundByPlayerId && typeof props.role11ActiveRoundByPlayerId === 'object'
+			? { role11ActiveRoundByPlayerId: props.role11ActiveRoundByPlayerId }
 			: {})
 	}
 	let allList = null
