@@ -1,5 +1,12 @@
 <template>
   <view class="decision-screen">
+    <view v-if="marketSnapshot && marketOpenRound" class="decision-event-slot">
+      <FRoundMarketEvent
+        variant="display"
+        :snapshot="marketSnapshot"
+        :open-round="marketOpenRound"
+      />
+    </view>
     <view class="decision-header">
       <text class="round-badge">ROUND {{ roundIndex }}</text>
       <view class="countdown" :class="{ urgent: timeLeft <= 30 }">
@@ -47,6 +54,7 @@
 import { computed } from 'vue'
 import FactorRing from '@/components/f-display/factor-ring.vue'
 import Runway from '@/components/f-display/runway.vue'
+import FRoundMarketEvent from '@/components/f-round-market-event/f-round-market-event.vue'
 import { F_FACTOR_DEFS } from '@/utils/f_gameFactorSpec.js'
 import { F_FACTOR_COLORS } from '@/utils/f_factorPalette.js'
 
@@ -56,7 +64,9 @@ const props = defineProps({
   players: { type: Array, default: () => [] },
   groupExposure: { type: Object, default: () => ({}) },
   submittedCount: { type: Number, default: 0 },
-  totalPlayers: { type: Number, default: 0 }
+  totalPlayers: { type: Number, default: 0 },
+  marketSnapshot: { type: Object, default: null },
+  marketOpenRound: { type: Number, default: 0 }
 })
 
 const factorDefs = F_FACTOR_DEFS
@@ -108,6 +118,13 @@ function getBarStyle(def) {
   display: flex;
   flex-direction: column;
   padding: 32px 40px;
+}
+
+.decision-event-slot {
+  flex-shrink: 0;
+  max-height: 38vh;
+  overflow: hidden;
+  margin-bottom: 12px;
 }
 
 .decision-header {

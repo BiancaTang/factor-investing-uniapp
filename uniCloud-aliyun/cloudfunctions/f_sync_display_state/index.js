@@ -14,6 +14,28 @@ function f_normalizeRoomCode(event) {
 	return /^\d{4}$/.test(t) ? t : ''
 }
 
+/** 双数轮且与房间登记轮次一致时，转为大屏 EventScreen 结构 */
+function f_roomSnapshotToCurrentEvent(room, openRound) {
+	if (!openRound || openRound % 2 !== 0) return null
+	const evRound = parseInt(room.f_round_random_event_round, 10)
+	if (!Number.isFinite(evRound) || evRound !== openRound) return null
+	const snap = room.f_round_random_event_snapshot
+	if (!snap || typeof snap !== 'object' || !snap.name) return null
+	const desc = [snap.summary, snap.lore, snap.resultNarrative].filter(Boolean).join('\n\n')
+	const effects = (snap.effects || []).map((e) => ({
+		factor: e.internal,
+		type: e.direction === 'up' ? '↑' : '↓',
+		value: e.short || (e.direction === 'up' ? '相对占优' : '承压')
+	}))
+	return {
+		cardId: snap.cardId || `EVT-${String(snap.id || 0).padStart(2, '0')}`,
+		name: snap.name,
+		category: snap.sentimentLabel || (snap.sentiment === 'good' ? '利好' : '利空'),
+		description: desc,
+		effects
+	}
+}
+
 /**
  * 大屏状态：对齐现有「因子博弈」库表 f_room / f_room_member / f_game_round（f_room_code、f_open_round_index）。
  * 阶段：候场 lobby | 本轮开放决策 decision | 游戏已结束 finale（与 f_game_ended 一致）。
@@ -193,6 +215,19 @@ exports.main = async (event) => {
 			}))
 			.filter((p) => p.history.length > 0)
 
+		const currentEvent = f_roomSnapshotToCurrentEvent(room, openRound)
+
+		let roundMarketSnapshot = null
+		let roundMarketEventRound = 0
+		if (openRound > 0 && openRound % 2 === 0) {
+			const evR = parseInt(room.f_round_random_event_round, 10)
+			const snap = room.f_round_random_event_snapshot
+			if (Number.isFinite(evR) && evR === openRound && snap && typeof snap === 'object' && snap.name) {
+				roundMarketSnapshot = snap
+				roundMarketEventRound = openRound
+			}
+		}
+
 		const displayState = {
 			roomId: f_room_code,
 			roomName: `房间 ${f_room_code}`,
@@ -205,7 +240,9 @@ exports.main = async (event) => {
 			submittedCount: submittedUids.size,
 			totalPlayers: players.length,
 			groupExposure,
-			currentEvent: null,
+			currentEvent,
+			roundMarketSnapshot,
+			roundMarketEventRound,
 			skillLog: [],
 			roundHistory,
 			ifBanker: !!room.f_banker_intervene,

@@ -8,6 +8,18 @@
 		"f_banker_intervene": { "bsonType": "bool", "description": "是否 banker/后台介入控制局面" },
 		"f_round_duration_sec": { "bsonType": "int", "description": "单轮时长（秒），默认 300" },
 		"f_round_started_at": { "bsonType": "timestamp", "description": "当前开放轮次开始时间（毫秒时间戳），f_open_round_index=0 时可为 0/空" },
+		"f_round_random_event_id": {
+			"bsonType": "int",
+			"description": "双数轮开启时抽取的随机事件编号 1～10，0 表示未抽取"
+		},
+		"f_round_random_event_round": {
+			"bsonType": "int",
+			"description": "上述随机事件对应的开放轮次（应与 f_open_round_index 一致时为「当前轮事件」）"
+		},
+		"f_round_random_event_snapshot": {
+			"bsonType": "object",
+			"description": "随机事件展示快照（名称、简介、因子方向等），由云函数写入"
+		},
 		"f_game_ended": { "bsonType": "bool", "description": "游戏是否已结束（管理员点击结束游戏）" },
 		"f_game_ended_at": { "bsonType": "timestamp", "description": "游戏结束时间（毫秒时间戳）" },
 		"f_admin_uid": { "bsonType": "string", "description": "创建者管理员 f_uid" },

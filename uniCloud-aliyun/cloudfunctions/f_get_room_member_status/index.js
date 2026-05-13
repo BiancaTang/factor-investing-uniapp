@@ -110,6 +110,18 @@ exports.main = async (event) => {
 			f_player_seat_used,
 			f_player_seat_max: 10,
 			f_playing_started: row.f_playing_started === true,
+			f_round_random_event_id: (() => {
+				const n = parseInt(row.f_round_random_event_id, 10)
+				return Number.isFinite(n) && n >= 0 ? n : 0
+			})(),
+			f_round_random_event_round: (() => {
+				const n = parseInt(row.f_round_random_event_round, 10)
+				return Number.isFinite(n) && n >= 0 ? n : 0
+			})(),
+			f_round_random_event_snapshot:
+				row.f_round_random_event_snapshot && typeof row.f_round_random_event_snapshot === 'object'
+					? row.f_round_random_event_snapshot
+					: null,
 			f_players
 		}
 	}

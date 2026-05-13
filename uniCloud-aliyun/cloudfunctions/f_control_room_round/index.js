@@ -1,6 +1,7 @@
 'use strict'
 
 const { F_FACTOR_DEFS } = require('./f_gameFactorSpec.js')
+const { f_rollRandomEventSnapshot } = require('./f_roundRandomEventsSpec.js')
 
 const db = uniCloud.database()
 const f_rooms = db.collection('f_room')
@@ -126,17 +127,34 @@ exports.main = async (event) => {
 		return { f_code: 400, f_message: '请先结束本轮再开启下一轮', f_data: { f_open_round_index: curOpen } }
 	}
 
-	await f_rooms.doc(row._id).update({
+	const patch = {
 		f_open_round_index: f_round_index,
 		f_round_started_at: f_now,
 		// 兼容旧房间：若没有设置轮时长，则写入默认 300 秒
 		...(row.f_round_duration_sec ? {} : { f_round_duration_sec: 300 }),
 		f_updated_at: f_now
-	})
+	}
+	/** 双数轮：开启时随机一条市场事件，供大屏与小程序同屏展示（单数轮不写库，沿用上次字段仅用于历史排查） */
+	if (f_round_index % 2 === 0) {
+		const snap = f_rollRandomEventSnapshot()
+		if (snap) {
+			patch.f_round_random_event_id = snap.id
+			patch.f_round_random_event_round = f_round_index
+			patch.f_round_random_event_snapshot = snap
+		}
+	}
+
+	await f_rooms.doc(row._id).update(patch)
 
 	return {
 		f_code: 0,
 		f_message: 'ok',
-		f_data: { f_open_round_index: f_round_index, f_action: 'start' }
+		f_data: {
+			f_open_round_index: f_round_index,
+			f_action: 'start',
+			f_round_random_event_id: patch.f_round_random_event_id || 0,
+			f_round_random_event_round: patch.f_round_random_event_round || 0,
+			f_round_random_event_snapshot: patch.f_round_random_event_snapshot || null
+		}
 	}
 }

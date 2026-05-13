@@ -59,6 +59,9 @@ exports.main = async (event) => {
 		f_open_round_index: 0,
 		/** 当前轮开始时间戳；未开启时为 0 */
 		f_round_started_at: 0,
+		f_round_random_event_id: 0,
+		f_round_random_event_round: 0,
+		f_round_random_event_snapshot: null,
 		f_created_at: f_now,
 		f_updated_at: f_now
 	}

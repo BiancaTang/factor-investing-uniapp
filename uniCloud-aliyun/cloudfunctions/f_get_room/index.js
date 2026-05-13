@@ -32,7 +32,19 @@ exports.main = async (event) => {
 			f_game_ended: !!row.f_game_ended,
 			f_game_ended_at: row.f_game_ended_at || 0,
 			f_join_locked: !!row.f_join_locked,
-			f_playing_started: !!row.f_playing_started
+			f_playing_started: !!row.f_playing_started,
+			f_round_random_event_id: (() => {
+				const n = parseInt(row.f_round_random_event_id, 10)
+				return Number.isFinite(n) && n >= 0 ? n : 0
+			})(),
+			f_round_random_event_round: (() => {
+				const n = parseInt(row.f_round_random_event_round, 10)
+				return Number.isFinite(n) && n >= 0 ? n : 0
+			})(),
+			f_round_random_event_snapshot:
+				row.f_round_random_event_snapshot && typeof row.f_round_random_event_snapshot === 'object'
+					? row.f_round_random_event_snapshot
+					: null
 		}
 	}
 }

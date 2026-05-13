@@ -23,6 +23,8 @@
 					:group-exposure="state.groupExposure"
 					:submitted-count="state.submittedCount"
 					:total-players="state.totalPlayers"
+					:market-snapshot="state.roundMarketSnapshot"
+					:market-open-round="state.roundMarketEventRound"
 				/>
 
 				<!-- Act 2: 事件降临 -->
@@ -177,7 +179,9 @@ const state = ref({
 	chartsReviewUnlocked: false,
 	joinLocked: false,
 	playingStarted: false,
-	timestamp: 0
+	timestamp: 0,
+	roundMarketSnapshot: null,
+	roundMarketEventRound: 0
 })
 
 /** 弹层内图表高度（px），随窗口变化 */

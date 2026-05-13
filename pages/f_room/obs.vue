@@ -22,6 +22,13 @@
 				<text v-if="!status.f_game_ended" class="st">博弈：{{ status.f_playing_started ? '已开始（角色已锁定）' : '未开始（可选角）' }}</text>
 				<text v-if="status.f_game_ended" class="st">游戏状态：已结束</text>
 			</view>
+			<FRoundMarketEvent
+				v-if="obsRoundMarketBanner"
+				class="obs-market-event"
+				variant="compact"
+				:snapshot="obsRoundMarketBanner.snapshot"
+				:open-round="obsRoundMarketBanner.openRound"
+			/>
 			<view v-if="status && !status.f_game_ended" class="ctrl join-ctrl">
 				<button
 					class="btn"
@@ -123,6 +130,7 @@
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import FGameCharts from '../../components/f-game-charts/f-game-charts.vue'
+import FRoundMarketEvent from '../../components/f-round-market-event/f-round-market-event.vue'
 import { f_buildJointNavCompareChartData, f_simulatePythonFactorGame } from '../../utils/f_factorEngine.js'
 import { f_getStoredUser } from '../../utils/f_userStorage.js'
 import { f_isAdmin } from '../../utils/f_role.js'
@@ -259,6 +267,19 @@ const playerSeatLabel = computed(() => {
 })
 
 const roomIfBanker = computed(() => !!(status.value && status.value.f_banker_intervene))
+
+/** 双数开放轮：本轮随机事件（与玩家端 / 大屏同源） */
+const obsRoundMarketBanner = computed(() => {
+	const s = status.value
+	if (!s) return null
+	const open = parseInt(s.f_open_round_index, 10)
+	if (!Number.isFinite(open) || open <= 0 || open % 2 !== 0) return null
+	const evR = parseInt(s.f_round_random_event_round, 10)
+	if (!Number.isFinite(evR) || evR !== open) return null
+	const snap = s.f_round_random_event_snapshot
+	if (!snap || typeof snap !== 'object' || !snap.name) return null
+	return { snapshot: snap, openRound: open }
+})
 
 const playersWithHistory = computed(() => {
 	const ps = status.value && status.value.f_players
@@ -665,6 +686,9 @@ async function onFinishGame() {
 	font-size: 28rpx;
 }
 .status {
+	margin-bottom: 12rpx;
+}
+.obs-market-event {
 	margin-bottom: 20rpx;
 }
 .st {

@@ -6,6 +6,14 @@
 			<text v-if="roomInfo && roomInfo.f_banker_intervene" class="banker">Banker 介入：开</text>
 		</view>
 
+		<FRoundMarketEvent
+			v-if="!loading && activeRoundMarketBanner"
+			class="global-market-event"
+			variant="compact"
+			:snapshot="activeRoundMarketBanner.snapshot"
+			:open-round="activeRoundMarketBanner.openRound"
+		/>
+
 		<view v-if="loading" class="loading">加载中…</view>
 
 		<view v-else-if="phase === 'role_prep'" class="card">
@@ -195,6 +203,7 @@
 import { computed, onUnmounted, reactive, ref, watch } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import FGameCharts from '../../components/f-game-charts/f-game-charts.vue'
+import FRoundMarketEvent from '../../components/f-round-market-event/f-round-market-event.vue'
 import { F_FACTOR_DEFS, f_navReturnDbKey } from '../../utils/f_gameLogic.js'
 import { f_getStoredUser } from '../../utils/f_userStorage.js'
 import {
@@ -320,6 +329,23 @@ const chartSimRoleOpts = computed(() => ({
 	roleIdByPlayerId: f_roleIdByPlayerIdFromSnapshot(),
 	role11ActiveRoundByPlayerId: f_role11ActiveRoundByPlayerIdFromSnapshot()
 }))
+
+/** 双数开放轮：与房间登记一致时展示本轮随机市场事件（叙事；未改仿真公式） */
+const activeRoundMarketBanner = computed(() => {
+	const ri = roomInfo.value
+	const rs = roomSnapshot.value
+	const open = parseInt(ri && ri.f_open_round_index, 10)
+	if (!Number.isFinite(open) || open <= 0 || open % 2 !== 0) return null
+	const evR = parseInt(
+		(rs && rs.f_round_random_event_round) != null ? rs.f_round_random_event_round : ri && ri.f_round_random_event_round,
+		10
+	)
+	if (!Number.isFinite(evR) || evR !== open) return null
+	const snap =
+		(rs && rs.f_round_random_event_snapshot) || (ri && ri.f_round_random_event_snapshot) || null
+	if (!snap || typeof snap !== 'object' || !snap.name) return null
+	return { snapshot: snap, openRound: open }
+})
 
 const rankingList = computed(() => {
 	const ps = (roomSnapshot.value && roomSnapshot.value.f_players) || []
@@ -818,6 +844,10 @@ function backHome() {
 }
 
 .head {
+	margin-bottom: 20rpx;
+}
+
+.global-market-event {
 	margin-bottom: 20rpx;
 }
 
