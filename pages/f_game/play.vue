@@ -40,6 +40,13 @@
 		</view>
 
 		<view v-else-if="phase === 'waiting'" class="card">
+			<view v-if="showMidGameRoleEntry" class="role-strip">
+				<text class="role-strip-label">选角尚未锁定（未点「开始博弈」）时，可随时改选角色</text>
+				<button v-if="!isRoomAdmin" type="button" class="btn ghost btn-compact" @click="goRoleSelect">
+					去选择 / 修改角色
+				</button>
+				<button v-else type="button" class="btn ghost btn-compact" @click="goRoleSelect">打开选角页（查看）</button>
+			</view>
 			<text class="section-title">等待管理员开始第 {{ nextRoundIndex }} 轮</text>
 			<text class="wait-tip">管理员在「房间观测」中开启本轮后，点击下方刷新即可继续。</text>
 			<view class="intro-wrap">
@@ -68,7 +75,22 @@
 		</view>
 
 		<view v-else-if="phase === 'input'" class="card">
+			<view v-if="showMidGameRoleEntry" class="role-strip">
+				<text class="role-strip-label">选角尚未锁定时可改选角色</text>
+				<button v-if="!isRoomAdmin" type="button" class="btn ghost btn-compact" @click="goRoleSelect">
+					去选择 / 修改角色
+				</button>
+				<button v-else type="button" class="btn ghost btn-compact" @click="goRoleSelect">打开选角页（查看）</button>
+			</view>
 			<text class="section-title">第 {{ nextRoundIndex }} / {{ totalRoundsLabel }} 轮 · 设置十个因子（-5～5）</text>
+			<view v-if="myRoleIdFromSnapshot === F_TEST_ROLE_ID" class="test-role-tip">
+				<text class="test-role-tip-title">测试角色（11 号）</text>
+				<text class="test-role-tip-body">
+					主动：每轮提交前自动把「因子收益贡献」里最低的一项改成与最高项相同。被动：仅当本轮轮次号为
+					2 时触发，净值步长额外 ×2（无单独按钮）。
+				</text>
+				<text v-if="nextRoundIndex === 2" class="test-role-tip-warn">当前将提交第 2 轮：提交成功后会提示被动是否生效。</text>
+			</view>
 			<view v-if="history.length" class="wait-charts">
 				<f-game-charts
 					:key="'i-' + chartRefreshKey"
@@ -115,7 +137,17 @@
 		</view>
 
 		<view v-else-if="phase === 'review'" class="card">
+			<view v-if="showMidGameRoleEntry" class="role-strip">
+				<text class="role-strip-label">选角尚未锁定时可改选角色</text>
+				<button v-if="!isRoomAdmin" type="button" class="btn ghost btn-compact" @click="goRoleSelect">
+					去选择 / 修改角色
+				</button>
+				<button v-else type="button" class="btn ghost btn-compact" @click="goRoleSelect">打开选角页（查看）</button>
+			</view>
 			<text class="section-title">第 {{ lastCompletedRound }} 轮结果</text>
+			<view v-if="testRolePassiveReviewHint" class="passive-banner">
+				<text>本局为第 2 轮：测试角色被动（净值步长 ×2）已计入上方净值与仿真。</text>
+			</view>
 			<f-game-charts
 				:key="'r-' + chartRefreshKey"
 				:history="history"
@@ -160,6 +192,7 @@ import {
 } from '../../utils/f_gameApi.js'
 import { f_buildJointNavCompareChartData, f_simulatePythonFactorGame } from '../../utils/f_factorEngine.js'
 import { F_FACTOR_COLOR_BY_FAC_KEY } from '../../utils/f_factorPalette.js'
+import { F_TEST_ROLE_ID } from '../../utils/f_roleTestRole.js'
 
 const roomCode = ref('')
 const totalRounds = ref(1)
@@ -204,6 +237,24 @@ const currentUserUid = computed(() => {
 const isRoomAdmin = computed(() => {
 	const a = roomInfo.value && roomInfo.value.f_admin_uid
 	return !!(a && currentUserUid.value && String(a) === currentUserUid.value)
+})
+
+/** 当前用户在快照中的角色 id（1～11），无则 null */
+const myRoleIdFromSnapshot = computed(() => {
+	const uid = currentUserUid.value
+	if (!uid) return null
+	const ps = (roomSnapshot.value && roomSnapshot.value.f_players) || []
+	const me = ps.find((p) => String(p.f_player_uid || '') === uid)
+	const rid = parseInt(me && me.f_role_id, 10)
+	return Number.isFinite(rid) && rid >= 1 && rid <= 11 ? rid : null
+})
+
+/** 博弈已开始前：除选角页外，在候局/填因子/复盘也提供入口 */
+const showMidGameRoleEntry = computed(() => {
+	if (roomInfo.value?.f_join_locked !== true) return false
+	if (roomInfo.value?.f_playing_started === true) return false
+	const p = phase.value
+	return p === 'waiting' || p === 'input' || p === 'review'
 })
 
 function goRoleSelect() {
@@ -323,6 +374,13 @@ const lastCompletedRound = computed(() => {
 	const sorted = [...history.value].sort((a, b) => b.f_round_index - a.f_round_index)
 	return sorted[0].f_round_index
 })
+
+const testRolePassiveReviewHint = computed(
+	() =>
+		phase.value === 'review' &&
+		myRoleIdFromSnapshot.value === F_TEST_ROLE_ID &&
+		Number(lastCompletedRound.value) === 2
+)
 
 const canContinue = computed(() => {
 	if (roomEnded.value) return false
@@ -572,6 +630,14 @@ async function submitRound() {
 		phase.value = 'review'
 		await fetchRoomSnapshot(roomCode.value)
 		chartRefreshKey.value++
+		const ridSubmit = myRoleIdFromSnapshot.value
+		if (ridSubmit === F_TEST_ROLE_ID && cr === 2) {
+			uni.showToast({
+				title: '测试角色被动已触发：第2轮净值步长×2',
+				icon: 'none',
+				duration: 3200
+			})
+		}
 	} catch (err) {
 		console.error(err)
 		uni.showToast({ title: '请检查云函数 f_submit_game_round', icon: 'none' })
@@ -805,6 +871,70 @@ function backHome() {
 	color: #f5e6b3;
 	border: 1rpx solid #6d5825;
 	margin-top: 24rpx;
+}
+
+.role-strip {
+	margin-bottom: 20rpx;
+	padding: 16rpx 18rpx;
+	background: #1a1810;
+	border: 1rpx solid #4a3f1a;
+	border-radius: 14rpx;
+}
+
+.role-strip-label {
+	display: block;
+	font-size: 24rpx;
+	color: #bfa56a;
+	line-height: 1.45;
+	margin-bottom: 12rpx;
+}
+
+.btn-compact {
+	margin-top: 0 !important;
+	height: 72rpx !important;
+	line-height: 72rpx !important;
+	font-size: 26rpx !important;
+}
+
+.test-role-tip {
+	margin-bottom: 20rpx;
+	padding: 16rpx 18rpx;
+	background: #1a2218;
+	border: 1rpx solid #2d5a3a;
+	border-radius: 14rpx;
+}
+
+.test-role-tip-title {
+	display: block;
+	font-size: 26rpx;
+	font-weight: 700;
+	color: #7dce9e;
+	margin-bottom: 8rpx;
+}
+
+.test-role-tip-body,
+.test-role-tip-warn {
+	display: block;
+	font-size: 24rpx;
+	color: #c8e6d0;
+	line-height: 1.5;
+}
+
+.test-role-tip-warn {
+	margin-top: 10rpx;
+	color: #e6c86a;
+	font-weight: 600;
+}
+
+.passive-banner {
+	margin-bottom: 16rpx;
+	padding: 14rpx 18rpx;
+	background: #2a2210;
+	border: 1rpx solid #8a7020;
+	border-radius: 12rpx;
+	font-size: 24rpx;
+	color: #f0d78c;
+	line-height: 1.45;
 }
 
 .ranking {
