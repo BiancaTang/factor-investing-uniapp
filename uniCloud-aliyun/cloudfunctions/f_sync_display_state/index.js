@@ -213,6 +213,8 @@ exports.main = async (event) => {
 			roomAdminUid: room.f_admin_uid != null ? String(room.f_admin_uid) : '',
 			simulationPlayers,
 			chartsReviewUnlocked,
+			joinLocked: !!room.f_join_locked,
+			playingStarted: room.f_playing_started === true,
 			timestamp: Date.now()
 		}
 

@@ -175,6 +175,8 @@ const state = ref({
 	roomAdminUid: '',
 	simulationPlayers: [],
 	chartsReviewUnlocked: false,
+	joinLocked: false,
+	playingStarted: false,
 	timestamp: 0
 })
 
@@ -267,6 +269,8 @@ const canvasStyle = ref({})
 // 轮询控制
 let pollTimer = null
 let isAnimating = false
+/** 上一轮询的「已锁定加入」，用于上升沿检测后跳转选角展示页 */
+let prevJoinLockedPoll = false
 
 const POLL_INTERVAL = {
 	lobby: 3000,
@@ -298,6 +302,18 @@ async function fetchDisplayState() {
 		const newData = res.result.data
 		const oldPhase = state.value.currentPhase
 		const oldPlayers = state.value.players
+
+		const joinLocked = !!newData.joinLocked
+		const playingStarted = !!newData.playingStarted
+		if (joinLocked && !playingStarted && !prevJoinLockedPoll) {
+			const rc = roomCode.value
+			if (/^\d{4}$/.test(rc)) {
+				uni.navigateTo({
+					url: '/pages/f_display/role-showcase?code=' + encodeURIComponent(rc)
+				})
+			}
+		}
+		prevJoinLockedPoll = joinLocked
 
 		// 检测阶段变化
 		if (newData.currentPhase !== oldPhase) {
