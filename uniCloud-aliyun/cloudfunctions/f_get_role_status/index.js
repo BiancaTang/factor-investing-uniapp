@@ -25,7 +25,7 @@ exports.main = async (event) => {
 	const takenByRoleId = {}
 	for (const m of members) {
 		const rid = parseInt(m.f_role_id, 10)
-		if (!Number.isFinite(rid) || rid < 1 || rid > 10) continue
+		if (!Number.isFinite(rid) || rid < 1 || rid > 11) continue
 		takenByRoleId[rid] = {
 			f_player_uid: m.f_player_uid,
 			nick: (m.f_nick_name && String(m.f_nick_name).trim()) || String(m.f_player_uid || '').slice(0, 8)
@@ -50,7 +50,7 @@ exports.main = async (event) => {
 	const f_selected_players = members
 		.filter((m) => {
 			const rid = parseInt(m.f_role_id, 10)
-			return m.f_player_uid && Number.isFinite(rid) && rid >= 1 && rid <= 10
+			return m.f_player_uid && Number.isFinite(rid) && rid >= 1 && rid <= 11
 		})
 		.map((m) => {
 			const rid = parseInt(m.f_role_id, 10)

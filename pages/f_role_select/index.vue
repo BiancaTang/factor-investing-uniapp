@@ -49,7 +49,7 @@
 		</view>
 
 		<view class="footer">
-			<text class="footer-text">已选 {{ selectedCount }}/10 | 剩余 {{ remainingCount }}</text>
+			<text class="footer-text">已选 {{ selectedCount }}/11 | 剩余 {{ remainingCount }}</text>
 			<text v-if="myRoleName" class="my-role">当前角色: {{ myRoleName }}</text>
 		</view>
 

@@ -77,7 +77,7 @@ exports.main = async (event) => {
 			f_nick_name: nickByUid[f_player_uid] || f_player_uid.slice(0, 8),
 			f_max_round_index: maxByUid[f_player_uid] || 0,
 			f_history: listByUid[f_player_uid] || [],
-			f_role_id: Number.isFinite(rid) && rid >= 1 && rid <= 10 ? rid : null
+			f_role_id: Number.isFinite(rid) && rid >= 1 && rid <= 11 ? rid : null
 		}
 	})
 

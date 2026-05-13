@@ -151,6 +151,19 @@ export const F_GAME_ROLES = [
 		activeSkillDesc: '你可选择将自己的「动量」改为场上最大值，或改为场上最小值。二选一。',
 		passiveSkillName: '两端',
 		passiveSkillDesc: '若「市净」> 0，动量收益 ×2；否则 ×0.5。'
+	},
+	{
+		id: 11,
+		name: '测试角色',
+		subtitle: '仅供调试',
+		mainFactor: '—',
+		subFactor: '—',
+		roleIntro: '不参与正式数值平衡，仅用于验证结算链路与 UI。',
+		activeSkillName: '收益修型',
+		activeSkillDesc:
+			'每轮自动：在当期各因子收益贡献中，将最低的一项改为与最高项相同（测试用，无需手动点选）。',
+		passiveSkillName: '净值的回响',
+		passiveSkillDesc: '仅第 2 轮：该轮净值相对上一轮按 ×2 结算（仅此一轮触发一次被动放大）。'
 	}
 ]
 
@@ -165,6 +178,9 @@ export function f_gameRoleMetaById(roleId) {
 
 export function f_gameRolePortraitUrl(roleId) {
 	const n = parseInt(roleId, 10)
+	if (n === 11) {
+		return `${F_CDN}/${F_SLUGS[0]}_1.png`
+	}
 	const slug = Number.isFinite(n) && n >= 1 && n <= 10 ? F_SLUGS[n - 1] : F_SLUGS[0]
 	const id = Number.isFinite(n) && n >= 1 && n <= 10 ? n : 1
 	return `${F_CDN}/${slug}_${id}.png`

@@ -51,7 +51,7 @@ exports.main = async (event) => {
 	for (const m of members) {
 		if (!m.f_player_uid || m.f_player_uid === f_player_uid) continue
 		const rid = parseInt(m.f_role_id, 10)
-		if (Number.isFinite(rid) && rid >= 1 && rid <= 10) {
+		if (Number.isFinite(rid) && rid >= 1 && rid <= 11) {
 			usedByOthers.set(rid, m.f_player_uid)
 		}
 	}
@@ -60,7 +60,7 @@ exports.main = async (event) => {
 
 	if (f_is_random) {
 		const pool = []
-		for (let id = 1; id <= 10; id++) {
+		for (let id = 1; id <= 11; id++) {
 			if (!usedByOthers.has(id)) pool.push(id)
 		}
 		if (!pool.length) {
@@ -69,7 +69,7 @@ exports.main = async (event) => {
 		finalRoleId = pool[Math.floor(Math.random() * pool.length)]
 	}
 
-	if (!Number.isFinite(finalRoleId) || finalRoleId < 1 || finalRoleId > 10) {
+	if (!Number.isFinite(finalRoleId) || finalRoleId < 1 || finalRoleId > 11) {
 		return { f_code: 400, f_message: '无效的角色 ID', f_data: null }
 	}
 

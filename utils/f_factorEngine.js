@@ -11,6 +11,7 @@
 
 import { F_FACTOR_DEFS } from './f_gameFactorSpec.js'
 import { f_applyPassiveToFactorReturns } from './f_rolePassives.js'
+import { F_TEST_ROLE_ID, f_applyTestRoleActiveToFactorReturns } from './f_roleTestRole.js'
 
 /** 管理员作为庄家时的图例名 */
 export const F_BANKER_CHART_LABEL = '庄家'
@@ -36,7 +37,7 @@ function f_emptyExposureRow() {
 /**
  * @param {Array<{ player_id: string, history: any[] }>} allPlayerHistories
  * @param {{ if_banker?: boolean, f_group_count?: number, player_nm?: number, f_admin_uid?: string, roleIdByPlayerId?: Record<string, number> }} options
- *        roleIdByPlayerId：玩家 uid -> 角色 id（1～10）；有则每轮在基础因子收益上套用被动（第二波），再计入净值。
+ *        roleIdByPlayerId：玩家 uid -> 角色 id（1～11，11 为测试角色）；有则每轮在基础因子收益上套用角色规则，再计入净值。
  *        若开启 Banker 且提供 f_admin_uid：房间管理员参与对局时占用槽位 0（庄家）；第一轮结算后庄家 nav=1；图表中显示为「庄家」。
  * @returns {{
  *   df_far_return: Array<Record<string, number>>,
@@ -144,19 +145,34 @@ export function f_simulatePythonFactorGame(allPlayerHistories, options = {}) {
 				totalReturn += factorReturns[f]
 			}
 			const uid = uidBySlot[i]
+			let fr = factorReturns
+			let tr = totalReturn
 			if (uid && uid !== '__banker__' && roleIdByPlayerId) {
 				const rid = roleIdByPlayerId[uid]
-				if (Number.isFinite(rid) && rid >= 1 && rid <= 10) {
-					const adj = f_applyPassiveToFactorReturns(exp[i], factorReturns, rid)
-					for (const f of FACTORS) {
-						factorReturns[f] = adj.factorReturns[f]
-					}
-					totalReturn = adj.totalReturn
+				if (Number.isFinite(rid) && rid === F_TEST_ROLE_ID) {
+					const adjA = f_applyTestRoleActiveToFactorReturns(fr)
+					fr = adjA.factorReturns
+					tr = adjA.totalReturn
+				} else if (Number.isFinite(rid) && rid >= 1 && rid <= 10) {
+					const adj = f_applyPassiveToFactorReturns(exp[i], fr, rid)
+					fr = adj.factorReturns
+					tr = adj.totalReturn
 				}
 			}
-			slotTotalReturn[i] = totalReturn
-			for (const f of FACTORS) slotFactorRet[i][f] = factorReturns[f]
-			nextNav[i] = nav[i] * (totalReturn + 1)
+			for (const f of FACTORS) slotFactorRet[i][f] = fr[f]
+			let navMult = tr + 1
+			if (
+				uid &&
+				uid !== '__banker__' &&
+				roleIdByPlayerId &&
+				Number.isFinite(roleIdByPlayerId[uid]) &&
+				roleIdByPlayerId[uid] === F_TEST_ROLE_ID &&
+				round === 2
+			) {
+				navMult *= 2
+			}
+			nextNav[i] = nav[i] * navMult
+			slotTotalReturn[i] = navMult - 1
 		}
 
 		// 对齐 gaming_process.py：Banker 的 nav 不做“首轮后重置为 1”，仅在展示时可归一化

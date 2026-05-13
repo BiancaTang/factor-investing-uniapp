@@ -227,7 +227,7 @@ function f_roleIdByPlayerIdFromSnapshot() {
 	const m = {}
 	for (const p of ps) {
 		const rid = parseInt(p.f_role_id, 10)
-		if (!p.f_player_uid || !Number.isFinite(rid) || rid < 1 || rid > 10) continue
+		if (!p.f_player_uid || !Number.isFinite(rid) || rid < 1 || rid > 11) continue
 		m[String(p.f_player_uid)] = rid
 	}
 	return m

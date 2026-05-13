@@ -26,11 +26,15 @@ const F_ROLES = [
 	{ id: 7, name: '夹缝', subtitle: '中盘掘金', mainFactor: '非线性规模', subFactor: '成长' },
 	{ id: 8, name: '秤砣', subtitle: 'GARP策略', mainFactor: '成长', subFactor: '市净' },
 	{ id: 9, name: '刺猬', subtitle: '小盘防御', mainFactor: '规模', subFactor: '残差波动' },
-	{ id: 10, name: '走钢丝', subtitle: '杠铃策略', mainFactor: '动量', subFactor: '市净' }
+	{ id: 10, name: '走钢丝', subtitle: '杠铃策略', mainFactor: '动量', subFactor: '市净' },
+	{ id: 11, name: '测试角色', subtitle: '仅供调试', mainFactor: '—', subFactor: '—' }
 ]
 
 function f_rolePortraitUrl(roleId) {
 	const n = parseInt(roleId, 10)
+	if (n === 11) {
+		return `${F_CDN}/${F_SLUGS[0]}_1.png`
+	}
 	const slug = Number.isFinite(n) && n >= 1 && n <= 10 ? F_SLUGS[n - 1] : F_SLUGS[0]
 	const id = Number.isFinite(n) && n >= 1 && n <= 10 ? n : 1
 	return `${F_CDN}/${slug}_${id}.png`

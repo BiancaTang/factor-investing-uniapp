@@ -75,7 +75,7 @@ exports.main = async (event) => {
 		const mall = await f_members.where({ f_room_code }).get()
 		f_passive_adjusted = (mall.data || []).some((m) => {
 			const r = parseInt(m.f_role_id, 10)
-			return Number.isFinite(r) && r >= 1 && r <= 10
+			return Number.isFinite(r) && r >= 1 && r <= 11
 		})
 	} catch (_) {
 		f_passive_adjusted = false
