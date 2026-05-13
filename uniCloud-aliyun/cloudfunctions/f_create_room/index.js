@@ -62,6 +62,7 @@ exports.main = async (event) => {
 		f_round_random_event_id: 0,
 		f_round_random_event_round: 0,
 		f_round_random_event_snapshot: null,
+		f_random_events_by_round: {},
 		f_created_at: f_now,
 		f_updated_at: f_now
 	}

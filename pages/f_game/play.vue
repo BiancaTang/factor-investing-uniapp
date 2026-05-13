@@ -213,6 +213,10 @@ import {
 	f_getRoomMemberStatusInCloud
 } from '../../utils/f_gameApi.js'
 import { f_buildJointNavCompareChartData, f_simulatePythonFactorGame } from '../../utils/f_factorEngine.js'
+import {
+	f_roundEventFactorMultipliersByRoundFromRoomMap,
+	f_normalizeRandomEventsByRound
+} from '../../utils/f_roundRandomEventMultipliers.js'
 import { F_FACTOR_COLOR_BY_FAC_KEY } from '../../utils/f_factorPalette.js'
 import { F_TEST_ROLE_ID } from '../../utils/f_roleTestRole.js'
 
@@ -325,25 +329,48 @@ function f_role11ActiveRoundByPlayerIdFromSnapshot() {
 	return o
 }
 
+const mergedRandomEventsByRound = computed(() => {
+	const sn = roomSnapshot.value || {}
+	const ri = roomInfo.value || {}
+	const out = {}
+	if (sn.f_random_events_by_round && typeof sn.f_random_events_by_round === 'object') {
+		Object.assign(out, sn.f_random_events_by_round)
+	}
+	if (ri.f_random_events_by_round && typeof ri.f_random_events_by_round === 'object') {
+		Object.assign(out, ri.f_random_events_by_round)
+	}
+	if (Object.keys(out).length > 0) return out
+	return f_normalizeRandomEventsByRound({ ...sn, ...ri })
+})
+
+const roundEventFactorMultipliersByRound = computed(() =>
+	f_roundEventFactorMultipliersByRoundFromRoomMap(mergedRandomEventsByRound.value)
+)
+
 const chartSimRoleOpts = computed(() => ({
 	roleIdByPlayerId: f_roleIdByPlayerIdFromSnapshot(),
-	role11ActiveRoundByPlayerId: f_role11ActiveRoundByPlayerIdFromSnapshot()
+	role11ActiveRoundByPlayerId: f_role11ActiveRoundByPlayerIdFromSnapshot(),
+	roundEventFactorMultipliersByRound: roundEventFactorMultipliersByRound.value
 }))
 
-/** 双数开放轮：与房间登记一致时展示本轮随机市场事件（叙事；未改仿真公式） */
+/** 双数开放轮：与房间登记一致时展示本轮随机市场事件（叙事 + 已计入净值仿真） */
 const activeRoundMarketBanner = computed(() => {
 	const ri = roomInfo.value
 	const rs = roomSnapshot.value
 	const open = parseInt(ri && ri.f_open_round_index, 10)
 	if (!Number.isFinite(open) || open <= 0 || open % 2 !== 0) return null
+	const merged = mergedRandomEventsByRound.value
+	const snap =
+		(merged && merged[String(open)]) ||
+		(rs && rs.f_round_random_event_snapshot) ||
+		(ri && ri.f_round_random_event_snapshot) ||
+		null
 	const evR = parseInt(
 		(rs && rs.f_round_random_event_round) != null ? rs.f_round_random_event_round : ri && ri.f_round_random_event_round,
 		10
 	)
-	if (!Number.isFinite(evR) || evR !== open) return null
-	const snap =
-		(rs && rs.f_round_random_event_snapshot) || (ri && ri.f_round_random_event_snapshot) || null
 	if (!snap || typeof snap !== 'object' || !snap.name) return null
+	if (!(merged && merged[String(open)]) && (!Number.isFinite(evR) || evR !== open)) return null
 	return { snapshot: snap, openRound: open }
 })
 
@@ -362,7 +389,8 @@ const rankingList = computed(() => {
 			f_group_count: roomGroupCount.value,
 			f_admin_uid: adminUid,
 			roleIdByPlayerId: f_roleIdByPlayerIdFromSnapshot(),
-			role11ActiveRoundByPlayerId: f_role11ActiveRoundByPlayerIdFromSnapshot()
+			role11ActiveRoundByPlayerId: f_role11ActiveRoundByPlayerIdFromSnapshot(),
+			roundEventFactorMultipliersByRound: roundEventFactorMultipliersByRound.value
 		}
 	)
 	const rows = ps.map((p) => {
@@ -421,7 +449,8 @@ const compareNavChartData = computed(() => {
 			f_group_count: roomGroupCount.value,
 			f_admin_uid: roomInfo.value?.f_admin_uid || '',
 			roleIdByPlayerId: f_roleIdByPlayerIdFromSnapshot(),
-			role11ActiveRoundByPlayerId: f_role11ActiveRoundByPlayerIdFromSnapshot()
+			role11ActiveRoundByPlayerId: f_role11ActiveRoundByPlayerIdFromSnapshot(),
+			roundEventFactorMultipliersByRound: roundEventFactorMultipliersByRound.value
 		}
 	)
 })
@@ -800,7 +829,8 @@ function buildRoundMetricsForSubmit(payload) {
 		f_group_count: roomGroupCount.value,
 		f_admin_uid: roomInfo.value?.f_admin_uid || '',
 		roleIdByPlayerId: f_roleIdByPlayerIdFromSnapshot(),
-		role11ActiveRoundByPlayerId: r11Map
+		role11ActiveRoundByPlayerId: r11Map,
+		roundEventFactorMultipliersByRound: roundEventFactorMultipliersByRound.value
 	})
 	const rows = sim.attributionRowsByPlayerId.get(uid) || []
 	const hit = rows.find((r) => parseInt(r.round, 10) === round)

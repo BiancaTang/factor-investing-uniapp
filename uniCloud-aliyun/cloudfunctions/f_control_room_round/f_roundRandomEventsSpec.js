@@ -2,7 +2,7 @@
 
 /**
  * 随机事件库（与需求文档「第四点：随机事件」一致）。
- * 仅用于管理员开启「双数轮」时写入 f_room 快照；前端只读快照展示。
+ * 双数轮开启时写入 f_room 快照；effects 会映射为 f_factorEngine 中对市场因子收益率的乘数（见 utils/f_roundRandomEventMultipliers.js）。
  * effects.internal 须与十因子 internal 一致（见 f_gameFactorSpec）。
  */
 

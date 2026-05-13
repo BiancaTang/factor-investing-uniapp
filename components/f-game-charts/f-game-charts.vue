@@ -170,6 +170,11 @@ const props = defineProps({
 		type: Object,
 		default: null
 	},
+	/** 双数轮随机事件：轮次 -> 因子 internal -> 对市场 factor_return 的乘数 */
+	roundEventFactorMultipliersByRound: {
+		type: Object,
+		default: null
+	},
 	/** >0 时固定图表区域高度（px），大屏等场景便于读数；0 表示用默认 rpx 高度 */
 	chartInnerHeightPx: {
 		type: Number,
@@ -222,6 +227,9 @@ const chartPayload = computed(() => {
 			: {}),
 		...(props.role11ActiveRoundByPlayerId && typeof props.role11ActiveRoundByPlayerId === 'object'
 			? { role11ActiveRoundByPlayerId: props.role11ActiveRoundByPlayerId }
+			: {}),
+		...(props.roundEventFactorMultipliersByRound && typeof props.roundEventFactorMultipliersByRound === 'object'
+			? { roundEventFactorMultipliersByRound: props.roundEventFactorMultipliersByRound }
 			: {})
 	}
 	let allList = null

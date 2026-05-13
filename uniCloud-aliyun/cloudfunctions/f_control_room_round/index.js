@@ -4,6 +4,7 @@ const { F_FACTOR_DEFS } = require('./f_gameFactorSpec.js')
 const { f_rollRandomEventSnapshot } = require('./f_roundRandomEventsSpec.js')
 
 const db = uniCloud.database()
+const dbCmd = db.command
 const f_rooms = db.collection('f_room')
 const f_members = db.collection('f_room_member')
 const f_rounds = db.collection('f_game_round')
@@ -127,6 +128,11 @@ exports.main = async (event) => {
 		return { f_code: 400, f_message: '请先结束本轮再开启下一轮', f_data: { f_open_round_index: curOpen } }
 	}
 
+	/** 避免库中字段为 null 时，部分驱动对嵌套对象做「点路径合并」导致 Cannot create field 'cardId' in element {snapshot: null} */
+	function f_plainJsonDoc(obj) {
+		return JSON.parse(JSON.stringify(obj))
+	}
+
 	const patch = {
 		f_open_round_index: f_round_index,
 		f_round_started_at: f_now,
@@ -136,12 +142,39 @@ exports.main = async (event) => {
 	}
 	/** 双数轮：开启时随机一条市场事件，供大屏与小程序同屏展示（单数轮不写库，沿用上次字段仅用于历史排查） */
 	if (f_round_index % 2 === 0) {
-		const snap = f_rollRandomEventSnapshot()
-		if (snap) {
+		const snapRaw = f_rollRandomEventSnapshot()
+		if (snapRaw) {
+			const snap = f_plainJsonDoc(snapRaw)
 			patch.f_round_random_event_id = snap.id
 			patch.f_round_random_event_round = f_round_index
 			patch.f_round_random_event_snapshot = snap
+			let prev =
+				row.f_random_events_by_round && typeof row.f_random_events_by_round === 'object'
+					? f_plainJsonDoc(row.f_random_events_by_round)
+					: {}
+			if (Object.keys(prev).length === 0) {
+				const rr0 = parseInt(row.f_round_random_event_round, 10)
+				const leg = row.f_round_random_event_snapshot
+				if (
+					Number.isFinite(rr0) &&
+					rr0 > 0 &&
+					rr0 % 2 === 0 &&
+					leg &&
+					typeof leg === 'object' &&
+					leg.name
+				) {
+					prev[String(rr0)] = f_plainJsonDoc(leg)
+				}
+			}
+			patch.f_random_events_by_round = { ...prev, [String(f_round_index)]: snap }
 		}
+	}
+
+	if (patch.f_random_events_by_round != null) {
+		await f_rooms.doc(row._id).update({
+			f_round_random_event_snapshot: dbCmd.remove(),
+			f_random_events_by_round: dbCmd.remove()
+		})
 	}
 
 	await f_rooms.doc(row._id).update(patch)
@@ -154,7 +187,8 @@ exports.main = async (event) => {
 			f_action: 'start',
 			f_round_random_event_id: patch.f_round_random_event_id || 0,
 			f_round_random_event_round: patch.f_round_random_event_round || 0,
-			f_round_random_event_snapshot: patch.f_round_random_event_snapshot || null
+			f_round_random_event_snapshot: patch.f_round_random_event_snapshot || null,
+			f_random_events_by_round: patch.f_random_events_by_round || null
 		}
 	}
 }

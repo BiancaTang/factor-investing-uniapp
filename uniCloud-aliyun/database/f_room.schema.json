@@ -20,6 +20,10 @@
 			"bsonType": "object",
 			"description": "随机事件展示快照（名称、简介、因子方向等），由云函数写入"
 		},
+		"f_random_events_by_round": {
+			"bsonType": "object",
+			"description": "各双数轮事件快照，键为轮次字符串，用于复盘与仿真中对市场因子收益率乘数"
+		},
 		"f_game_ended": { "bsonType": "bool", "description": "游戏是否已结束（管理员点击结束游戏）" },
 		"f_game_ended_at": { "bsonType": "timestamp", "description": "游戏结束时间（毫秒时间戳）" },
 		"f_admin_uid": { "bsonType": "string", "description": "创建者管理员 f_uid" },

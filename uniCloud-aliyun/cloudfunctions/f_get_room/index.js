@@ -3,6 +3,17 @@
 const db = uniCloud.database()
 const f_rooms = db.collection('f_room')
 
+function f_randomEventsByRoundForClient(row) {
+	const raw = row.f_random_events_by_round
+	if (raw && typeof raw === 'object' && Object.keys(raw).length > 0) return raw
+	const rr = parseInt(row.f_round_random_event_round, 10)
+	const snap = row.f_round_random_event_snapshot
+	if (Number.isFinite(rr) && rr > 0 && rr % 2 === 0 && snap && typeof snap === 'object' && snap.name) {
+		return { [String(rr)]: snap }
+	}
+	return {}
+}
+
 exports.main = async (event) => {
 	const f_room_code = event.f_room_code != null ? String(event.f_room_code).trim() : ''
 	if (!/^\d{4}$/.test(f_room_code)) {
@@ -44,7 +55,8 @@ exports.main = async (event) => {
 			f_round_random_event_snapshot:
 				row.f_round_random_event_snapshot && typeof row.f_round_random_event_snapshot === 'object'
 					? row.f_round_random_event_snapshot
-					: null
+					: null,
+			f_random_events_by_round: f_randomEventsByRoundForClient(row)
 		}
 	}
 }

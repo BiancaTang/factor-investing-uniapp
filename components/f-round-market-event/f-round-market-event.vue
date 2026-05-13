@@ -23,7 +23,7 @@
 		</scroll-view>
 		<!-- #endif -->
 		<view v-if="effectsRows.length" class="rme-fx">
-			<text class="rme-fx-title">因子倾向（叙事权重）</text>
+			<text class="rme-fx-title">因子倾向（已作用于本轮市场因子收益率：↑×{{ upMult }} / ↓×{{ downMult }}）</text>
 			<view class="rme-fx-row">
 				<view v-for="(row, i) in effectsRows" :key="i" class="rme-chip" :class="row.dir">
 					<text class="rme-chip-lab">{{ row.label }}</text>
@@ -37,6 +37,10 @@
 <script setup>
 import { computed } from 'vue'
 import { F_FACTOR_DEFS } from '../../utils/f_gameFactorSpec.js'
+import {
+	F_RANDOM_EVENT_FACTOR_UP_MULT,
+	F_RANDOM_EVENT_FACTOR_DOWN_MULT
+} from '../../utils/f_roundRandomEventMultipliers.js'
 
 const props = defineProps({
 	/** 云函数写入的 f_round_random_event_snapshot */
@@ -46,6 +50,9 @@ const props = defineProps({
 	/** display：大屏；compact：小程序 / 观测页 */
 	variant: { type: String, default: 'compact' }
 })
+
+const upMult = computed(() => F_RANDOM_EVENT_FACTOR_UP_MULT.toFixed(2))
+const downMult = computed(() => F_RANDOM_EVENT_FACTOR_DOWN_MULT.toFixed(2))
 
 const labelByInternal = computed(() =>
 	Object.fromEntries(F_FACTOR_DEFS.map((d) => [d.internal, d.label]))

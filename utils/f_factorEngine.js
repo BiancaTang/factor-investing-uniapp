@@ -4,6 +4,7 @@
  * - 每轮：各槽位暴露清零后写入本轮提交；因子收益率
  *   factor_ret_f = (Σ_i exp_i_f * nav_i) / (Σ_i nav_i) * unit_f / 10
  * - 各槽位 total_return = Σ_f exp_f * factor_ret_f，nav *= (1 + total_return)
+ * - 双数轮随机事件：可选对当轮全局 factor_ret_f 按因子乘系数（见 options.roundEventFactorMultipliersByRound）后再算各槽位。
  * - Banker：数据中的「第一轮」（最小 f_round_index）结算后，将 slot0 的 nav 重置为 1，其后各轮按上式滚动。
  * - 房主参与 Banker 时图表图例统一为「庄家」。
  * 图表仍由 ECharts 消费本文件产出的数据结构。
@@ -36,8 +37,9 @@ function f_emptyExposureRow() {
 
 /**
  * @param {Array<{ player_id: string, history: any[] }>} allPlayerHistories
- * @param {{ if_banker?: boolean, f_group_count?: number, player_nm?: number, f_admin_uid?: string, roleIdByPlayerId?: Record<string, number>, role11ActiveRoundByPlayerId?: Record<string, number> }} options
+ * @param {{ if_banker?: boolean, f_group_count?: number, player_nm?: number, f_admin_uid?: string, roleIdByPlayerId?: Record<string, number>, role11ActiveRoundByPlayerId?: Record<string, number>, roundEventFactorMultipliersByRound?: Record<number, Record<string, number>> }} options
  *        role11ActiveRoundByPlayerId：角色 11 的玩家 uid -> 其本局发动主动的轮次号；仅在该轮对该玩家应用「收益修型」主动。
+ *        roundEventFactorMultipliersByRound：按轮次对「市场因子收益率」factor_return[internal] 在基准值上再乘系数（双数轮随机事件）；缺省为不调整。
  *        若开启 Banker 且提供 f_admin_uid：房间管理员参与对局时占用槽位 0（庄家）；第一轮结算后庄家 nav=1；图表中显示为「庄家」。
  * @returns {{
  *   df_far_return: Array<Record<string, number>>,
@@ -52,6 +54,10 @@ export function f_simulatePythonFactorGame(allPlayerHistories, options = {}) {
 	const role11ActiveRoundByPlayerId =
 		options.role11ActiveRoundByPlayerId && typeof options.role11ActiveRoundByPlayerId === 'object'
 			? options.role11ActiveRoundByPlayerId
+			: null
+	const roundEventFactorMultipliersByRound =
+		options.roundEventFactorMultipliersByRound && typeof options.roundEventFactorMultipliersByRound === 'object'
+			? options.roundEventFactorMultipliersByRound
 			: null
 	const player_nm = Math.max(1, parseInt(options.f_group_count ?? options.player_nm ?? 20, 10) || 20)
 	const banker_nav0 = Math.floor(player_nm / 3)
@@ -130,6 +136,17 @@ export function f_simulatePythonFactorGame(allPlayerHistories, options = {}) {
 			for (let i = 0; i < player_nm; i++) num += exp[i][f] * nav[i]
 			const wgt = sumNav === 0 ? 0 : num / sumNav
 			factor_return[f] = wgt * (FACTOR_UNIT_RETURNS[f] / 10)
+		}
+
+		if (roundEventFactorMultipliersByRound) {
+			const multRow =
+				roundEventFactorMultipliersByRound[round] ?? roundEventFactorMultipliersByRound[String(round)]
+			if (multRow && typeof multRow === 'object') {
+				for (const f of FACTORS) {
+					const mu = multRow[f]
+					if (Number.isFinite(mu) && mu > 0) factor_return[f] *= mu
+				}
+			}
 		}
 
 		const rowFar = { round }

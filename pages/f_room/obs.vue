@@ -132,6 +132,10 @@ import { onLoad } from '@dcloudio/uni-app'
 import FGameCharts from '../../components/f-game-charts/f-game-charts.vue'
 import FRoundMarketEvent from '../../components/f-round-market-event/f-round-market-event.vue'
 import { f_buildJointNavCompareChartData, f_simulatePythonFactorGame } from '../../utils/f_factorEngine.js'
+import {
+	f_roundEventFactorMultipliersByRoundFromRoomMap,
+	f_normalizeRandomEventsByRound
+} from '../../utils/f_roundRandomEventMultipliers.js'
 import { f_getStoredUser } from '../../utils/f_userStorage.js'
 import { f_isAdmin } from '../../utils/f_role.js'
 import { F_TEST_ROLE_ID } from '../../utils/f_roleTestRole.js'
@@ -274,10 +278,12 @@ const obsRoundMarketBanner = computed(() => {
 	if (!s) return null
 	const open = parseInt(s.f_open_round_index, 10)
 	if (!Number.isFinite(open) || open <= 0 || open % 2 !== 0) return null
+	const byR = s.f_random_events_by_round && typeof s.f_random_events_by_round === 'object' ? s.f_random_events_by_round : null
+	const snapFromMap = byR && byR[String(open)] ? byR[String(open)] : null
+	const snap = snapFromMap || s.f_round_random_event_snapshot
 	const evR = parseInt(s.f_round_random_event_round, 10)
-	if (!Number.isFinite(evR) || evR !== open) return null
-	const snap = s.f_round_random_event_snapshot
 	if (!snap || typeof snap !== 'object' || !snap.name) return null
+	if (!snapFromMap && (!Number.isFinite(evR) || evR !== open)) return null
 	return { snapshot: snap, openRound: open }
 })
 
@@ -310,9 +316,23 @@ function f_role11ActiveRoundByPlayerIdFromObs() {
 	return o
 }
 
+const mergedObsRandomEventsByRound = computed(() => {
+	const s = status.value || {}
+	if (s.f_random_events_by_round && typeof s.f_random_events_by_round === 'object') {
+		const keys = Object.keys(s.f_random_events_by_round)
+		if (keys.length > 0) return s.f_random_events_by_round
+	}
+	return f_normalizeRandomEventsByRound(s)
+})
+
+const roundEventFactorMultipliersByRoundObs = computed(() =>
+	f_roundEventFactorMultipliersByRoundFromRoomMap(mergedObsRandomEventsByRound.value)
+)
+
 const chartSimRoleOptsObs = computed(() => ({
 	roleIdByPlayerId: f_roleMapFromObsPlayers(),
-	role11ActiveRoundByPlayerId: f_role11ActiveRoundByPlayerIdFromObs()
+	role11ActiveRoundByPlayerId: f_role11ActiveRoundByPlayerIdFromObs(),
+	roundEventFactorMultipliersByRound: roundEventFactorMultipliersByRoundObs.value
 }))
 
 const compareChartData = computed(() => {
@@ -329,7 +349,8 @@ const compareChartData = computed(() => {
 			f_group_count: roomGroupCount.value,
 			f_admin_uid: status.value?.f_admin_uid || '',
 			roleIdByPlayerId: f_roleMapFromObsPlayers(),
-			role11ActiveRoundByPlayerId: f_role11ActiveRoundByPlayerIdFromObs()
+			role11ActiveRoundByPlayerId: f_role11ActiveRoundByPlayerIdFromObs(),
+			roundEventFactorMultipliersByRound: roundEventFactorMultipliersByRoundObs.value
 		}
 	)
 })
@@ -358,7 +379,8 @@ const rankingList = computed(() => {
 			f_group_count: roomGroupCount.value,
 			f_admin_uid: adminUid,
 			roleIdByPlayerId: f_roleMapFromObsPlayers(),
-			role11ActiveRoundByPlayerId: f_role11ActiveRoundByPlayerIdFromObs()
+			role11ActiveRoundByPlayerId: f_role11ActiveRoundByPlayerIdFromObs(),
+			roundEventFactorMultipliersByRound: roundEventFactorMultipliersByRoundObs.value
 		}
 	)
 	const rows = ps.map((p) => {

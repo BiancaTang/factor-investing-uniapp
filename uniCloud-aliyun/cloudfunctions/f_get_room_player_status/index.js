@@ -7,6 +7,17 @@ const f_rooms = db.collection('f_room')
 const f_members = db.collection('f_room_member')
 const f_rounds = db.collection('f_game_round')
 
+function f_randomEventsByRoundForClient(row) {
+	const raw = row.f_random_events_by_round
+	if (raw && typeof raw === 'object' && Object.keys(raw).length > 0) return raw
+	const rr = parseInt(row.f_round_random_event_round, 10)
+	const snap = row.f_round_random_event_snapshot
+	if (Number.isFinite(rr) && rr > 0 && rr % 2 === 0 && snap && typeof snap === 'object' && snap.name) {
+		return { [String(rr)]: snap }
+	}
+	return {}
+}
+
 function f_isPlayerUid(s) {
 	return /^u[a-f0-9]{16}$/.test(String(s || '').trim())
 }
@@ -116,6 +127,7 @@ exports.main = async (event) => {
 				row.f_round_random_event_snapshot && typeof row.f_round_random_event_snapshot === 'object'
 					? row.f_round_random_event_snapshot
 					: null,
+			f_random_events_by_round: f_randomEventsByRoundForClient(row),
 			f_players
 		}
 	}

@@ -14,12 +14,27 @@ function f_normalizeRoomCode(event) {
 	return /^\d{4}$/.test(t) ? t : ''
 }
 
+function f_randomEventsByRoundForClient(row) {
+	const raw = row.f_random_events_by_round
+	if (raw && typeof raw === 'object' && Object.keys(raw).length > 0) return raw
+	const rr = parseInt(row.f_round_random_event_round, 10)
+	const snap = row.f_round_random_event_snapshot
+	if (Number.isFinite(rr) && rr > 0 && rr % 2 === 0 && snap && typeof snap === 'object' && snap.name) {
+		return { [String(rr)]: snap }
+	}
+	return {}
+}
+
 /** 双数轮且与房间登记轮次一致时，转为大屏 EventScreen 结构 */
 function f_roomSnapshotToCurrentEvent(room, openRound) {
 	if (!openRound || openRound % 2 !== 0) return null
-	const evRound = parseInt(room.f_round_random_event_round, 10)
-	if (!Number.isFinite(evRound) || evRound !== openRound) return null
-	const snap = room.f_round_random_event_snapshot
+	const map = f_randomEventsByRoundForClient(room)
+	let snap = map[String(openRound)]
+	if (!snap || typeof snap !== 'object' || !snap.name) {
+		const evRound = parseInt(room.f_round_random_event_round, 10)
+		if (!Number.isFinite(evRound) || evRound !== openRound) return null
+		snap = room.f_round_random_event_snapshot
+	}
 	if (!snap || typeof snap !== 'object' || !snap.name) return null
 	const desc = [snap.summary, snap.lore, snap.resultNarrative].filter(Boolean).join('\n\n')
 	const effects = (snap.effects || []).map((e) => ({
@@ -220,9 +235,15 @@ exports.main = async (event) => {
 		let roundMarketSnapshot = null
 		let roundMarketEventRound = 0
 		if (openRound > 0 && openRound % 2 === 0) {
-			const evR = parseInt(room.f_round_random_event_round, 10)
-			const snap = room.f_round_random_event_snapshot
-			if (Number.isFinite(evR) && evR === openRound && snap && typeof snap === 'object' && snap.name) {
+			const map = f_randomEventsByRoundForClient(room)
+			let snap = map[String(openRound)]
+			if (!snap || typeof snap !== 'object' || !snap.name) {
+				const evR = parseInt(room.f_round_random_event_round, 10)
+				if (Number.isFinite(evR) && evR === openRound) {
+					snap = room.f_round_random_event_snapshot
+				}
+			}
+			if (snap && typeof snap === 'object' && snap.name) {
 				roundMarketSnapshot = snap
 				roundMarketEventRound = openRound
 			}
@@ -252,6 +273,7 @@ exports.main = async (event) => {
 			chartsReviewUnlocked,
 			joinLocked: !!room.f_join_locked,
 			playingStarted: room.f_playing_started === true,
+			randomEventsByRound: f_randomEventsByRoundForClient(room),
 			timestamp: Date.now()
 		}
 

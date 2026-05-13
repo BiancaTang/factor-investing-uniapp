@@ -69,11 +69,55 @@ function f_emptyExposureRow() {
 	return o
 }
 
+const F_RANDOM_EVENT_FACTOR_UP_MULT = 1.18
+const F_RANDOM_EVENT_FACTOR_DOWN_MULT = 1 / F_RANDOM_EVENT_FACTOR_UP_MULT
+
+function f_randomEventsByRoundFromRoomRowExport(row) {
+	if (!row) return {}
+	const raw = row.f_random_events_by_round
+	if (raw && typeof raw === 'object' && Object.keys(raw).length > 0) return raw
+	const rr = parseInt(row.f_round_random_event_round, 10)
+	const snap = row.f_round_random_event_snapshot
+	if (Number.isFinite(rr) && rr > 0 && rr % 2 === 0 && snap && typeof snap === 'object' && snap.name) {
+		return { [String(rr)]: snap }
+	}
+	return {}
+}
+
+function f_factorsMultiplierRowFromSnapshotExport(snap) {
+	const row = {}
+	for (const f of FACTORS) row[f] = 1
+	if (!snap || !Array.isArray(snap.effects)) return row
+	for (const e of snap.effects) {
+		const int = e && e.internal
+		if (!int || row[int] === undefined) continue
+		row[int] = e.direction === 'up' ? F_RANDOM_EVENT_FACTOR_UP_MULT : F_RANDOM_EVENT_FACTOR_DOWN_MULT
+	}
+	return row
+}
+
+function f_roundEventFactorMultipliersByRoundFromRoomExport(roomRow) {
+	const eventsByRound = f_randomEventsByRoundFromRoomRowExport(roomRow)
+	const out = {}
+	for (const [rk, snap] of Object.entries(eventsByRound)) {
+		const ri = parseInt(rk, 10)
+		if (!Number.isFinite(ri) || ri < 1) continue
+		if (snap && typeof snap === 'object' && snap.name) {
+			out[ri] = f_factorsMultiplierRowFromSnapshotExport(snap)
+		}
+	}
+	return out
+}
+
 /**
  * 与 utils/f_factorEngine.js、FastAPI FactorTradingGameAPI 一致：player_nm 槽位 + NAV 加权因子收益。
  */
 function simulatePythonFactorGame(allPlayerHistories, roomOpts) {
 	const if_banker = !!roomOpts.if_banker
+	const roundEventFactorMultipliersByRound =
+		roomOpts.roundEventFactorMultipliersByRound && typeof roomOpts.roundEventFactorMultipliersByRound === 'object'
+			? roomOpts.roundEventFactorMultipliersByRound
+			: null
 	const player_nm = Math.max(1, parseInt(roomOpts.f_group_count, 10) || 20)
 	const banker_nav0 = Math.floor(player_nm / 3)
 	const adminUid =
@@ -147,6 +191,17 @@ function simulatePythonFactorGame(allPlayerHistories, roomOpts) {
 			for (let i = 0; i < player_nm; i++) num += exp[i][f] * nav[i]
 			const wgt = sumNav === 0 ? 0 : num / sumNav
 			factor_return[f] = wgt * (FACTOR_UNIT_RETURNS[f] / 10)
+		}
+
+		if (roundEventFactorMultipliersByRound) {
+			const multRow =
+				roundEventFactorMultipliersByRound[round] ?? roundEventFactorMultipliersByRound[String(round)]
+			if (multRow && typeof multRow === 'object') {
+				for (const f of FACTORS) {
+					const mu = multRow[f]
+					if (Number.isFinite(mu) && mu > 0) factor_return[f] *= mu
+				}
+			}
 		}
 
 		const rowFar = { round }
@@ -462,7 +517,8 @@ exports.main = async (event, context) => {
 	const roomChartOpts = {
 		if_banker: !!room.f_banker_intervene,
 		f_group_count: room.f_group_count,
-		f_admin_uid: room.f_admin_uid != null ? String(room.f_admin_uid).trim() : ''
+		f_admin_uid: room.f_admin_uid != null ? String(room.f_admin_uid).trim() : '',
+		roundEventFactorMultipliersByRound: f_roundEventFactorMultipliersByRoundFromRoomExport(room)
 	}
 
 	for (const uid of [...uids].sort()) {

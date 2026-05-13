@@ -101,6 +101,7 @@
 						:room-admin-uid="state.roomAdminUid || ''"
 						:simulation-players="simulationPlayersForCharts"
 						:attribution-player-id="displayAttributionPlayerId"
+						:round-event-factor-multipliers-by-round="displayRoundEventFactorMultipliersByRound"
 						:chart-inner-height-px="lightboxChartInnerPx"
 					/>
 					<FGameCharts
@@ -113,6 +114,7 @@
 						:room-admin-uid="state.roomAdminUid || ''"
 						:simulation-players="simulationPlayersForCharts"
 						:attribution-player-id="displayAttributionPlayerId"
+						:round-event-factor-multipliers-by-round="displayRoundEventFactorMultipliersByRound"
 						:chart-inner-height-px="lightboxChartInnerPx"
 					/>
 				</view>
@@ -133,6 +135,7 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { ParticleSystem } from '@/utils/f_displayEngine.js'
 import { f_buildJointNavCompareChartData } from '@/utils/f_factorEngine.js'
+import { f_roundEventFactorMultipliersByRoundFromRoomMap } from '@/utils/f_roundRandomEventMultipliers.js'
 import FGameCharts from '@/components/f-game-charts/f-game-charts.vue'
 
 import LobbyScreen from './lobby.vue'
@@ -179,6 +182,7 @@ const state = ref({
 	chartsReviewUnlocked: false,
 	joinLocked: false,
 	playingStarted: false,
+	randomEventsByRound: {},
 	timestamp: 0,
 	roundMarketSnapshot: null,
 	roundMarketEventRound: 0
@@ -239,6 +243,10 @@ const displayAttributionPlayerId = computed(() => {
 	return String(list[0].player_id || '')
 })
 
+const displayRoundEventFactorMultipliersByRound = computed(() =>
+	f_roundEventFactorMultipliersByRoundFromRoomMap(state.value.randomEventsByRound || {})
+)
+
 const compareNavChartData = computed(() => {
 	const list = playersWithChartHistory.value
 	if (list.length < 2) return null
@@ -251,7 +259,8 @@ const compareNavChartData = computed(() => {
 		{
 			if_banker: !!state.value.ifBanker,
 			f_group_count: displayGroupCount.value,
-			f_admin_uid: state.value.roomAdminUid || ''
+			f_admin_uid: state.value.roomAdminUid || '',
+			roundEventFactorMultipliersByRound: displayRoundEventFactorMultipliersByRound.value
 		}
 	)
 })
