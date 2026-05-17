@@ -3,6 +3,13 @@
 const db = uniCloud.database()
 const f_users = db.collection('f_user_profile')
 const f_rooms = db.collection('f_room')
+const f_members = db.collection('f_room_member')
+
+function f_normNick(s) {
+	return String(s || '')
+		.trim()
+		.slice(0, 40)
+}
 
 function f_isPlayerUid(s) {
 	return /^u[a-f0-9]{16}$/.test(String(s || '').trim())
@@ -68,6 +75,17 @@ exports.main = async (event) => {
 	}
 
 	const add = await f_rooms.add(doc)
+
+	const adminProfile = await f_users.where({ f_uid: f_admin_uid }).limit(1).get()
+	const adminRow = adminProfile.data && adminProfile.data[0]
+	const f_nick_name = f_normNick((adminRow && adminRow.f_nick_name) || '管理员')
+	await f_members.add({
+		f_room_code,
+		f_player_uid: f_admin_uid,
+		f_nick_name,
+		f_joined_at: f_now
+	})
+
 	return {
 		f_code: 0,
 		f_message: 'ok',
