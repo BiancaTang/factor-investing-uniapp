@@ -30,8 +30,8 @@
 				:open-round="obsRoundMarketBanner.openRound"
 			/>
 			<f-skill-broadcast-banner
-				v-if="skillBannerPayloadObs"
-				:payload="skillBannerPayloadObs"
+				v-if="skillBroadcastLogObs.length"
+				:log="skillBroadcastLogObs"
 				variant="display"
 			/>
 			<view v-if="status && !status.f_game_ended" class="ctrl join-ctrl">
@@ -142,6 +142,7 @@ import { onLoad } from '@dcloudio/uni-app'
 import FGameCharts from '../../components/f-game-charts/f-game-charts.vue'
 import FRoundMarketEvent from '../../components/f-round-market-event/f-round-market-event.vue'
 import FSkillBroadcastBanner from '../../components/f-skill-broadcast-banner/f-skill-broadcast-banner.vue'
+import { f_skillBroadcastLogFromRoomData } from '../../utils/f_skillBroadcastLog.js'
 import { f_buildJointNavCompareChartData, f_simulatePythonFactorGame } from '../../utils/f_factorEngine.js'
 import {
 	f_roundEventFactorMultipliersByRoundFromRoomMap,
@@ -165,38 +166,26 @@ const lastAction = ref('')
 const tick = ref(Date.now())
 let timer = null
 let skillPollTimer = null
-let skillBannerTimerObs = null
-const skillBannerPayloadObs = ref(null)
 const lastSkillSeqSeenObs = ref(0)
 const skillSeqBootstrappedObs = ref(false)
+
+const skillBroadcastLogObs = computed(() => f_skillBroadcastLogFromRoomData(status.value))
 
 function processSkillBroadcastPayloadObs(data) {
 	if (!data) return
 	const seq = parseInt(data.f_skill_broadcast_seq, 10)
-	const b = data.f_skill_broadcast
-	const hasLines = b && typeof b === 'object' && Array.isArray(b.lines) && b.lines.length > 0
+	const log = f_skillBroadcastLogFromRoomData(data)
+	const latest = log.length ? log[log.length - 1] : null
 
 	if (!skillSeqBootstrappedObs.value) {
 		lastSkillSeqSeenObs.value = Number.isFinite(seq) && seq >= 1 ? seq : 0
 		skillSeqBootstrappedObs.value = true
 		return
 	}
-	if (!Number.isFinite(seq) || seq < 1 || !hasLines) return
+	if (!Number.isFinite(seq) || seq < 1 || !latest) return
 	if (seq <= lastSkillSeqSeenObs.value) return
 	lastSkillSeqSeenObs.value = seq
-	skillBannerPayloadObs.value = {
-		lines: [...b.lines],
-		f_round_index: Number.isFinite(parseInt(b.f_round_index, 10))
-			? parseInt(b.f_round_index, 10)
-			: b.f_round_index,
-		seq
-	}
 	uni.showToast({ title: '技能播报', icon: 'none', duration: 1800 })
-	if (skillBannerTimerObs) clearTimeout(skillBannerTimerObs)
-	skillBannerTimerObs = setTimeout(() => {
-		skillBannerPayloadObs.value = null
-		skillBannerTimerObs = null
-	}, 16000)
 }
 let autoEnding = false
 
@@ -229,8 +218,6 @@ onUnmounted(() => {
 	timer = null
 	if (skillPollTimer) clearInterval(skillPollTimer)
 	skillPollTimer = null
-	if (skillBannerTimerObs) clearTimeout(skillBannerTimerObs)
-	skillBannerTimerObs = null
 })
 
 const totalRoundsLabel = computed(() => {

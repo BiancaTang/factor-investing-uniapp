@@ -35,6 +35,18 @@
 			"bsonType": "bool",
 			"description": "为 true 表示管理员已「开始博弈」，角色锁定并可开启正式轮次；新建房为 false"
 		},
+		"f_skill_broadcast_seq": {
+			"bsonType": "int",
+			"description": "技能/被动播报单调递增序号，客户端用于去重展示"
+		},
+		"f_skill_broadcast": {
+			"bsonType": "object",
+			"description": "最近一次全员可见的技能播报（提交回合后由云函数写入）"
+		},
+		"f_skill_broadcast_log": {
+			"bsonType": "array",
+			"description": "技能播报历史（追加，最多保留约 80 条），元素含 seq、f_round_index、lines、f_at"
+		},
 		"f_created_at": { "bsonType": "timestamp" },
 		"f_updated_at": { "bsonType": "timestamp" }
 	}

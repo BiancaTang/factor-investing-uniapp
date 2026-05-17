@@ -27,6 +27,18 @@ function f_isPlayerUid(s) {
 	return /^u[a-f0-9]{16}$/.test(String(s || '').trim())
 }
 
+function f_skillBroadcastLogForClient(row) {
+	const raw = row.f_skill_broadcast_log
+	if (Array.isArray(raw) && raw.length) {
+		return raw.filter((e) => e && Array.isArray(e.lines) && e.lines.length)
+	}
+	const b = row.f_skill_broadcast
+	if (b && typeof b === 'object' && Array.isArray(b.lines) && b.lines.length) {
+		return [b]
+	}
+	return []
+}
+
 exports.main = async (event) => {
 	const f_player_uid = event.f_player_uid != null ? String(event.f_player_uid).trim() : ''
 	const f_room_code = event.f_room_code != null ? String(event.f_room_code).trim() : ''
@@ -150,6 +162,7 @@ exports.main = async (event) => {
 			})(),
 			f_skill_broadcast:
 				row.f_skill_broadcast && typeof row.f_skill_broadcast === 'object' ? row.f_skill_broadcast : null,
+			f_skill_broadcast_log: f_skillBroadcastLogForClient(row),
 			f_players
 		}
 	}

@@ -3,6 +3,18 @@
 const db = uniCloud.database()
 const f_rooms = db.collection('f_room')
 
+function f_skillBroadcastLogForClient(row) {
+	const raw = row.f_skill_broadcast_log
+	if (Array.isArray(raw) && raw.length) {
+		return raw.filter((e) => e && Array.isArray(e.lines) && e.lines.length)
+	}
+	const b = row.f_skill_broadcast
+	if (b && typeof b === 'object' && Array.isArray(b.lines) && b.lines.length) {
+		return [b]
+	}
+	return []
+}
+
 function f_randomEventsByRoundForClient(row) {
 	const raw = row.f_random_events_by_round
 	if (raw && typeof raw === 'object' && Object.keys(raw).length > 0) return raw
@@ -56,7 +68,14 @@ exports.main = async (event) => {
 				row.f_round_random_event_snapshot && typeof row.f_round_random_event_snapshot === 'object'
 					? row.f_round_random_event_snapshot
 					: null,
-			f_random_events_by_round: f_randomEventsByRoundForClient(row)
+			f_random_events_by_round: f_randomEventsByRoundForClient(row),
+			f_skill_broadcast_seq: (() => {
+				const n = parseInt(row.f_skill_broadcast_seq, 10)
+				return Number.isFinite(n) && n >= 0 ? n : 0
+			})(),
+			f_skill_broadcast:
+				row.f_skill_broadcast && typeof row.f_skill_broadcast === 'object' ? row.f_skill_broadcast : null,
+			f_skill_broadcast_log: f_skillBroadcastLogForClient(row)
 		}
 	}
 }

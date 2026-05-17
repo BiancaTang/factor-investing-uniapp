@@ -4,6 +4,7 @@ const {
 	F_FACTOR_DEFS,
 	f_navReturnDbKey
 } = require('./f_gameFactorSpec.js')
+const { f_buildSkillLinesFromSubmit, f_publishSkillBroadcast } = require('./f_skillNotify.js')
 
 const db = uniCloud.database()
 const f_rooms = db.collection('f_room')
@@ -39,6 +40,10 @@ exports.main = async (event) => {
 	const f_nav = f_numOrNull(event.f_nav)
 	const f_total_return = f_numOrNull(event.f_total_return)
 	const f_apply_role11_active = !!event.f_apply_role11_active
+	const f_apply_role_active = !!event.f_apply_role_active
+	const f_role_active_variant = String(event.f_role_active_variant != null ? event.f_role_active_variant : 'A')
+		.trim()
+		.toUpperCase()
 	const retByKey = {}
 	for (const d of F_FACTOR_DEFS) {
 		retByKey[f_navReturnDbKey(d.internal)] = f_numOrNull(event[f_navReturnDbKey(d.internal)])
@@ -64,6 +69,30 @@ exports.main = async (event) => {
 	const memRow0 = mem.data[0]
 	const memRoleId = parseInt(memRow0.f_role_id, 10)
 	const memActiveR = parseInt(memRow0.f_role11_active_round, 10)
+	const memAct1_10 = parseInt(memRow0.f_role_active_round, 10)
+
+	if (f_apply_role11_active && f_apply_role_active) {
+		return { f_code: 400, f_message: '测试主动与角色主动不可同轮勾选', f_data: null }
+	}
+
+	if (f_apply_role_active) {
+		if (!Number.isFinite(memRoleId) || memRoleId < 1 || memRoleId > 10) {
+			return { f_code: 400, f_message: '仅 1～10 号角色可发动该主动', f_data: null }
+		}
+		if (Number.isFinite(memAct1_10) && memAct1_10 >= 1 && memAct1_10 !== f_round_index) {
+			return {
+				f_code: 400,
+				f_message: `本局角色主动已在第 ${memAct1_10} 轮使用，不可重复发动`,
+				f_data: null
+			}
+		}
+		if (memRoleId >= 2 && memRoleId <= 10) {
+			if (f_role_active_variant !== 'A' && f_role_active_variant !== 'B') {
+				return { f_code: 400, f_message: '请选择主动分支 A 或 B', f_data: null }
+			}
+		}
+	}
+
 	if (f_apply_role11_active) {
 		if (!Number.isFinite(memRoleId) || memRoleId !== 11) {
 			return { f_code: 400, f_message: '仅测试角色（11号）可发动该主动', f_data: null }
@@ -151,6 +180,25 @@ exports.main = async (event) => {
 		.limit(1)
 		.get()
 
+	async function tryPublishSkillBroadcast() {
+		const skillLines = f_buildSkillLinesFromSubmit({
+			f_player_uid,
+			f_round_index,
+			memRoleId,
+			facByKey,
+			f_nick_name: memRow0.f_nick_name,
+			f_apply_role11_active,
+			f_apply_role_active,
+			f_role_active_variant
+		})
+		if (!skillLines.length) return
+		try {
+			await f_publishSkillBroadcast(f_rooms, roomRow._id, f_round_index, skillLines)
+		} catch (err) {
+			console.error('f_publishSkillBroadcast', err)
+		}
+	}
+
 	if (exist.data && exist.data.length) {
 		await f_rounds.doc(exist.data[0]._id).update(doc)
 		if (f_apply_role11_active && Number.isFinite(memRoleId) && memRoleId === 11) {
@@ -158,6 +206,16 @@ exports.main = async (event) => {
 				await f_members.doc(memRow0._id).update({ f_role11_active_round: f_round_index })
 			}
 		}
+		if (f_apply_role_active && Number.isFinite(memRoleId) && memRoleId >= 1 && memRoleId <= 10) {
+			if (!Number.isFinite(memAct1_10) || memAct1_10 < 1) {
+				const v = memRoleId >= 2 && f_role_active_variant === 'B' ? 'B' : 'A'
+				await f_members.doc(memRow0._id).update({
+					f_role_active_round: f_round_index,
+					f_role_active_variant: v
+				})
+			}
+		}
+		await tryPublishSkillBroadcast()
 		return { f_code: 0, f_message: 'ok', f_data: { f_action: 'update', f_id: exist.data[0]._id } }
 	}
 
@@ -168,5 +226,15 @@ exports.main = async (event) => {
 			await f_members.doc(memRow0._id).update({ f_role11_active_round: f_round_index })
 		}
 	}
+	if (f_apply_role_active && Number.isFinite(memRoleId) && memRoleId >= 1 && memRoleId <= 10) {
+		if (!Number.isFinite(memAct1_10) || memAct1_10 < 1) {
+			const v = memRoleId >= 2 && f_role_active_variant === 'B' ? 'B' : 'A'
+			await f_members.doc(memRow0._id).update({
+				f_role_active_round: f_round_index,
+				f_role_active_variant: v
+			})
+		}
+	}
+	await tryPublishSkillBroadcast()
 	return { f_code: 0, f_message: 'ok', f_data: { f_action: 'insert', f_id: add.id } }
 }

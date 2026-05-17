@@ -13,7 +13,7 @@
 			:snapshot="activeRoundMarketBanner.snapshot"
 			:open-round="activeRoundMarketBanner.openRound"
 		/>
-		<f-skill-broadcast-banner v-if="skillBannerPayload" :payload="skillBannerPayload" variant="compact" />
+		<f-skill-broadcast-banner v-if="skillBroadcastLog.length" :log="skillBroadcastLog" variant="compact" />
 
 		<view v-if="loading" class="loading">加载中…</view>
 
@@ -248,6 +248,7 @@ import {
 import { F_FACTOR_COLOR_BY_FAC_KEY } from '../../utils/f_factorPalette.js'
 import { F_TEST_ROLE_ID } from '../../utils/f_roleTestRole.js'
 import { F_ROLE_ACTIVE_VARIANT_LABELS } from '../../utils/f_roleActives.js'
+import { f_skillBroadcastLogFromRoomData } from '../../utils/f_skillBroadcastLog.js'
 
 const roomCode = ref('')
 const totalRounds = ref(1)
@@ -271,39 +272,30 @@ const role1_10ActiveChecked = ref(false)
 const roleActiveVariant = ref('A')
 let timer = null
 let skillPollTimer = null
-let skillBannerTimer = null
 
-const skillBannerPayload = ref(null)
 const lastSkillSeqSeen = ref(0)
 const skillSeqBootstrapped = ref(false)
+
+const skillBroadcastLog = computed(() => {
+	const sn = roomSnapshot.value || roomInfo.value
+	return f_skillBroadcastLogFromRoomData(sn)
+})
 
 function processSkillBroadcastPayload(data) {
 	if (!data) return
 	const seq = parseInt(data.f_skill_broadcast_seq, 10)
-	const b = data.f_skill_broadcast
-	const hasLines = b && typeof b === 'object' && Array.isArray(b.lines) && b.lines.length > 0
+	const log = f_skillBroadcastLogFromRoomData(data)
+	const latest = log.length ? log[log.length - 1] : null
 
 	if (!skillSeqBootstrapped.value) {
 		lastSkillSeqSeen.value = Number.isFinite(seq) && seq >= 1 ? seq : 0
 		skillSeqBootstrapped.value = true
 		return
 	}
-	if (!Number.isFinite(seq) || seq < 1 || !hasLines) return
+	if (!Number.isFinite(seq) || seq < 1 || !latest) return
 	if (seq <= lastSkillSeqSeen.value) return
 	lastSkillSeqSeen.value = seq
-	skillBannerPayload.value = {
-		lines: [...b.lines],
-		f_round_index: Number.isFinite(parseInt(b.f_round_index, 10))
-			? parseInt(b.f_round_index, 10)
-			: b.f_round_index,
-		seq
-	}
 	uni.showToast({ title: '技能播报', icon: 'none', duration: 1600 })
-	if (skillBannerTimer) clearTimeout(skillBannerTimer)
-	skillBannerTimer = setTimeout(() => {
-		skillBannerPayload.value = null
-		skillBannerTimer = null
-	}, 14000)
 }
 
 const factorIntroItems = computed(() =>
@@ -933,8 +925,6 @@ onUnmounted(() => {
 	timer = null
 	if (skillPollTimer) clearInterval(skillPollTimer)
 	skillPollTimer = null
-	if (skillBannerTimer) clearTimeout(skillBannerTimer)
-	skillBannerTimer = null
 })
 
 async function submitRound() {
