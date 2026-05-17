@@ -35,7 +35,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { f_getStoredUser } from '../../utils/f_userStorage.js'
+import { f_getStoredUser, f_saveUserLocal } from '../../utils/f_userStorage.js'
 import { f_isAdmin } from '../../utils/f_role.js'
 import { f_createRoomInCloud } from '../../utils/f_roomApi.js'
 
@@ -85,8 +85,11 @@ async function submit() {
 			uni.showToast({ title: body.f_message || '保存失败', icon: 'none' })
 			return
 		}
+		f_saveUserLocal({ f_current_room_code: f_room_code })
 		uni.showToast({ title: '房间已创建', icon: 'success' })
-		setTimeout(() => uni.navigateBack(), 500)
+		setTimeout(() => {
+			uni.redirectTo({ url: '/pages/f_room/obs?code=' + encodeURIComponent(f_room_code) })
+		}, 400)
 	} catch (err) {
 		console.error(err)
 		uni.showToast({ title: '请上传云函数 f_create_room', icon: 'none' })
