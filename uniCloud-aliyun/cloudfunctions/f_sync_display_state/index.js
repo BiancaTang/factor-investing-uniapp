@@ -26,6 +26,39 @@ function f_normalizeRoomCode(event) {
 	return /^\d{4}$/.test(t) ? t : ''
 }
 
+/** 与 f_get_room_player_status / 小程序博弈页仿真参数一致 */
+function f_roleMapsFromMembers(memRows) {
+	const roleIdByPlayerId = {}
+	const role1_10ActiveRoundByPlayerId = {}
+	const roleActiveVariantByPlayerId = {}
+	const role11ActiveRoundByPlayerId = {}
+	for (const m of memRows || []) {
+		const uid = m.f_player_uid ? String(m.f_player_uid) : ''
+		if (!uid) continue
+		const rid = parseInt(m.f_role_id, 10)
+		if (Number.isFinite(rid) && rid >= 1 && rid <= 11) {
+			roleIdByPlayerId[uid] = rid
+		}
+		if (Number.isFinite(rid) && rid >= 1 && rid <= 10) {
+			const ar = parseInt(m.f_role_active_round, 10)
+			if (Number.isFinite(ar) && ar >= 1) role1_10ActiveRoundByPlayerId[uid] = ar
+		}
+		const v0 =
+			m.f_role_active_variant != null ? String(m.f_role_active_variant).trim().toUpperCase() : ''
+		roleActiveVariantByPlayerId[uid] = v0 === 'B' ? 'B' : 'A'
+		if (rid === 11) {
+			const r11 = parseInt(m.f_role11_active_round, 10)
+			if (Number.isFinite(r11) && r11 >= 1) role11ActiveRoundByPlayerId[uid] = r11
+		}
+	}
+	return {
+		roleIdByPlayerId,
+		role1_10ActiveRoundByPlayerId,
+		roleActiveVariantByPlayerId,
+		role11ActiveRoundByPlayerId
+	}
+}
+
 function f_randomEventsByRoundForClient(row) {
 	const raw = row.f_random_events_by_round
 	if (raw && typeof raw === 'object' && Object.keys(raw).length > 0) return raw
@@ -245,6 +278,7 @@ exports.main = async (event) => {
 			.filter((p) => p.history.length > 0)
 
 		const currentEvent = f_roomSnapshotToCurrentEvent(room, openRound)
+		const roleMaps = f_roleMapsFromMembers(memRows)
 
 		const skSeq = parseInt(room.f_skill_broadcast_seq, 10)
 		const skBroadcast =
@@ -306,6 +340,10 @@ exports.main = async (event) => {
 			joinLocked: !!room.f_join_locked,
 			playingStarted: room.f_playing_started === true,
 			randomEventsByRound: f_randomEventsByRoundForClient(room),
+			roleIdByPlayerId: roleMaps.roleIdByPlayerId,
+			role1_10ActiveRoundByPlayerId: roleMaps.role1_10ActiveRoundByPlayerId,
+			roleActiveVariantByPlayerId: roleMaps.roleActiveVariantByPlayerId,
+			role11ActiveRoundByPlayerId: roleMaps.role11ActiveRoundByPlayerId,
 			timestamp: Date.now()
 		}
 

@@ -108,6 +108,10 @@
 						:simulation-players="simulationPlayersForCharts"
 						:attribution-player-id="displayAttributionPlayerId"
 						:round-event-factor-multipliers-by-round="displayRoundEventFactorMultipliersByRound"
+						:role-id-by-player-id="displayChartSimRoleOpts.roleIdByPlayerId"
+						:role1-10-active-round-by-player-id="displayChartSimRoleOpts.role1_10ActiveRoundByPlayerId"
+						:role-active-variant-by-player-id="displayChartSimRoleOpts.roleActiveVariantByPlayerId"
+						:role11-active-round-by-player-id="displayChartSimRoleOpts.role11ActiveRoundByPlayerId"
 						:chart-inner-height-px="lightboxChartInnerPx"
 					/>
 					<FGameCharts
@@ -121,6 +125,10 @@
 						:simulation-players="simulationPlayersForCharts"
 						:attribution-player-id="displayAttributionPlayerId"
 						:round-event-factor-multipliers-by-round="displayRoundEventFactorMultipliersByRound"
+						:role-id-by-player-id="displayChartSimRoleOpts.roleIdByPlayerId"
+						:role1-10-active-round-by-player-id="displayChartSimRoleOpts.role1_10ActiveRoundByPlayerId"
+						:role-active-variant-by-player-id="displayChartSimRoleOpts.roleActiveVariantByPlayerId"
+						:role11-active-round-by-player-id="displayChartSimRoleOpts.role11ActiveRoundByPlayerId"
 						:chart-inner-height-px="lightboxChartInnerPx"
 					/>
 				</view>
@@ -195,7 +203,11 @@ const state = ref({
 	roundMarketEventRound: 0,
 	skillBroadcastSeq: 0,
 	skillBroadcast: null,
-	skillBroadcastLog: []
+	skillBroadcastLog: [],
+	roleIdByPlayerId: {},
+	role1_10ActiveRoundByPlayerId: {},
+	roleActiveVariantByPlayerId: {},
+	role11ActiveRoundByPlayerId: {}
 })
 
 /** 弹层内图表高度（px），随窗口变化 */
@@ -257,6 +269,28 @@ const displayRoundEventFactorMultipliersByRound = computed(() =>
 	f_roundEventFactorMultipliersByRoundFromRoomMap(state.value.randomEventsByRound || {})
 )
 
+const displayChartSimRoleOpts = computed(() => ({
+	roleIdByPlayerId:
+		state.value.roleIdByPlayerId && typeof state.value.roleIdByPlayerId === 'object'
+			? state.value.roleIdByPlayerId
+			: {},
+	role1_10ActiveRoundByPlayerId:
+		state.value.role1_10ActiveRoundByPlayerId &&
+		typeof state.value.role1_10ActiveRoundByPlayerId === 'object'
+			? state.value.role1_10ActiveRoundByPlayerId
+			: {},
+	roleActiveVariantByPlayerId:
+		state.value.roleActiveVariantByPlayerId &&
+		typeof state.value.roleActiveVariantByPlayerId === 'object'
+			? state.value.roleActiveVariantByPlayerId
+			: {},
+	role11ActiveRoundByPlayerId:
+		state.value.role11ActiveRoundByPlayerId &&
+		typeof state.value.role11ActiveRoundByPlayerId === 'object'
+			? state.value.role11ActiveRoundByPlayerId
+			: {}
+}))
+
 const compareNavChartData = computed(() => {
 	const list = playersWithChartHistory.value
 	if (list.length < 2) return null
@@ -270,7 +304,8 @@ const compareNavChartData = computed(() => {
 			if_banker: !!state.value.ifBanker,
 			f_group_count: displayGroupCount.value,
 			f_admin_uid: state.value.roomAdminUid || '',
-			roundEventFactorMultipliersByRound: displayRoundEventFactorMultipliersByRound.value
+			roundEventFactorMultipliersByRound: displayRoundEventFactorMultipliersByRound.value,
+			...displayChartSimRoleOpts.value
 		}
 	)
 })
