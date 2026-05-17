@@ -6,6 +6,18 @@ const db = uniCloud.database()
 
 const FACTOR_KEYS = F_FACTOR_DEFS.map((d) => d.key)
 
+function f_skillBroadcastLogForClient(row) {
+	const raw = row.f_skill_broadcast_log
+	if (Array.isArray(raw) && raw.length) {
+		return raw.filter((e) => e && Array.isArray(e.lines) && e.lines.length)
+	}
+	const b = row.f_skill_broadcast
+	if (b && typeof b === 'object' && Array.isArray(b.lines) && b.lines.length) {
+		return [b]
+	}
+	return []
+}
+
 function f_normalizeRoomCode(event) {
 	const raw = event.f_room_code != null ? event.f_room_code : event.f_room_id
 	const t = String(raw || '')
@@ -85,13 +97,6 @@ exports.main = async (event) => {
 			timeLeft = Math.max(0, Math.ceil((deadline - f_now) / 1000))
 		}
 
-		let currentPhase = 'lobby'
-		if (room.f_game_ended) {
-			currentPhase = 'finale'
-		} else if (openRound > 0) {
-			currentPhase = 'decision'
-		}
-
 		const memRes = await db
 			.collection('f_room_member')
 			.where({ f_room_code })
@@ -113,6 +118,15 @@ exports.main = async (event) => {
 		}
 		/** 本轮已结束（管理员结束本轮后 openRound 归零），可展示复盘曲线；决策中 openRound>0 为 false */
 		const chartsReviewUnlocked = maxRoundIndexAll > 0 && openRound === 0
+
+		let currentPhase = 'lobby'
+		if (room.f_game_ended) {
+			currentPhase = 'finale'
+		} else if (openRound > 0) {
+			currentPhase = 'decision'
+		} else if (maxRoundIndexAll > 0) {
+			currentPhase = 'review'
+		}
 
 		const bestByUid = new Map()
 		for (const row of rows) {
@@ -232,6 +246,21 @@ exports.main = async (event) => {
 
 		const currentEvent = f_roomSnapshotToCurrentEvent(room, openRound)
 
+		const skSeq = parseInt(room.f_skill_broadcast_seq, 10)
+		const skBroadcast =
+			room.f_skill_broadcast && typeof room.f_skill_broadcast === 'object' ? room.f_skill_broadcast : null
+		const skLogEntries = f_skillBroadcastLogForClient(room)
+		const skillLogFromBroadcast = []
+		for (const entry of skLogEntries) {
+			for (const text of entry.lines || []) {
+				skillLogFromBroadcast.push({
+					f_skill_name: text,
+					f_char_name: '技能播报',
+					f_player_uid: ''
+				})
+			}
+		}
+
 		let roundMarketSnapshot = null
 		let roundMarketEventRound = 0
 		if (openRound > 0 && openRound % 2 === 0) {
@@ -254,7 +283,7 @@ exports.main = async (event) => {
 			roomName: `房间 ${f_room_code}`,
 			maxPlayers,
 			currentPhase,
-			currentRoundIndex: openRound,
+			currentRoundIndex: openRound > 0 ? openRound : maxRoundIndexAll,
 			maxRounds,
 			timeLeft,
 			players,
@@ -264,7 +293,10 @@ exports.main = async (event) => {
 			currentEvent,
 			roundMarketSnapshot,
 			roundMarketEventRound,
-			skillLog: [],
+			skillLog: skillLogFromBroadcast,
+			skillBroadcastSeq: Number.isFinite(skSeq) && skSeq >= 0 ? skSeq : 0,
+			skillBroadcast: skBroadcast,
+			skillBroadcastLog: skLogEntries,
 			roundHistory,
 			ifBanker: !!room.f_banker_intervene,
 			fGroupCount: maxPlayers,

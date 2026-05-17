@@ -5,6 +5,12 @@
 
 		<!-- 主内容区 -->
 		<view class="display-content">
+			<f-skill-broadcast-banner
+				v-if="skillBroadcastLogDisplay.length"
+				class="display-skill-strip"
+				:log="skillBroadcastLogDisplay"
+				variant="display"
+			/>
 			<view class="display-stage">
 				<!-- Act 0: 候场大厅 -->
 				<LobbyScreen
@@ -137,6 +143,7 @@ import { ParticleSystem } from '@/utils/f_displayEngine.js'
 import { f_buildJointNavCompareChartData } from '@/utils/f_factorEngine.js'
 import { f_roundEventFactorMultipliersByRoundFromRoomMap } from '@/utils/f_roundRandomEventMultipliers.js'
 import FGameCharts from '@/components/f-game-charts/f-game-charts.vue'
+import FSkillBroadcastBanner from '@/components/f-skill-broadcast-banner/f-skill-broadcast-banner.vue'
 
 import LobbyScreen from './lobby.vue'
 import DecisionScreen from './decision.vue'
@@ -185,7 +192,10 @@ const state = ref({
 	randomEventsByRound: {},
 	timestamp: 0,
 	roundMarketSnapshot: null,
-	roundMarketEventRound: 0
+	roundMarketEventRound: 0,
+	skillBroadcastSeq: 0,
+	skillBroadcast: null,
+	skillBroadcastLog: []
 })
 
 /** 弹层内图表高度（px），随窗口变化 */
@@ -274,6 +284,14 @@ const phaseLabel = computed(() => ({
 	finale: '终局盛典'
 }[state.value.currentPhase] || '等待'))
 
+const skillBroadcastLogDisplay = computed(() => {
+	const raw = state.value.skillBroadcastLog
+	if (Array.isArray(raw) && raw.length) return raw
+	const b = state.value.skillBroadcast
+	if (b && Array.isArray(b.lines) && b.lines.length) return [b]
+	return []
+})
+
 // 粒子系统
 const particleCanvas = ref(null)
 const particleSystem = ref(null)
@@ -282,8 +300,27 @@ const canvasStyle = ref({})
 // 轮询控制
 let pollTimer = null
 let isAnimating = false
+/** 首轮拉取不弹技能 toast（避免进屏即刷历史播报） */
+let displaySkillBroadcastPrimed = false
 /** 上一轮询的「已锁定加入」，用于上升沿检测后跳转选角展示页 */
 let prevJoinLockedPoll = false
+/** 上一轮询是否已开始博弈（用于从选角展示回到主大屏候场） */
+let prevPlayingStartedPoll = false
+
+function f_redirectDisplayToMainLobby() {
+	const rc = roomCode.value
+	if (!/^\d{4}$/.test(rc)) return
+	try {
+		const pages = getCurrentPages()
+		const cur = pages.length ? pages[pages.length - 1] : null
+		const route = cur && cur.route ? String(cur.route) : ''
+		if (route.includes('role-showcase') || route.includes('role-select')) {
+			uni.redirectTo({ url: '/pages/f_display/index?roomId=' + encodeURIComponent(rc) })
+		}
+	} catch (_) {
+		uni.redirectTo({ url: '/pages/f_display/index?roomId=' + encodeURIComponent(rc) })
+	}
+}
 
 const POLL_INTERVAL = {
 	lobby: 3000,
@@ -315,6 +352,7 @@ async function fetchDisplayState() {
 		const newData = res.result.data
 		const oldPhase = state.value.currentPhase
 		const oldPlayers = state.value.players
+		const prevSkillSeq = state.value.skillBroadcastSeq || 0
 
 		const joinLocked = !!newData.joinLocked
 		const playingStarted = !!newData.playingStarted
@@ -328,6 +366,11 @@ async function fetchDisplayState() {
 		}
 		prevJoinLockedPoll = joinLocked
 
+		if (playingStarted && !prevPlayingStartedPoll) {
+			f_redirectDisplayToMainLobby()
+		}
+		prevPlayingStartedPoll = playingStarted
+
 		// 检测阶段变化
 		if (newData.currentPhase !== oldPhase) {
 			handlePhaseChange(newData.currentPhase, oldPhase)
@@ -338,11 +381,19 @@ async function fetchDisplayState() {
 			detectPlayerChanges(oldPlayers, newData.players)
 		}
 
-		// 检测技能触发
-		if (newData.skillLog?.length > state.value.skillLog.length) {
-			const newSkills = newData.skillLog.slice(state.value.skillLog.length)
-			newSkills.forEach(skill => showSkillDanmaku(skill))
+		const newSkillSeq = parseInt(newData.skillBroadcastSeq, 10) || 0
+		if (
+			displaySkillBroadcastPrimed &&
+			Number.isFinite(newSkillSeq) &&
+			newSkillSeq > prevSkillSeq &&
+			newData.skillBroadcast &&
+			Array.isArray(newData.skillBroadcast.lines)
+		) {
+			for (const line of newData.skillBroadcast.lines) {
+				showSkillDanmaku({ f_skill_name: line, f_char_name: '技能播报' })
+			}
 		}
+		displaySkillBroadcastPrimed = true
 
 		state.value = newData
 	} catch (err) {
@@ -398,10 +449,14 @@ function detectPlayerChanges(oldPlayers, newPlayers) {
 	})
 }
 
-// 技能弹幕（简化实现）
+// 技能播报（与 f_room.f_skill_broadcast 同步）
 function showSkillDanmaku(skill) {
-	// TODO: 接入 skill-danmaku 组件
-	console.log('🎭 技能触发:', skill.f_skill_name, '-', skill.f_player_uid)
+	const msg = skill.f_skill_name || '技能'
+	const short = msg.length > 36 ? msg.slice(0, 36) + '…' : msg
+	uni.showToast({ title: short, icon: 'none', duration: 3600 })
+	if (typeof window !== 'undefined' && particleSystem.value) {
+		particleSystem.value.burst(window.innerWidth / 2, window.innerHeight * 0.12, '#d4af37', 32)
+	}
 }
 
 // 终局粒子雨
@@ -509,6 +564,14 @@ onUnmounted(() => {
 	z-index: 10;
 	overflow-x: hidden;
 	overflow-y: auto;
+}
+
+.display-skill-strip {
+	flex-shrink: 0;
+	width: calc(100% - 32px);
+	max-width: 960px;
+	margin: 10px auto 0;
+	z-index: 20;
 }
 
 .display-stage {
