@@ -84,13 +84,23 @@ exports.main = async (event) => {
 		const m = memRows.find((x) => x.f_player_uid === f_player_uid)
 		const rid = m ? parseInt(m.f_role_id, 10) : NaN
 		const r11 = m ? parseInt(m.f_role11_active_round, 10) : NaN
+		const ra = m ? parseInt(m.f_role_active_round, 10) : NaN
+		const rv0 = m && m.f_role_active_variant != null ? String(m.f_role_active_variant).trim().toUpperCase() : ''
+		const rv = rv0 === 'B' ? 'B' : 'A'
+		const roleName =
+			m && m.f_role_name != null && String(m.f_role_name).trim() !== ''
+				? String(m.f_role_name).trim()
+				: null
 		return {
 			f_player_uid,
 			f_nick_name: nickByUid[f_player_uid] || f_player_uid.slice(0, 8),
 			f_max_round_index: maxByUid[f_player_uid] || 0,
 			f_history: listByUid[f_player_uid] || [],
 			f_role_id: Number.isFinite(rid) && rid >= 1 && rid <= 11 ? rid : null,
-			f_role11_active_round: Number.isFinite(r11) && r11 >= 0 ? r11 : 0
+			f_role_name: roleName,
+			f_role11_active_round: Number.isFinite(r11) && r11 >= 0 ? r11 : 0,
+			f_role_active_round: Number.isFinite(ra) && ra >= 0 ? ra : 0,
+			f_role_active_variant: rv
 		}
 	})
 
@@ -128,6 +138,12 @@ exports.main = async (event) => {
 					? row.f_round_random_event_snapshot
 					: null,
 			f_random_events_by_round: f_randomEventsByRoundForClient(row),
+			f_skill_broadcast_seq: (() => {
+				const n = parseInt(row.f_skill_broadcast_seq, 10)
+				return Number.isFinite(n) && n >= 0 ? n : 0
+			})(),
+			f_skill_broadcast:
+				row.f_skill_broadcast && typeof row.f_skill_broadcast === 'object' ? row.f_skill_broadcast : null,
 			f_players
 		}
 	}

@@ -29,6 +29,11 @@
 				:snapshot="obsRoundMarketBanner.snapshot"
 				:open-round="obsRoundMarketBanner.openRound"
 			/>
+			<f-skill-broadcast-banner
+				v-if="skillBannerPayloadObs"
+				:payload="skillBannerPayloadObs"
+				variant="display"
+			/>
 			<view v-if="status && !status.f_game_ended" class="ctrl join-ctrl">
 				<button
 					class="btn"
@@ -85,7 +90,12 @@
 			<view v-if="status && status.f_players && status.f_players.length" class="list">
 				<text class="list-title">玩家进度（已提交最高轮次）</text>
 				<view v-for="(p, i) in status.f_players" :key="i" class="li">
-					<text class="ph">{{ p.f_nick_name }}</text>
+					<text class="ph">
+						{{ p.f_nick_name }}
+						<text v-if="p.f_role_name" class="ph-role"> · {{ p.f_role_name }}</text>
+						<text v-else-if="p.f_role_id" class="ph-role muted"> · 角色{{ p.f_role_id }}</text>
+						<text v-else class="ph-role muted"> · 未选角</text>
+					</text>
 					<text class="pr">第 {{ p.f_max_round_index }} 轮</text>
 				</view>
 			</view>
@@ -131,6 +141,7 @@ import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import FGameCharts from '../../components/f-game-charts/f-game-charts.vue'
 import FRoundMarketEvent from '../../components/f-round-market-event/f-round-market-event.vue'
+import FSkillBroadcastBanner from '../../components/f-skill-broadcast-banner/f-skill-broadcast-banner.vue'
 import { f_buildJointNavCompareChartData, f_simulatePythonFactorGame } from '../../utils/f_factorEngine.js'
 import {
 	f_roundEventFactorMultipliersByRoundFromRoomMap,
@@ -153,6 +164,40 @@ const acting = ref(false)
 const lastAction = ref('')
 const tick = ref(Date.now())
 let timer = null
+let skillPollTimer = null
+let skillBannerTimerObs = null
+const skillBannerPayloadObs = ref(null)
+const lastSkillSeqSeenObs = ref(0)
+const skillSeqBootstrappedObs = ref(false)
+
+function processSkillBroadcastPayloadObs(data) {
+	if (!data) return
+	const seq = parseInt(data.f_skill_broadcast_seq, 10)
+	const b = data.f_skill_broadcast
+	const hasLines = b && typeof b === 'object' && Array.isArray(b.lines) && b.lines.length > 0
+
+	if (!skillSeqBootstrappedObs.value) {
+		lastSkillSeqSeenObs.value = Number.isFinite(seq) && seq >= 1 ? seq : 0
+		skillSeqBootstrappedObs.value = true
+		return
+	}
+	if (!Number.isFinite(seq) || seq < 1 || !hasLines) return
+	if (seq <= lastSkillSeqSeenObs.value) return
+	lastSkillSeqSeenObs.value = seq
+	skillBannerPayloadObs.value = {
+		lines: [...b.lines],
+		f_round_index: Number.isFinite(parseInt(b.f_round_index, 10))
+			? parseInt(b.f_round_index, 10)
+			: b.f_round_index,
+		seq
+	}
+	uni.showToast({ title: '技能播报', icon: 'none', duration: 1800 })
+	if (skillBannerTimerObs) clearTimeout(skillBannerTimerObs)
+	skillBannerTimerObs = setTimeout(() => {
+		skillBannerPayloadObs.value = null
+		skillBannerTimerObs = null
+	}, 16000)
+}
 let autoEnding = false
 
 onLoad((q) => {
@@ -171,11 +216,21 @@ onLoad((q) => {
 	timer = setInterval(() => {
 		tick.value = Date.now()
 	}, 1000)
+	skillPollTimer = setInterval(() => {
+		const rc = String(roomCode.value || '').replace(/\D/g, '').slice(0, 4)
+		if (!/^\d{4}$/.test(rc)) return
+		if (status.value && status.value.f_game_ended) return
+		silentPollObsStatus()
+	}, 4000)
 })
 
 onUnmounted(() => {
 	if (timer) clearInterval(timer)
 	timer = null
+	if (skillPollTimer) clearInterval(skillPollTimer)
+	skillPollTimer = null
+	if (skillBannerTimerObs) clearTimeout(skillBannerTimerObs)
+	skillBannerTimerObs = null
 })
 
 const totalRoundsLabel = computed(() => {
@@ -316,6 +371,29 @@ function f_role11ActiveRoundByPlayerIdFromObs() {
 	return o
 }
 
+function f_role1_10ActiveRoundByPlayerIdFromObs() {
+	const ps = (status.value && status.value.f_players) || []
+	const o = {}
+	for (const p of ps) {
+		const rid = parseInt(p.f_role_id, 10)
+		if (!p.f_player_uid || !Number.isFinite(rid) || rid < 1 || rid > 10) continue
+		const ar = parseInt(p.f_role_active_round, 10)
+		if (Number.isFinite(ar) && ar >= 1) o[String(p.f_player_uid)] = ar
+	}
+	return o
+}
+
+function f_roleActiveVariantByPlayerIdFromObs() {
+	const ps = (status.value && status.value.f_players) || []
+	const o = {}
+	for (const p of ps) {
+		if (!p.f_player_uid) continue
+		const v0 = p.f_role_active_variant != null ? String(p.f_role_active_variant).trim().toUpperCase() : ''
+		o[String(p.f_player_uid)] = v0 === 'B' ? 'B' : 'A'
+	}
+	return o
+}
+
 const mergedObsRandomEventsByRound = computed(() => {
 	const s = status.value || {}
 	if (s.f_random_events_by_round && typeof s.f_random_events_by_round === 'object') {
@@ -331,6 +409,8 @@ const roundEventFactorMultipliersByRoundObs = computed(() =>
 
 const chartSimRoleOptsObs = computed(() => ({
 	roleIdByPlayerId: f_roleMapFromObsPlayers(),
+	role1_10ActiveRoundByPlayerId: f_role1_10ActiveRoundByPlayerIdFromObs(),
+	roleActiveVariantByPlayerId: f_roleActiveVariantByPlayerIdFromObs(),
 	role11ActiveRoundByPlayerId: f_role11ActiveRoundByPlayerIdFromObs(),
 	roundEventFactorMultipliersByRound: roundEventFactorMultipliersByRoundObs.value
 }))
@@ -349,6 +429,8 @@ const compareChartData = computed(() => {
 			f_group_count: roomGroupCount.value,
 			f_admin_uid: status.value?.f_admin_uid || '',
 			roleIdByPlayerId: f_roleMapFromObsPlayers(),
+			role1_10ActiveRoundByPlayerId: f_role1_10ActiveRoundByPlayerIdFromObs(),
+			roleActiveVariantByPlayerId: f_roleActiveVariantByPlayerIdFromObs(),
 			role11ActiveRoundByPlayerId: f_role11ActiveRoundByPlayerIdFromObs(),
 			roundEventFactorMultipliersByRound: roundEventFactorMultipliersByRoundObs.value
 		}
@@ -379,6 +461,8 @@ const rankingList = computed(() => {
 			f_group_count: roomGroupCount.value,
 			f_admin_uid: adminUid,
 			roleIdByPlayerId: f_roleMapFromObsPlayers(),
+			role1_10ActiveRoundByPlayerId: f_role1_10ActiveRoundByPlayerIdFromObs(),
+			roleActiveVariantByPlayerId: f_roleActiveVariantByPlayerIdFromObs(),
 			role11ActiveRoundByPlayerId: f_role11ActiveRoundByPlayerIdFromObs(),
 			roundEventFactorMultipliersByRound: roundEventFactorMultipliersByRoundObs.value
 		}
@@ -422,6 +506,25 @@ function onRoomCode(e) {
 	roomCode.value = String(e.detail.value || '').replace(/\D/g, '').slice(0, 4)
 }
 
+async function silentPollObsStatus() {
+	const u = f_getStoredUser()
+	if (!u || !u.f_uid || !f_isAdmin(u)) return
+	const rc = String(roomCode.value || '').replace(/\D/g, '').slice(0, 4)
+	if (!/^\d{4}$/.test(rc)) return
+	try {
+		const res = await f_getRoomPlayerStatusInCloud({
+			f_admin_uid: u.f_uid,
+			f_room_code: rc
+		})
+		const body = res.result || {}
+		if (body.f_code !== 0) return
+		status.value = body.f_data
+		processSkillBroadcastPayloadObs(body.f_data)
+	} catch (_) {
+		/* 静默轮询忽略错误 */
+	}
+}
+
 async function refresh() {
 	const u = f_getStoredUser()
 	if (!u || !u.f_uid || !f_isAdmin(u)) return
@@ -443,6 +546,7 @@ async function refresh() {
 			return
 		}
 		status.value = body.f_data
+		processSkillBroadcastPayloadObs(body.f_data)
 	} catch (e) {
 		console.error(e)
 		uni.showToast({ title: '请上传云函数 f_get_room_player_status', icon: 'none' })
@@ -770,6 +874,14 @@ async function onFinishGame() {
 }
 .ph {
 	color: #dcc58a;
+}
+.ph-role {
+	color: #e8c76b;
+	font-weight: 600;
+}
+.ph-role.muted {
+	color: #8a7a50;
+	font-weight: 400;
 }
 .pr {
 	color: #bfa56a;
