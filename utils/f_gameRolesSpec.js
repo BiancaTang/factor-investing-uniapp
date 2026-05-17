@@ -1,4 +1,4 @@
-/** 与 docs/factor_game_roles.html 一致；云函数侧同内容在 f_get_role_status、f_select_role 目录内（单函数上传不含 ../common） */
+/** 角色 1～10 与 docs/factor_game_roles.html 一致；第 11 号为联调用「测试角色」，不在原始 HTML 手册十卡内，见 utils/f_roleTestRole.js */
 const F_CDN = 'https://mp-97b2aa2e-12fb-4d19-b974-f61aadc80368.cdn.bspapp.com/f_static/pic'
 const F_SLUGS = [
 	'yinghuo',

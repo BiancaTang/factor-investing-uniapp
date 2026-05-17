@@ -12,6 +12,7 @@
 
 import { F_FACTOR_DEFS } from './f_gameFactorSpec.js'
 import { f_applyPassiveToFactorReturns } from './f_rolePassives.js'
+import { f_applyRole1To10ActivesToExposure } from './f_roleActives.js'
 import { F_TEST_ROLE_ID, f_applyTestRoleActiveToFactorReturns } from './f_roleTestRole.js'
 
 /** 管理员作为庄家时的图例名 */
@@ -37,7 +38,8 @@ function f_emptyExposureRow() {
 
 /**
  * @param {Array<{ player_id: string, history: any[] }>} allPlayerHistories
- * @param {{ if_banker?: boolean, f_group_count?: number, player_nm?: number, f_admin_uid?: string, roleIdByPlayerId?: Record<string, number>, role11ActiveRoundByPlayerId?: Record<string, number>, roundEventFactorMultipliersByRound?: Record<number, Record<string, number>> }} options
+ * @param {{ if_banker?: boolean, f_group_count?: number, player_nm?: number, f_admin_uid?: string, roleIdByPlayerId?: Record<string, number>, role1_10ActiveRoundByPlayerId?: Record<string, number>, roleActiveVariantByPlayerId?: Record<string, string>, role11ActiveRoundByPlayerId?: Record<string, number>, roundEventFactorMultipliersByRound?: Record<number, Record<string, number>> }} options
+ *        role1_10ActiveRoundByPlayerId / roleActiveVariantByPlayerId：角色 1～10 主动（发动轮次与 A/B）；在算 factor_return 前改写该槽暴露。
  *        role11ActiveRoundByPlayerId：角色 11 的玩家 uid -> 其本局发动主动的轮次号；仅在该轮对该玩家应用「收益修型」主动。
  *        roundEventFactorMultipliersByRound：按轮次对「市场因子收益率」factor_return[internal] 在基准值上再乘系数（双数轮随机事件）；缺省为不调整。
  *        若开启 Banker 且提供 f_admin_uid：房间管理员参与对局时占用槽位 0（庄家）；第一轮结算后庄家 nav=1；图表中显示为「庄家」。
@@ -51,6 +53,14 @@ function f_emptyExposureRow() {
 export function f_simulatePythonFactorGame(allPlayerHistories, options = {}) {
 	const if_banker = !!options.if_banker
 	const roleIdByPlayerId = options.roleIdByPlayerId && typeof options.roleIdByPlayerId === 'object' ? options.roleIdByPlayerId : null
+	const role1_10ActiveRoundByPlayerId =
+		options.role1_10ActiveRoundByPlayerId && typeof options.role1_10ActiveRoundByPlayerId === 'object'
+			? options.role1_10ActiveRoundByPlayerId
+			: null
+	const roleActiveVariantByPlayerId =
+		options.roleActiveVariantByPlayerId && typeof options.roleActiveVariantByPlayerId === 'object'
+			? options.roleActiveVariantByPlayerId
+			: null
 	const role11ActiveRoundByPlayerId =
 		options.role11ActiveRoundByPlayerId && typeof options.role11ActiveRoundByPlayerId === 'object'
 			? options.role11ActiveRoundByPlayerId
@@ -127,6 +137,18 @@ export function f_simulatePythonFactorGame(allPlayerHistories, options = {}) {
 				exp[s][internal] = f_clampInt(row[facKey])
 			}
 		}
+
+		f_applyRole1To10ActivesToExposure({
+			round,
+			exp,
+			uidBySlot,
+			player_nm,
+			if_banker,
+			adminUid,
+			roleIdByPlayerId,
+			role1_10ActiveRoundByPlayerId,
+			roleActiveVariantByPlayerId
+		})
 
 		let sumNav = 0
 		for (let i = 0; i < player_nm; i++) sumNav += nav[i]

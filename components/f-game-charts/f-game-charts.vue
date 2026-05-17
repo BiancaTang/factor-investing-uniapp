@@ -170,6 +170,16 @@ const props = defineProps({
 		type: Object,
 		default: null
 	},
+	/** 角色 1～10：uid -> 已发动主动的轮次号 */
+	role1_10ActiveRoundByPlayerId: {
+		type: Object,
+		default: null
+	},
+	/** 角色 2～10：uid -> 主动分支 A | B */
+	roleActiveVariantByPlayerId: {
+		type: Object,
+		default: null
+	},
 	/** 双数轮随机事件：轮次 -> 因子 internal -> 对市场 factor_return 的乘数 */
 	roundEventFactorMultipliersByRound: {
 		type: Object,
@@ -227,6 +237,12 @@ const chartPayload = computed(() => {
 			: {}),
 		...(props.role11ActiveRoundByPlayerId && typeof props.role11ActiveRoundByPlayerId === 'object'
 			? { role11ActiveRoundByPlayerId: props.role11ActiveRoundByPlayerId }
+			: {}),
+		...(props.role1_10ActiveRoundByPlayerId && typeof props.role1_10ActiveRoundByPlayerId === 'object'
+			? { role1_10ActiveRoundByPlayerId: props.role1_10ActiveRoundByPlayerId }
+			: {}),
+		...(props.roleActiveVariantByPlayerId && typeof props.roleActiveVariantByPlayerId === 'object'
+			? { roleActiveVariantByPlayerId: props.roleActiveVariantByPlayerId }
 			: {}),
 		...(props.roundEventFactorMultipliersByRound && typeof props.roundEventFactorMultipliersByRound === 'object'
 			? { roundEventFactorMultipliersByRound: props.roundEventFactorMultipliersByRound }

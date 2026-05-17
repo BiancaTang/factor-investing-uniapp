@@ -12,6 +12,14 @@
 		"f_role11_active_round": {
 			"bsonType": "int",
 			"description": "仅角色 11：本局测试主动已发动的 f_round_index；0 或未设表示未发动"
+		},
+		"f_role_active_round": {
+			"bsonType": "int",
+			"description": "角色 1～10：本局角色主动已发动的 f_round_index；0 或未设表示未发动"
+		},
+		"f_role_active_variant": {
+			"bsonType": "string",
+			"description": "角色 2～10 主动二选一：A 或 B；角色 1 可存 A"
 		}
 	}
 }
