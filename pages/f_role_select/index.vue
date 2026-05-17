@@ -171,6 +171,7 @@ async function selectRole(role) {
 		myRoleName.value = body.f_data.f_role_name
 		uni.showToast({ title: `已选择 ${body.f_data.f_role_name}`, icon: 'success' })
 		await fetchRoleStatus()
+		goToPlayWaiting()
 	} catch (e) {
 		console.error(e)
 		uni.showToast({ title: '选择失败', icon: 'none' })
@@ -204,6 +205,7 @@ async function randomRole() {
 		myRoleName.value = body.f_data.f_role_name
 		uni.showToast({ title: `随机到 ${body.f_data.f_role_name}`, icon: 'success' })
 		await fetchRoleStatus()
+		goToPlayWaiting()
 	} catch (e) {
 		console.error(e)
 		uni.showToast({ title: '随机失败', icon: 'none' })
@@ -218,13 +220,17 @@ function startPolling() {
 	}, 2000)
 }
 
-function backPlay() {
+function goToPlayWaiting() {
 	const rc = roomCode.value
 	if (/^\d{4}$/.test(rc)) {
 		uni.redirectTo({ url: '/pages/f_game/play?code=' + encodeURIComponent(rc) })
 	} else {
 		uni.navigateBack()
 	}
+}
+
+function backPlay() {
+	goToPlayWaiting()
 }
 
 onLoad((options) => {
