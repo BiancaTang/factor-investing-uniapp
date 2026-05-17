@@ -68,10 +68,11 @@ async function submit() {
 				icon: 'success'
 			})
 		}
-		setTimeout(
-			() => uni.redirectTo({ url: '/pages/f_game/play?code=' + encodeURIComponent(f_room_code) }),
-			350
-		)
+		const locked = !!(body.f_data && body.f_data.f_join_locked)
+		const dest = locked
+			? '/pages/f_role_select/index?code=' + encodeURIComponent(f_room_code)
+			: '/pages/f_game/play?code=' + encodeURIComponent(f_room_code)
+		setTimeout(() => uni.redirectTo({ url: dest }), 350)
 	} catch (err) {
 		console.error(err)
 		uni.showToast({ title: '请上传云函数 f_join_room', icon: 'none' })

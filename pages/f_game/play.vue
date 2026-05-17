@@ -13,6 +13,7 @@
 			:snapshot="activeRoundMarketBanner.snapshot"
 			:open-round="activeRoundMarketBanner.openRound"
 		/>
+		<f-skill-broadcast-banner v-if="skillBannerPayload" :payload="skillBannerPayload" variant="compact" />
 
 		<view v-if="loading" class="loading">加载中…</view>
 
@@ -110,6 +111,32 @@
 					当前将提交第 2 轮：被动已计入上方仿真；提交成功后会再次提示。
 				</text>
 			</view>
+			<view v-if="myRoleIs1To10" class="test-role-tip">
+				<text class="test-role-tip-title">角色主动（本局 1 次）</text>
+				<text class="test-role-tip-body">
+					勾选后于本轮提交时生效：按角色规则改写你本期的因子暴露（再结算市场与被动）。被动仍自动触发。
+				</text>
+				<text v-if="role1_10ActiveConsumed && role1_10ActiveUsedRound != null" class="test-role-tip-warn">
+					角色主动已在第 {{ role1_10ActiveUsedRound }} 轮使用。
+				</text>
+				<view v-else class="role11-active-row">
+					<text class="role11-active-label">本轮发动角色主动（本局 1 次）</text>
+					<switch :checked="role1_10ActiveChecked" color="#3d7a52" @change="onRole1_10ActiveChange" />
+				</view>
+				<view v-if="roleActiveVariantLabels && !role1_10ActiveConsumed" class="role-ab-wrap">
+					<text class="role-ab-title">主动分支（2～10 号必选）</text>
+					<radio-group class="role-ab-group" @change="onRoleActiveVariantChange">
+						<label class="role-ab-label">
+							<radio value="A" :checked="roleActiveVariant === 'A'" color="#3d7a52" />
+							<text class="role-ab-text">A：{{ roleActiveVariantLabels.A }}</text>
+						</label>
+						<label class="role-ab-label">
+							<radio value="B" :checked="roleActiveVariant === 'B'" color="#3d7a52" />
+							<text class="role-ab-text">B：{{ roleActiveVariantLabels.B }}</text>
+						</label>
+					</radio-group>
+				</view>
+			</view>
 			<view v-if="history.length" class="wait-charts">
 				<f-game-charts
 					:key="'i-' + chartRefreshKey"
@@ -204,6 +231,7 @@ import { computed, onUnmounted, reactive, ref, watch } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import FGameCharts from '../../components/f-game-charts/f-game-charts.vue'
 import FRoundMarketEvent from '../../components/f-round-market-event/f-round-market-event.vue'
+import FSkillBroadcastBanner from '../../components/f-skill-broadcast-banner/f-skill-broadcast-banner.vue'
 import { F_FACTOR_DEFS, f_navReturnDbKey } from '../../utils/f_gameLogic.js'
 import { f_getStoredUser } from '../../utils/f_userStorage.js'
 import {
@@ -219,6 +247,7 @@ import {
 } from '../../utils/f_roundRandomEventMultipliers.js'
 import { F_FACTOR_COLOR_BY_FAC_KEY } from '../../utils/f_factorPalette.js'
 import { F_TEST_ROLE_ID } from '../../utils/f_roleTestRole.js'
+import { F_ROLE_ACTIVE_VARIANT_LABELS } from '../../utils/f_roleActives.js'
 
 const roomCode = ref('')
 const totalRounds = ref(1)
@@ -236,7 +265,46 @@ const chartRefreshKey = ref(0)
 const tick = ref(Date.now())
 /** 11 号测试主动：本轮提交是否勾选（每轮重置） */
 const role11ActiveChecked = ref(false)
+/** 1～10 号角色主动：本轮提交是否勾选（每轮重置） */
+const role1_10ActiveChecked = ref(false)
+/** 2～10 号主动二选一 */
+const roleActiveVariant = ref('A')
 let timer = null
+let skillPollTimer = null
+let skillBannerTimer = null
+
+const skillBannerPayload = ref(null)
+const lastSkillSeqSeen = ref(0)
+const skillSeqBootstrapped = ref(false)
+
+function processSkillBroadcastPayload(data) {
+	if (!data) return
+	const seq = parseInt(data.f_skill_broadcast_seq, 10)
+	const b = data.f_skill_broadcast
+	const hasLines = b && typeof b === 'object' && Array.isArray(b.lines) && b.lines.length > 0
+
+	if (!skillSeqBootstrapped.value) {
+		lastSkillSeqSeen.value = Number.isFinite(seq) && seq >= 1 ? seq : 0
+		skillSeqBootstrapped.value = true
+		return
+	}
+	if (!Number.isFinite(seq) || seq < 1 || !hasLines) return
+	if (seq <= lastSkillSeqSeen.value) return
+	lastSkillSeqSeen.value = seq
+	skillBannerPayload.value = {
+		lines: [...b.lines],
+		f_round_index: Number.isFinite(parseInt(b.f_round_index, 10))
+			? parseInt(b.f_round_index, 10)
+			: b.f_round_index,
+		seq
+	}
+	uni.showToast({ title: '技能播报', icon: 'none', duration: 1600 })
+	if (skillBannerTimer) clearTimeout(skillBannerTimer)
+	skillBannerTimer = setTimeout(() => {
+		skillBannerPayload.value = null
+		skillBannerTimer = null
+	}, 14000)
+}
 
 const factorIntroItems = computed(() =>
 	F_FACTOR_DEFS.map((d) => ({
@@ -291,8 +359,43 @@ function goRoleSelect() {
 	uni.navigateTo({ url: '/pages/f_role_select/index?code=' + encodeURIComponent(rc) })
 }
 
+function redirectToRoleSelectIfNeeded() {
+	const rc = String(roomCode.value || '').replace(/\D/g, '').slice(0, 4)
+	if (!/^\d{4}$/.test(rc)) return
+	if (isRoomAdmin.value) return
+	if (roomInfo.value?.f_playing_started === true) return
+	if (roomInfo.value?.f_join_locked !== true) return
+	if (myRoleIdFromSnapshot.value) return
+	uni.redirectTo({ url: '/pages/f_role_select/index?code=' + encodeURIComponent(rc) })
+}
+
+const prevJoinLockedPlay = ref(false)
+watch(
+	() => !!(roomInfo.value && roomInfo.value.f_join_locked),
+	(locked) => {
+		if (!locked) {
+			prevJoinLockedPlay.value = false
+			return
+		}
+		if (prevJoinLockedPlay.value) return
+		prevJoinLockedPlay.value = true
+		redirectToRoleSelectIfNeeded()
+	}
+)
+
 function onRole11ActiveChange(e) {
 	role11ActiveChecked.value = !!(e && e.detail && e.detail.value)
+	if (role11ActiveChecked.value) role1_10ActiveChecked.value = false
+}
+
+function onRole1_10ActiveChange(e) {
+	role1_10ActiveChecked.value = !!(e && e.detail && e.detail.value)
+	if (role1_10ActiveChecked.value) role11ActiveChecked.value = false
+}
+
+function onRoleActiveVariantChange(e) {
+	const v = e && e.detail && e.detail.value
+	roleActiveVariant.value = v === 'B' ? 'B' : 'A'
 }
 
 const simulationPlayersForChart = computed(() => {
@@ -329,6 +432,32 @@ function f_role11ActiveRoundByPlayerIdFromSnapshot() {
 	return o
 }
 
+/** 角色 1～10：uid -> 已发动主动的轮次 */
+function f_role1_10ActiveRoundByPlayerIdFromSnapshot() {
+	const ps = (roomSnapshot.value && roomSnapshot.value.f_players) || []
+	const o = {}
+	for (const p of ps) {
+		const rid = parseInt(p.f_role_id, 10)
+		if (!p.f_player_uid || !Number.isFinite(rid) || rid < 1 || rid > 10) continue
+		const ar = parseInt(p.f_role_active_round, 10)
+		if (Number.isFinite(ar) && ar >= 1) o[String(p.f_player_uid)] = ar
+	}
+	return o
+}
+
+/** 角色 2～10：uid -> 主动分支 A | B */
+function f_roleActiveVariantByPlayerIdFromSnapshot() {
+	const ps = (roomSnapshot.value && roomSnapshot.value.f_players) || []
+	const o = {}
+	for (const p of ps) {
+		if (!p.f_player_uid) continue
+		const v0 = p.f_role_active_variant != null ? String(p.f_role_active_variant).trim().toUpperCase() : ''
+		const v = v0 === 'B' ? 'B' : 'A'
+		o[String(p.f_player_uid)] = v
+	}
+	return o
+}
+
 const mergedRandomEventsByRound = computed(() => {
 	const sn = roomSnapshot.value || {}
 	const ri = roomInfo.value || {}
@@ -347,11 +476,45 @@ const roundEventFactorMultipliersByRound = computed(() =>
 	f_roundEventFactorMultipliersByRoundFromRoomMap(mergedRandomEventsByRound.value)
 )
 
-const chartSimRoleOpts = computed(() => ({
-	roleIdByPlayerId: f_roleIdByPlayerIdFromSnapshot(),
-	role11ActiveRoundByPlayerId: f_role11ActiveRoundByPlayerIdFromSnapshot(),
-	roundEventFactorMultipliersByRound: roundEventFactorMultipliersByRound.value
-}))
+const chartSimRoleOpts = computed(() => {
+	const uid = currentUserUid.value
+	const cr = nextRoundIndex.value
+	const phaseInput = phase.value === 'input'
+	const base1_10 = f_role1_10ActiveRoundByPlayerIdFromSnapshot()
+	const map1_10 = { ...base1_10 }
+	if (
+		phaseInput &&
+		uid &&
+		role1_10ActiveChecked.value &&
+		myRoleIs1To10.value &&
+		!role1_10ActiveConsumed.value &&
+		Number.isFinite(cr)
+	) {
+		map1_10[uid] = cr
+	}
+	const baseVar = f_roleActiveVariantByPlayerIdFromSnapshot()
+	const mapVar = { ...baseVar }
+	const rid = myRoleIdFromSnapshot.value
+	if (
+		phaseInput &&
+		uid &&
+		role1_10ActiveChecked.value &&
+		myRoleIs1To10.value &&
+		!role1_10ActiveConsumed.value &&
+		Number.isFinite(rid) &&
+		rid >= 2 &&
+		rid <= 10
+	) {
+		mapVar[uid] = roleActiveVariant.value === 'B' ? 'B' : 'A'
+	}
+	return {
+		roleIdByPlayerId: f_roleIdByPlayerIdFromSnapshot(),
+		role1_10ActiveRoundByPlayerId: map1_10,
+		roleActiveVariantByPlayerId: mapVar,
+		role11ActiveRoundByPlayerId: f_role11ActiveRoundByPlayerIdFromSnapshot(),
+		roundEventFactorMultipliersByRound: roundEventFactorMultipliersByRound.value
+	}
+})
 
 /** 双数开放轮：与房间登记一致时展示本轮随机市场事件（叙事 + 已计入净值仿真） */
 const activeRoundMarketBanner = computed(() => {
@@ -389,6 +552,8 @@ const rankingList = computed(() => {
 			f_group_count: roomGroupCount.value,
 			f_admin_uid: adminUid,
 			roleIdByPlayerId: f_roleIdByPlayerIdFromSnapshot(),
+			role1_10ActiveRoundByPlayerId: f_role1_10ActiveRoundByPlayerIdFromSnapshot(),
+			roleActiveVariantByPlayerId: f_roleActiveVariantByPlayerIdFromSnapshot(),
 			role11ActiveRoundByPlayerId: f_role11ActiveRoundByPlayerIdFromSnapshot(),
 			roundEventFactorMultipliersByRound: roundEventFactorMultipliersByRound.value
 		}
@@ -449,6 +614,8 @@ const compareNavChartData = computed(() => {
 			f_group_count: roomGroupCount.value,
 			f_admin_uid: roomInfo.value?.f_admin_uid || '',
 			roleIdByPlayerId: f_roleIdByPlayerIdFromSnapshot(),
+			role1_10ActiveRoundByPlayerId: f_role1_10ActiveRoundByPlayerIdFromSnapshot(),
+			roleActiveVariantByPlayerId: f_roleActiveVariantByPlayerIdFromSnapshot(),
 			role11ActiveRoundByPlayerId: f_role11ActiveRoundByPlayerIdFromSnapshot(),
 			roundEventFactorMultipliersByRound: roundEventFactorMultipliersByRound.value
 		}
@@ -459,6 +626,11 @@ const nextRoundIndex = computed(() => history.value.length + 1)
 
 watch(nextRoundIndex, () => {
 	role11ActiveChecked.value = false
+	role1_10ActiveChecked.value = false
+	roleActiveVariant.value = 'A'
+})
+watch(myRoleIdFromSnapshot, () => {
+	roleActiveVariant.value = 'A'
 })
 const roomEnded = computed(() => !!(roomInfo.value && roomInfo.value.f_game_ended))
 const isUnlimitedRounds = computed(() => {
@@ -471,6 +643,42 @@ const lastCompletedRound = computed(() => {
 	if (!history.value.length) return 0
 	const sorted = [...history.value].sort((a, b) => b.f_round_index - a.f_round_index)
 	return sorted[0].f_round_index
+})
+
+/** 当前用户为 1～10 号角色（用于主动 UI） */
+const myRoleIs1To10 = computed(() => {
+	const r = myRoleIdFromSnapshot.value
+	return Number.isFinite(r) && r >= 1 && r <= 10
+})
+
+const roleActiveVariantLabels = computed(() => {
+	const r = myRoleIdFromSnapshot.value
+	if (!Number.isFinite(r) || r < 2 || r > 10) return null
+	return F_ROLE_ACTIVE_VARIANT_LABELS[r] || null
+})
+
+const role1_10ActiveConsumed = computed(() => {
+	const uid = currentUserUid.value
+	if (!uid) return false
+	const ps = (roomSnapshot.value && roomSnapshot.value.f_players) || []
+	const me = ps.find((p) => String(p.f_player_uid || '') === uid)
+	if (!me) return false
+	const rid = parseInt(me.f_role_id, 10)
+	if (!Number.isFinite(rid) || rid < 1 || rid > 10) return false
+	const r = parseInt(me.f_role_active_round, 10)
+	return Number.isFinite(r) && r >= 1
+})
+
+const role1_10ActiveUsedRound = computed(() => {
+	const uid = currentUserUid.value
+	if (!uid) return null
+	const ps = (roomSnapshot.value && roomSnapshot.value.f_players) || []
+	const me = ps.find((p) => String(p.f_player_uid || '') === uid)
+	if (!me) return null
+	const rid = parseInt(me.f_role_id, 10)
+	if (!Number.isFinite(rid) || rid < 1 || rid > 10) return null
+	const r = parseInt(me.f_role_active_round, 10)
+	return Number.isFinite(r) && r >= 1 ? r : null
 })
 
 const testRolePassiveReviewHint = computed(
@@ -596,6 +804,15 @@ function applyPhaseAfterLoad(preserveReview) {
 	const joinLocked = roomInfo.value?.f_join_locked === true
 	const playingStarted = roomInfo.value?.f_playing_started === true
 	if (!roomEnded.value && joinLocked && !playingStarted) {
+		if (isRoomAdmin.value) {
+			phase.value = 'role_prep'
+			return
+		}
+		if (myRoleIdFromSnapshot.value) {
+			phase.value = 'waiting'
+			return
+		}
+		redirectToRoleSelectIfNeeded()
 		phase.value = 'role_prep'
 		return
 	}
@@ -669,6 +886,7 @@ async function fetchRoomSnapshot(rc) {
 		})
 		const mb = ms.result || {}
 		roomSnapshot.value = mb.f_code === 0 && mb.f_data ? mb.f_data : null
+		processSkillBroadcastPayload(mb.f_code === 0 && mb.f_data ? mb.f_data : null)
 	} catch (e) {
 		console.error(e)
 		roomSnapshot.value = null
@@ -702,11 +920,21 @@ onLoad((options) => {
 	timer = setInterval(() => {
 		tick.value = Date.now()
 	}, 1000)
+	skillPollTimer = setInterval(() => {
+		const rc = roomCode.value
+		if (!/^\d{4}$/.test(rc)) return
+		if (phase.value === 'complete') return
+		fetchRoomSnapshot(rc)
+	}, 4000)
 })
 
 onUnmounted(() => {
 	if (timer) clearInterval(timer)
 	timer = null
+	if (skillPollTimer) clearInterval(skillPollTimer)
+	skillPollTimer = null
+	if (skillBannerTimer) clearTimeout(skillBannerTimer)
+	skillBannerTimer = null
 })
 
 async function submitRound() {
@@ -720,11 +948,21 @@ async function submitRound() {
 			role11ActiveChecked.value &&
 			myRoleIdFromSnapshot.value === F_TEST_ROLE_ID &&
 			!role11ActiveConsumed.value
+		const applyR1_10 =
+			role1_10ActiveChecked.value && myRoleIs1To10.value && !role1_10ActiveConsumed.value
 		const payload = {
 			f_room_code: roomCode.value,
 			f_player_uid: u.f_uid,
 			f_round_index: cr,
-			f_apply_role11_active: !!applyR11
+			f_apply_role11_active: !!applyR11,
+			f_apply_role_active: !!applyR1_10,
+			f_role_active_variant:
+				myRoleIdFromSnapshot.value >= 2 &&
+				myRoleIdFromSnapshot.value <= 10 &&
+				applyR1_10 &&
+				roleActiveVariant.value === 'B'
+					? 'B'
+					: 'A'
 		}
 		for (const d of F_FACTOR_DEFS) {
 			payload[d.key] = factors[d.key]
@@ -771,6 +1009,12 @@ async function submitRound() {
 		} else if (applyR11) {
 			uni.showToast({
 				title: `测试主动已发动（第 ${cr} 轮），本局已用`,
+				icon: 'none',
+				duration: 2800
+			})
+		} else if (applyR1_10) {
+			uni.showToast({
+				title: `角色主动已发动（第 ${cr} 轮），本局已用`,
 				icon: 'none',
 				duration: 2800
 			})
@@ -824,11 +1068,36 @@ function buildRoundMetricsForSubmit(payload) {
 		r11Map[uid] = round
 	}
 
+	const r1Base = f_role1_10ActiveRoundByPlayerIdFromSnapshot()
+	const r1Map = { ...r1Base }
+	if (
+		role1_10ActiveChecked.value &&
+		uid &&
+		myRoleIs1To10.value &&
+		!(Number.isFinite(r1Map[uid]) && r1Map[uid] >= 1)
+	) {
+		r1Map[uid] = round
+	}
+	const vBase = f_roleActiveVariantByPlayerIdFromSnapshot()
+	const vMap = { ...vBase }
+	if (
+		role1_10ActiveChecked.value &&
+		uid &&
+		myRoleIs1To10.value &&
+		!(Number.isFinite(r1Base[uid]) && r1Base[uid] >= 1)
+	) {
+		const mr = myRoleIdFromSnapshot.value
+		vMap[uid] =
+			Number.isFinite(mr) && mr >= 2 && mr <= 10 && roleActiveVariant.value === 'B' ? 'B' : 'A'
+	}
+
 	const sim = f_simulatePythonFactorGame(list, {
 		if_banker: roomIfBanker.value,
 		f_group_count: roomGroupCount.value,
 		f_admin_uid: roomInfo.value?.f_admin_uid || '',
 		roleIdByPlayerId: f_roleIdByPlayerIdFromSnapshot(),
+		role1_10ActiveRoundByPlayerId: r1Map,
+		roleActiveVariantByPlayerId: vMap,
 		role11ActiveRoundByPlayerId: r11Map,
 		roundEventFactorMultipliersByRound: roundEventFactorMultipliersByRound.value
 	})
@@ -1095,6 +1364,38 @@ function backHome() {
 	color: #c8e6d0;
 	line-height: 1.45;
 	padding-right: 16rpx;
+}
+
+.role-ab-wrap {
+	margin-top: 16rpx;
+	padding-top: 12rpx;
+	border-top: 1rpx solid rgba(125, 206, 158, 0.2);
+}
+
+.role-ab-title {
+	display: block;
+	font-size: 24rpx;
+	color: #f5e6b3;
+	margin-bottom: 10rpx;
+}
+
+.role-ab-group {
+	display: flex;
+	flex-direction: column;
+	gap: 12rpx;
+}
+
+.role-ab-label {
+	display: flex;
+	align-items: flex-start;
+	font-size: 22rpx;
+	color: #dcc58a;
+	line-height: 1.45;
+}
+
+.role-ab-text {
+	flex: 1;
+	margin-left: 8rpx;
 }
 
 .passive-banner {
