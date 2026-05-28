@@ -1,5 +1,7 @@
 <template>
-	<view class="page" />
+	<view class="page">
+		<f-factor-intro-fab />
+	</view>
 </template>
 
 <script>

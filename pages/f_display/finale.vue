@@ -38,6 +38,7 @@
     <view class="finale-footer">
       <text class="finale-thanks">感谢参与 · 因子博弈沙盘</text>
     </view>
+    <f-factor-intro-fab />
   </view>
 </template>
 

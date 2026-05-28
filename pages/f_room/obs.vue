@@ -133,11 +133,12 @@
 		<view class="footer">
 			<button class="btn ghost wide" :loading="loading" @click="refresh">刷新</button>
 		</view>
+		<f-factor-intro-fab />
 	</view>
 </template>
 
 <script setup>
-import { computed, nextTick, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import FGameCharts from '../../components/f-game-charts/f-game-charts.vue'
 import FRoundMarketEvent from '../../components/f-round-market-event/f-round-market-event.vue'
@@ -164,8 +165,6 @@ const loading = ref(false)
 const acting = ref(false)
 const lastAction = ref('')
 const tick = ref(Date.now())
-let timer = null
-let skillPollTimer = null
 const lastSkillSeqSeenObs = ref(0)
 const skillSeqBootstrappedObs = ref(false)
 
@@ -187,8 +186,6 @@ function processSkillBroadcastPayloadObs(data) {
 	lastSkillSeqSeenObs.value = seq
 	uni.showToast({ title: '技能播报', icon: 'none', duration: 1800 })
 }
-let autoEnding = false
-
 onLoad((q) => {
 	const u = f_getStoredUser()
 	if (!u || !f_isAdmin(u)) {
@@ -202,22 +199,6 @@ onLoad((q) => {
 		const rc = String(roomCode.value || '').replace(/\D/g, '').slice(0, 4)
 		if (/^\d{4}$/.test(rc)) refresh()
 	})
-	timer = setInterval(() => {
-		tick.value = Date.now()
-	}, 1000)
-	skillPollTimer = setInterval(() => {
-		const rc = String(roomCode.value || '').replace(/\D/g, '').slice(0, 4)
-		if (!/^\d{4}$/.test(rc)) return
-		if (status.value && status.value.f_game_ended) return
-		silentPollObsStatus()
-	}, 4000)
-})
-
-onUnmounted(() => {
-	if (timer) clearInterval(timer)
-	timer = null
-	if (skillPollTimer) clearInterval(skillPollTimer)
-	skillPollTimer = null
 })
 
 const totalRoundsLabel = computed(() => {
@@ -246,33 +227,6 @@ const roundCountdownLabel = computed(() => {
 	const ss = String(left % 60).padStart(2, '0')
 	return `${mm}:${ss}`
 })
-
-const roundExpired = computed(() => {
-	if (!status.value) return false
-	const open = status.value.f_open_round_index || 0
-	if (!open) return false
-	const dur = parseInt(status.value.f_round_duration_sec, 10)
-	const durationSec = Number.isFinite(dur) && dur > 0 ? dur : 300
-	const st = typeof status.value.f_round_started_at === 'number' ? status.value.f_round_started_at : parseInt(status.value.f_round_started_at, 10)
-	if (!Number.isFinite(st) || st <= 0) return false
-	return tick.value > st + durationSec * 1000
-})
-
-watch(
-	roundExpired,
-	async (ex) => {
-		if (!ex) return
-		if (autoEnding) return
-		if (!status.value || !status.value.f_open_round_index) return
-		autoEnding = true
-		try {
-			await onEndRound()
-		} finally {
-			autoEnding = false
-		}
-	},
-	{ immediate: false }
-)
 
 const canStart = computed(() => {
 	if (!status.value) return false
@@ -493,25 +447,6 @@ function onRoomCode(e) {
 	roomCode.value = String(e.detail.value || '').replace(/\D/g, '').slice(0, 4)
 }
 
-async function silentPollObsStatus() {
-	const u = f_getStoredUser()
-	if (!u || !u.f_uid || !f_isAdmin(u)) return
-	const rc = String(roomCode.value || '').replace(/\D/g, '').slice(0, 4)
-	if (!/^\d{4}$/.test(rc)) return
-	try {
-		const res = await f_getRoomPlayerStatusInCloud({
-			f_admin_uid: u.f_uid,
-			f_room_code: rc
-		})
-		const body = res.result || {}
-		if (body.f_code !== 0) return
-		status.value = body.f_data
-		processSkillBroadcastPayloadObs(body.f_data)
-	} catch (_) {
-		/* 静默轮询忽略错误 */
-	}
-}
-
 async function refresh() {
 	const u = f_getStoredUser()
 	if (!u || !u.f_uid || !f_isAdmin(u)) return
@@ -534,6 +469,7 @@ async function refresh() {
 		}
 		status.value = body.f_data
 		processSkillBroadcastPayloadObs(body.f_data)
+		tick.value = Date.now()
 	} catch (e) {
 		console.error(e)
 		uni.showToast({ title: '请上传云函数 f_get_room_player_status', icon: 'none' })

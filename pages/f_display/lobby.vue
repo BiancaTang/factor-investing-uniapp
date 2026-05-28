@@ -27,6 +27,7 @@
 				<text class="quote-text">等待管理员开启第一轮</text>
 			</view>
 		</view>
+		<f-factor-intro-fab />
 	</view>
 </template>
 

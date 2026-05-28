@@ -25,7 +25,18 @@
           <view v-if="event" class="event-card-mini">
             <text class="mini-name">{{ event.name }}</text>
             <text class="mini-category">{{ event.category }}</text>
-            <text class="mini-desc">{{ event.description }}</text>
+            <view v-if="effectRows.length" class="mini-fx-row">
+              <view
+                v-for="(row, idx) in effectRows"
+                :key="idx"
+                class="mini-chip"
+                :class="row.direction"
+              >
+                <text class="mini-chip-lab">{{ row.label }}</text>
+                <text class="mini-chip-val">{{ row.multiplierText }}</text>
+              </view>
+            </view>
+            <text v-if="event.lore" class="mini-lore">{{ event.lore }}</text>
           </view>
           <view v-else class="event-empty">
             <text>本轮无事件</text>
@@ -58,6 +69,7 @@
     <view class="review-footer">
       <text class="waiting-text">等待管理员开启第 {{ roundIndex + 1 }} 轮</text>
     </view>
+    <f-factor-intro-fab />
   </view>
 </template>
 
@@ -65,6 +77,7 @@
 import { computed } from 'vue'
 import { F_FACTOR_DEFS } from '@/utils/f_gameFactorSpec.js'
 import { F_FACTOR_COLORS } from '@/utils/f_factorPalette.js'
+import { f_eventEffectRowsFromEffects } from '@/utils/f_roundRandomEventDisplay.js'
 
 const props = defineProps({
   roundIndex: { type: Number, default: 0 },
@@ -77,6 +90,8 @@ const props = defineProps({
 
 const factorDefs = F_FACTOR_DEFS
 const colors = F_FACTOR_COLORS
+
+const effectRows = computed(() => f_eventEffectRowsFromEffects(props.event && props.event.effects))
 
 const topPlayers = computed(() => {
   return props.players.slice(0, 5).map(p => ({
@@ -199,14 +214,58 @@ function formatExposure(key) {
 .mini-category {
   font-size: 10px;
   color: #c9a84c;
-  margin: 4px 0;
+  margin: 4px 0 10px;
   letter-spacing: 1px;
 }
 
-.mini-desc {
-  font-size: 11px;
-  color: #555;
-  line-height: 1.6;
+.mini-fx-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.mini-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.mini-chip.up {
+  background: rgba(76, 175, 80, 0.1);
+}
+
+.mini-chip.down {
+  background: rgba(229, 115, 115, 0.08);
+}
+
+.mini-chip-lab {
+  font-size: 10px;
+  color: #ccc;
+  font-weight: 600;
+}
+
+.mini-chip-val {
+  font-size: 10px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.mini-chip.up .mini-chip-val {
+  color: #81c784;
+}
+
+.mini-chip.down .mini-chip-val {
+  color: #ffab91;
+}
+
+.mini-lore {
+  font-size: 10px;
+  color: #666;
+  line-height: 1.5;
 }
 
 .event-empty {

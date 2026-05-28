@@ -4,63 +4,52 @@
 
     <view class="event-card-container">
       <view class="event-card" :class="{ flipped: showFront }">
-        <!-- 背面 -->
         <view class="card-face card-back">
           <text class="back-logo">◈</text>
           <text class="back-text">MARKET EVENT</text>
         </view>
 
-        <!-- 正面 -->
         <view class="card-face card-front">
           <text class="card-id">{{ event?.cardId || 'EVT-??' }}</text>
           <text class="card-name">{{ event?.name || '未知事件' }}</text>
           <text class="card-category">{{ event?.category || '事件' }}</text>
-          <view class="card-divider" />
-          <text class="card-desc">{{ event?.description || '市场正在发生变化...' }}</text>
-          <view v-if="event?.effects?.length" class="card-effects">
-            <view v-for="(eff, idx) in event.effects" :key="idx" class="effect-row">
-              <text class="effect-factor">{{ eff.factor }}</text>
-              <text class="effect-value">{{ eff.type }} {{ eff.value }}</text>
+
+          <view v-if="effectRows.length" class="card-fx">
+            <text class="card-fx-title">因子倾向</text>
+            <view class="card-fx-row">
+              <view
+                v-for="(row, idx) in effectRows"
+                :key="idx"
+                class="fx-chip"
+                :class="row.direction"
+              >
+                <text class="fx-chip-lab">{{ row.label }}</text>
+                <text class="fx-chip-val">{{ row.multiplierText }}</text>
+              </view>
             </view>
+          </view>
+
+          <view v-if="event?.lore" class="card-lore">
+            <text class="card-lore-label">历史背景</text>
+            <text class="card-lore-text">{{ event.lore }}</text>
           </view>
         </view>
       </view>
     </view>
-
-    <view class="event-affected">
-      <text class="affected-title">受影响因子</text>
-      <view class="affected-factors">
-        <view
-          v-for="eff in (event?.effects || [])"
-          :key="eff.factor"
-          class="affected-tag"
-          :style="{ backgroundColor: getFactorColor(eff.factor) + '15', borderColor: getFactorColor(eff.factor) + '40' }"
-        >
-          {{ eff.factor }}
-        </view>
-      </view>
-    </view>
+    <f-factor-intro-fab />
   </view>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { F_FACTOR_DEFS } from '@/utils/f_gameFactorSpec.js'
-import { F_FACTOR_COLORS } from '@/utils/f_factorPalette.js'
+import { ref, computed, onMounted } from 'vue'
+import { f_eventEffectRowsFromEffects } from '@/utils/f_roundRandomEventDisplay.js'
 
 const props = defineProps({
   event: { type: Object, default: null }
 })
 
 const showFront = ref(false)
-
-const FAC_KEY_MAP = Object.fromEntries(
-  F_FACTOR_DEFS.map(d => [d.internal, d.key])
-)
-
-function getFactorColor(internal) {
-  return F_FACTOR_COLORS[internal] || '#888'
-}
+const effectRows = computed(() => f_eventEffectRowsFromEffects(props.event && props.event.effects))
 
 onMounted(() => {
   setTimeout(() => {
@@ -96,12 +85,11 @@ onMounted(() => {
 
 .event-card-container {
   perspective: 1000px;
-  margin-bottom: 40px;
 }
 
 .event-card {
-  width: 300px;
-  height: 420px;
+  width: 360px;
+  min-height: 440px;
   position: relative;
   transform-style: preserve-3d;
   transition: transform 0.8s cubic-bezier(0.4, 0, 0.2, 1);
@@ -114,20 +102,20 @@ onMounted(() => {
 .card-face {
   position: absolute;
   width: 100%;
-  height: 100%;
+  min-height: 440px;
   backface-visibility: hidden;
   border-radius: 2px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 32px;
+  padding: 28px 32px 32px;
   box-sizing: border-box;
 }
 
 .card-back {
   background: #080808;
   border: 1px solid rgba(201, 168, 76, 0.15);
+  align-items: center;
+  justify-content: center;
 }
 
 .back-logo {
@@ -152,89 +140,105 @@ onMounted(() => {
 .card-id {
   font-size: 10px;
   color: #333;
-  align-self: flex-start;
   letter-spacing: 1px;
 }
 
 .card-name {
-  font-size: 20px;
-  font-weight: 400;
+  font-size: 22px;
+  font-weight: 600;
   color: #e8e4dc;
-  text-align: center;
-  margin: 12px 0 8px;
-  letter-spacing: 1px;
+  margin: 10px 0 8px;
+  line-height: 1.35;
 }
 
 .card-category {
+  align-self: flex-start;
   font-size: 11px;
   color: #c9a84c;
-  background: rgba(201, 168, 76, 0.06);
-  padding: 3px 10px;
-  border-radius: 1px;
-  letter-spacing: 2px;
-}
-
-.card-divider {
-  width: 40px;
-  height: 1px;
-  background: rgba(201, 168, 76, 0.2);
-  margin: 24px 0;
-}
-
-.card-desc {
-  font-size: 13px;
-  color: #777;
-  text-align: center;
-  line-height: 1.8;
-}
-
-.card-effects {
-  margin-top: 20px;
-  width: 100%;
-}
-
-.effect-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 5px 0;
-  border-bottom: 1px solid rgba(255,255,255,0.03);
-}
-
-.effect-factor {
-  font-size: 11px;
-  color: #555;
-}
-
-.effect-value {
-  font-size: 11px;
-  color: #c9a84c;
-  font-weight: 400;
-}
-
-.event-affected {
-  text-align: center;
-}
-
-.affected-title {
-  font-size: 10px;
-  color: #444;
-  display: block;
-  margin-bottom: 10px;
-  letter-spacing: 3px;
-}
-
-.affected-factors {
-  display: flex;
-  gap: 6px;
-  justify-content: center;
-}
-
-.affected-tag {
-  padding: 3px 10px;
-  border-radius: 1px;
-  border: 1px solid;
-  font-size: 10px;
-  color: #888;
+  background: rgba(201, 168, 76, 0.08);
+  padding: 4px 10px;
+  border-radius: 999px;
   letter-spacing: 1px;
+}
+
+.card-fx {
+  margin-top: 24px;
+  flex: 1;
+}
+
+.card-fx-title {
+  display: block;
+  font-size: 14px;
+  font-weight: 700;
+  color: #e6c86a;
+  margin-bottom: 12px;
+}
+
+.card-fx-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.fx-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 118px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.fx-chip.up {
+  background: rgba(76, 175, 80, 0.12);
+  border-color: rgba(129, 199, 132, 0.3);
+}
+
+.fx-chip.down {
+  background: rgba(229, 115, 115, 0.1);
+  border-color: rgba(255, 171, 145, 0.25);
+}
+
+.fx-chip-lab {
+  font-size: 14px;
+  font-weight: 700;
+  color: #f0ead8;
+}
+
+.fx-chip-val {
+  font-size: 15px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.fx-chip.up .fx-chip-val {
+  color: #a5d6a7;
+}
+
+.fx-chip.down .fx-chip-val {
+  color: #ffab91;
+}
+
+.card-lore {
+  margin-top: 20px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(201, 168, 76, 0.15);
+}
+
+.card-lore-label {
+  display: block;
+  font-size: 10px;
+  color: #666;
+  letter-spacing: 2px;
+  margin-bottom: 6px;
+}
+
+.card-lore-text {
+  display: block;
+  font-size: 12px;
+  color: #888;
+  line-height: 1.55;
 }
 </style>

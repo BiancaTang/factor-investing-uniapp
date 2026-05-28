@@ -19,6 +19,7 @@
 				若无法下载：请在微信公众平台 → 开发 → 开发管理 → 服务器域名 → downloadFile 合法域名 中添加 uniCloud 文件下载域名。
 			</text>
 		</view>
+		<f-factor-intro-fab />
 	</view>
 </template>
 

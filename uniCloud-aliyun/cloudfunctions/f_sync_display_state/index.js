@@ -81,17 +81,19 @@ function f_roomSnapshotToCurrentEvent(room, openRound) {
 		snap = room.f_round_random_event_snapshot
 	}
 	if (!snap || typeof snap !== 'object' || !snap.name) return null
-	const desc = [snap.summary, snap.lore, snap.resultNarrative].filter(Boolean).join('\n\n')
+	const UP = 1.18
+	const DOWN = 1 / UP
 	const effects = (snap.effects || []).map((e) => ({
 		factor: e.internal,
-		type: e.direction === 'up' ? '↑' : '↓',
-		value: e.short || (e.direction === 'up' ? '相对占优' : '承压')
+		direction: e.direction === 'up' ? 'up' : 'down',
+		multiplier: e.direction === 'up' ? UP : DOWN
 	}))
 	return {
 		cardId: snap.cardId || `EVT-${String(snap.id || 0).padStart(2, '0')}`,
 		name: snap.name,
 		category: snap.sentimentLabel || (snap.sentiment === 'good' ? '利好' : '利空'),
-		description: desc,
+		sentiment: snap.sentiment,
+		lore: snap.lore || '',
 		effects
 	}
 }

@@ -1,46 +1,33 @@
 <template>
 	<view v-if="snapshot && snapshot.name" class="rme" :class="variant">
 		<view class="rme-head">
-			<text class="rme-kicker">随机事件 · 第 {{ openRound }} 轮</text>
-			<text class="rme-id">{{ snapshot.cardId || '' }}</text>
+			<text class="rme-kicker">第 {{ openRound }} 轮 · 随机事件</text>
 			<text :class="['rme-sent', snapshot.sentiment === 'good' ? 'good' : 'bad']">
 				{{ snapshot.sentimentLabel || (snapshot.sentiment === 'good' ? '利好' : '利空') }}
 			</text>
 		</view>
 		<text class="rme-title">{{ snapshot.name }}</text>
-		<!-- #ifdef H5 -->
-		<view class="rme-body rme-body--scroll">
-			<text class="rme-block">{{ snapshot.summary }}</text>
-			<text v-if="snapshot.lore" class="rme-block dim">历史背景：{{ snapshot.lore }}</text>
-			<text v-if="snapshot.resultNarrative" class="rme-block strong">市场影响：{{ snapshot.resultNarrative }}</text>
-		</view>
-		<!-- #endif -->
-		<!-- #ifndef H5 -->
-		<scroll-view scroll-y class="rme-body" :show-scrollbar="false">
-			<text class="rme-block">{{ snapshot.summary }}</text>
-			<text v-if="snapshot.lore" class="rme-block dim">历史背景：{{ snapshot.lore }}</text>
-			<text v-if="snapshot.resultNarrative" class="rme-block strong">市场影响：{{ snapshot.resultNarrative }}</text>
-		</scroll-view>
-		<!-- #endif -->
+
 		<view v-if="effectsRows.length" class="rme-fx">
-			<text class="rme-fx-title">因子倾向（已作用于本轮市场因子收益率：↑×{{ upMult }} / ↓×{{ downMult }}）</text>
+			<text class="rme-fx-title">因子倾向</text>
 			<view class="rme-fx-row">
-				<view v-for="(row, i) in effectsRows" :key="i" class="rme-chip" :class="row.dir">
+				<view v-for="(row, i) in effectsRows" :key="i" class="rme-chip" :class="row.direction">
 					<text class="rme-chip-lab">{{ row.label }}</text>
-					<text class="rme-chip-arr">{{ row.arrow }}</text>
+					<text class="rme-chip-val">{{ row.multiplierText }}</text>
 				</view>
 			</view>
+		</view>
+
+		<view v-if="snapshot.lore" class="rme-lore">
+			<text class="rme-lore-label">历史背景</text>
+			<text class="rme-lore-text">{{ snapshot.lore }}</text>
 		</view>
 	</view>
 </template>
 
 <script setup>
 import { computed } from 'vue'
-import { F_FACTOR_DEFS } from '../../utils/f_gameFactorSpec.js'
-import {
-	F_RANDOM_EVENT_FACTOR_UP_MULT,
-	F_RANDOM_EVENT_FACTOR_DOWN_MULT
-} from '../../utils/f_roundRandomEventMultipliers.js'
+import { f_eventEffectRowsFromSnapshot } from '../../utils/f_roundRandomEventDisplay.js'
 
 const props = defineProps({
 	/** 云函数写入的 f_round_random_event_snapshot */
@@ -51,21 +38,7 @@ const props = defineProps({
 	variant: { type: String, default: 'compact' }
 })
 
-const upMult = computed(() => F_RANDOM_EVENT_FACTOR_UP_MULT.toFixed(2))
-const downMult = computed(() => F_RANDOM_EVENT_FACTOR_DOWN_MULT.toFixed(2))
-
-const labelByInternal = computed(() =>
-	Object.fromEntries(F_FACTOR_DEFS.map((d) => [d.internal, d.label]))
-)
-
-const effectsRows = computed(() => {
-	const list = (props.snapshot && props.snapshot.effects) || []
-	return list.map((e) => ({
-		label: labelByInternal.value[e.internal] || e.internal,
-		arrow: e.direction === 'up' ? '↑' : '↓',
-		dir: e.direction === 'up' ? 'up' : 'down'
-	}))
-})
+const effectsRows = computed(() => f_eventEffectRowsFromSnapshot(props.snapshot))
 </script>
 
 <style scoped>
@@ -76,166 +49,195 @@ const effectsRows = computed(() => {
 	padding: 20rpx 22rpx 22rpx;
 	box-sizing: border-box;
 }
+
 .rme.display {
 	border-radius: 12px;
 	padding: 16px 20px 20px;
 	max-width: 960px;
 	margin: 0 auto 16px;
 }
+
 .rme-head {
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
+	justify-content: space-between;
 	gap: 12rpx;
-	margin-bottom: 12rpx;
+	margin-bottom: 10rpx;
 }
+
 .display .rme-head {
 	gap: 10px;
-	margin-bottom: 10px;
+	margin-bottom: 8px;
 }
+
 .rme-kicker {
 	font-size: 22rpx;
 	color: #a89460;
-	flex: 1;
-	min-width: 0;
 }
+
 .display .rme-kicker {
 	font-size: 13px;
 }
-.rme-id {
-	font-size: 20rpx;
-	color: #555;
-	letter-spacing: 1rpx;
-}
-.display .rme-id {
-	font-size: 11px;
-}
+
 .rme-sent {
 	font-size: 22rpx;
 	font-weight: 700;
 	padding: 4rpx 14rpx;
 	border-radius: 999rpx;
+	flex-shrink: 0;
 }
+
 .display .rme-sent {
 	font-size: 12px;
 	padding: 3px 12px;
 	border-radius: 999px;
 }
+
 .rme-sent.good {
 	background: rgba(76, 175, 80, 0.15);
 	color: #81c784;
 	border: 1rpx solid rgba(76, 175, 80, 0.35);
 }
+
 .rme-sent.bad {
 	background: rgba(244, 67, 54, 0.12);
 	color: #e57373;
 	border: 1rpx solid rgba(244, 67, 54, 0.35);
 }
+
 .rme-title {
 	display: block;
 	font-size: 30rpx;
 	font-weight: 700;
 	color: #f5e6b3;
 	line-height: 1.35;
-	margin-bottom: 12rpx;
+	margin-bottom: 16rpx;
 }
+
 .display .rme-title {
 	font-size: 22px;
-	margin-bottom: 12px;
+	margin-bottom: 14px;
 }
-.rme-body {
-	max-height: 360rpx;
-	width: 100%;
-	box-sizing: border-box;
-}
-.rme-body--scroll {
-	max-height: 220px;
-	overflow-x: hidden;
-	overflow-y: auto;
-	-webkit-overflow-scrolling: touch;
-}
-.display .rme-body {
-	max-height: 200px;
-}
-.display .rme-body--scroll {
-	max-height: 240px;
-}
-.rme-block {
-	display: block;
-	font-size: 26rpx;
-	color: #d8d0c0;
-	line-height: 1.55;
+
+.rme-fx {
 	margin-bottom: 14rpx;
 }
-.display .rme-block {
-	font-size: 14px;
+
+.display .rme-fx {
 	margin-bottom: 12px;
 }
-.rme-block.dim {
-	color: #9a8a68;
-	font-size: 24rpx;
-}
-.display .rme-block.dim {
-	font-size: 13px;
-}
-.rme-block.strong {
-	color: #e6c86a;
-	font-weight: 600;
-}
-.rme-fx {
-	margin-top: 8rpx;
-	padding-top: 12rpx;
-	border-top: 1rpx solid rgba(212, 175, 55, 0.2);
-}
-.display .rme-fx {
-	margin-top: 6px;
-	padding-top: 12px;
-}
+
 .rme-fx-title {
 	display: block;
-	font-size: 22rpx;
-	color: #bfa56a;
-	margin-bottom: 10rpx;
+	font-size: 24rpx;
+	font-weight: 700;
+	color: #e6c86a;
+	margin-bottom: 12rpx;
 }
+
 .display .rme-fx-title {
-	font-size: 12px;
-	margin-bottom: 8px;
+	font-size: 15px;
+	margin-bottom: 10px;
 }
+
 .rme-fx-row {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 10rpx;
+	gap: 12rpx;
 }
+
 .display .rme-fx-row {
-	gap: 8px;
+	gap: 10px;
 }
+
 .rme-chip {
 	display: inline-flex;
 	align-items: center;
-	gap: 6rpx;
-	padding: 6rpx 14rpx;
-	border-radius: 8rpx;
-	font-size: 22rpx;
+	justify-content: space-between;
+	gap: 10rpx;
+	min-width: 148rpx;
+	padding: 10rpx 16rpx;
+	border-radius: 10rpx;
 	border: 1rpx solid rgba(255, 255, 255, 0.08);
+	box-sizing: border-box;
 }
+
 .display .rme-chip {
-	padding: 4px 10px;
-	font-size: 12px;
-	border-radius: 6px;
+	min-width: 108px;
+	padding: 8px 14px;
+	border-radius: 8px;
 }
+
 .rme-chip.up {
-	background: rgba(76, 175, 80, 0.1);
+	background: rgba(76, 175, 80, 0.14);
+	border-color: rgba(129, 199, 132, 0.35);
+}
+
+.rme-chip.down {
+	background: rgba(229, 115, 115, 0.12);
+	border-color: rgba(255, 171, 145, 0.28);
+}
+
+.rme-chip-lab {
+	font-size: 24rpx;
+	font-weight: 700;
+	color: #f5e6b3;
+}
+
+.display .rme-chip-lab {
+	font-size: 14px;
+}
+
+.rme-chip-val {
+	font-size: 26rpx;
+	font-weight: 800;
+	font-variant-numeric: tabular-nums;
+}
+
+.display .rme-chip-val {
+	font-size: 15px;
+}
+
+.rme-chip.up .rme-chip-val {
 	color: #a5d6a7;
 }
-.rme-chip.down {
-	background: rgba(229, 115, 115, 0.1);
+
+.rme-chip.down .rme-chip-val {
 	color: #ffab91;
 }
-.rme-chip-lab {
-	font-weight: 600;
+
+.rme-lore {
+	padding-top: 12rpx;
+	border-top: 1rpx solid rgba(212, 175, 55, 0.15);
 }
-.rme-chip-arr {
-	font-weight: 700;
-	opacity: 0.9;
+
+.display .rme-lore {
+	padding-top: 10px;
+}
+
+.rme-lore-label {
+	display: block;
+	font-size: 20rpx;
+	color: #8a7a50;
+	margin-bottom: 6rpx;
+	letter-spacing: 1rpx;
+}
+
+.display .rme-lore-label {
+	font-size: 11px;
+	margin-bottom: 4px;
+}
+
+.rme-lore-text {
+	display: block;
+	font-size: 22rpx;
+	color: #9a8a68;
+	line-height: 1.5;
+}
+
+.display .rme-lore-text {
+	font-size: 13px;
+	line-height: 1.55;
 }
 </style>

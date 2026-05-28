@@ -59,15 +59,6 @@
 			</view>
 			<text class="section-title">等待管理员开始第 {{ nextRoundIndex }} 轮</text>
 			<text class="wait-tip">管理员在「房间观测」中开启本轮后，点击下方刷新即可继续。</text>
-			<view class="intro-wrap">
-				<text class="intro-title">因子配置说明（入门版）</text>
-				<view v-for="item in factorIntroItems" :key="item.key" class="intro-item">
-					<view class="intro-bar" :style="{ background: item.color }">
-						<text class="intro-bar-text">{{ item.title }}</text>
-					</view>
-					<text class="intro-desc">{{ item.desc }}</text>
-				</view>
-			</view>
 			<view v-if="history.length" class="wait-charts">
 				<f-game-charts
 					:key="'w-' + chartRefreshKey"
@@ -112,17 +103,18 @@
 				</text>
 			</view>
 			<view v-if="myRoleIs1To10" class="test-role-tip">
-				<text class="test-role-tip-title">角色主动（本局 1 次）</text>
-				<text class="test-role-tip-body">
-					勾选后于本轮提交时生效：按角色规则改写你本期的因子暴露（再结算市场与被动）。被动仍自动触发。
-				</text>
-				<text v-if="role1_10ActiveConsumed && role1_10ActiveUsedRound != null" class="test-role-tip-warn">
-					角色主动已在第 {{ role1_10ActiveUsedRound }} 轮使用。
-				</text>
-				<view v-else class="role11-active-row">
-					<text class="role11-active-label">本轮发动角色主动（本局 1 次）</text>
-					<switch :checked="role1_10ActiveChecked" color="#3d7a52" @change="onRole1_10ActiveChange" />
+				<view class="skill-title-row">
+					<text class="test-role-tip-title">技能（本局 1 次）</text>
+					<switch
+						v-if="!role1_10ActiveConsumed"
+						:checked="role1_10ActiveChecked"
+						color="#3d7a52"
+						@change="onRole1_10ActiveChange"
+					/>
 				</view>
+				<text v-if="role1_10ActiveConsumed && role1_10ActiveUsedRound != null" class="test-role-tip-warn">
+					技能已在第 {{ role1_10ActiveUsedRound }} 轮使用。
+				</text>
 				<view v-if="roleActiveVariantLabels && !role1_10ActiveConsumed" class="role-ab-wrap">
 					<text class="role-ab-title">主动分支（2～10 号必选）</text>
 					<radio-group class="role-ab-group" @change="onRoleActiveVariantChange">
@@ -151,15 +143,6 @@
 					:simulation-players="simulationPlayersForChart"
 					:attribution-player-id="currentUserUid"
 				/>
-			</view>
-			<view class="intro-wrap">
-				<text class="intro-title">因子配置说明（入门版）</text>
-				<view v-for="item in factorIntroItems" :key="item.key" class="intro-item">
-					<view class="intro-bar" :style="{ background: item.color }">
-						<text class="intro-bar-text">{{ item.title }}</text>
-					</view>
-					<text class="intro-desc">{{ item.desc }}</text>
-				</view>
 			</view>
 			<view v-for="d in F_FACTOR_DEFS" :key="d.key" class="fac">
 				<view class="fac-top">
@@ -223,11 +206,12 @@
 				刷新状态（等待管理员开启下一轮）
 			</button>
 		</view>
+		<f-factor-intro-fab />
 	</view>
 </template>
 
 <script setup>
-import { computed, onUnmounted, reactive, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import FGameCharts from '../../components/f-game-charts/f-game-charts.vue'
 import FRoundMarketEvent from '../../components/f-round-market-event/f-round-market-event.vue'
@@ -245,7 +229,6 @@ import {
 	f_roundEventFactorMultipliersByRoundFromRoomMap,
 	f_normalizeRandomEventsByRound
 } from '../../utils/f_roundRandomEventMultipliers.js'
-import { F_FACTOR_COLOR_BY_FAC_KEY } from '../../utils/f_factorPalette.js'
 import { F_TEST_ROLE_ID } from '../../utils/f_roleTestRole.js'
 import { F_ROLE_ACTIVE_VARIANT_LABELS } from '../../utils/f_roleActives.js'
 import { f_skillBroadcastLogFromRoomData } from '../../utils/f_skillBroadcastLog.js'
@@ -270,9 +253,6 @@ const role11ActiveChecked = ref(false)
 const role1_10ActiveChecked = ref(false)
 /** 2～10 号主动二选一 */
 const roleActiveVariant = ref('A')
-let timer = null
-let skillPollTimer = null
-
 const lastSkillSeqSeen = ref(0)
 const skillSeqBootstrapped = ref(false)
 
@@ -297,15 +277,6 @@ function processSkillBroadcastPayload(data) {
 	lastSkillSeqSeen.value = seq
 	uni.showToast({ title: '技能播报', icon: 'none', duration: 1600 })
 }
-
-const factorIntroItems = computed(() =>
-	F_FACTOR_DEFS.map((d) => ({
-		key: d.internal,
-		title: d.introTitle,
-		desc: d.introDesc,
-		color: F_FACTOR_COLOR_BY_FAC_KEY[d.key]
-	}))
-)
 
 const factors = reactive(Object.fromEntries(F_FACTOR_DEFS.map((d) => [d.key, 0])))
 
@@ -731,19 +702,6 @@ const roundCountdownLabel = computed(() => {
 	return `${mm}:${ss}`
 })
 
-const roundExpired = computed(() => {
-	const d = roomInfo.value
-	if (!d) return false
-	const open = d.f_open_round_index ? parseInt(d.f_open_round_index, 10) : 0
-	if (!Number.isFinite(open) || open <= 0) return false
-	const dur = parseInt(d.f_round_duration_sec, 10)
-	const durationSec = Number.isFinite(dur) && dur > 0 ? dur : 300
-	const st =
-		typeof d.f_round_started_at === 'number' ? d.f_round_started_at : parseInt(d.f_round_started_at, 10)
-	if (!Number.isFinite(st) || st <= 0) return false
-	return tick.value > st + durationSec * 1000
-})
-
 /** 管理员已开启「下一轮」编号，与玩家将要打的 nextRoundIndex 一致时可进入输入 */
 const nextRoundOpen = computed(() => {
 	const open = roomInfo.value?.f_open_round_index
@@ -752,19 +710,6 @@ const nextRoundOpen = computed(() => {
 	if (!Number.isFinite(o) || o <= 0) return false
 	return o === nextR && (isUnlimitedRounds.value || nextR <= totalRounds.value)
 })
-
-watch(
-	roundExpired,
-	async (ex) => {
-		if (!ex) return
-		// 超时后：自动刷新一次，让页面进入 waiting / review 状态
-		if (phase.value === 'input') {
-			uni.showToast({ title: '本轮已结束', icon: 'none' })
-		}
-		await refreshStatus()
-	},
-	{ immediate: false }
-)
 
 function resetFactors() {
 	F_FACTOR_DEFS.forEach((d) => {
@@ -860,6 +805,7 @@ async function loadAll(rc, opts = {}) {
 		await fetchRoomSnapshot(rc)
 
 		applyPhaseAfterLoad(preserveReview)
+		tick.value = Date.now()
 	} finally {
 		if (!quiet) loading.value = false
 	}
@@ -909,22 +855,6 @@ onLoad((options) => {
 		return
 	}
 	loadAll(rc)
-	timer = setInterval(() => {
-		tick.value = Date.now()
-	}, 1000)
-	skillPollTimer = setInterval(() => {
-		const rc = roomCode.value
-		if (!/^\d{4}$/.test(rc)) return
-		if (phase.value === 'complete') return
-		fetchRoomSnapshot(rc)
-	}, 4000)
-})
-
-onUnmounted(() => {
-	if (timer) clearInterval(timer)
-	timer = null
-	if (skillPollTimer) clearInterval(skillPollTimer)
-	skillPollTimer = null
 })
 
 async function submitRound() {
@@ -1004,7 +934,7 @@ async function submitRound() {
 			})
 		} else if (applyR1_10) {
 			uni.showToast({
-				title: `角色主动已发动（第 ${cr} 轮），本局已用`,
+				title: `技能已发动（第 ${cr} 轮），本局已用`,
 				icon: 'none',
 				duration: 2800
 			})
@@ -1194,39 +1124,6 @@ function backHome() {
 	margin-bottom: 24rpx;
 }
 
-.intro-wrap {
-	margin-bottom: 24rpx;
-}
-
-.intro-title {
-	display: block;
-	font-size: 26rpx;
-	color: #f5e6b3;
-	margin-bottom: 10rpx;
-}
-
-.intro-item {
-	margin-bottom: 12rpx;
-}
-
-.intro-bar {
-	border-radius: 10rpx;
-	padding: 12rpx 16rpx;
-}
-
-.intro-bar-text {
-	font-size: 26rpx;
-	color: #fff;
-}
-
-.intro-desc {
-	display: block;
-	margin-top: 8rpx;
-	font-size: 23rpx;
-	line-height: 1.5;
-	color: #dcc58a;
-}
-
 .done-title {
 	font-size: 32rpx;
 	font-weight: 600;
@@ -1323,6 +1220,20 @@ function backHome() {
 	font-weight: 700;
 	color: #7dce9e;
 	margin-bottom: 8rpx;
+}
+
+.skill-title-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 16rpx;
+	margin-bottom: 8rpx;
+}
+
+.skill-title-row .test-role-tip-title {
+	margin-bottom: 0;
+	flex: 1;
+	min-width: 0;
 }
 
 .test-role-tip-body,

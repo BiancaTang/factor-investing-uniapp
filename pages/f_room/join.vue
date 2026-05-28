@@ -17,6 +17,7 @@
 			</button>
 			<text class="tips">将写入集合 f_room_member，与 f_room 中房间号关联。</text>
 		</view>
+		<f-factor-intro-fab />
 	</view>
 </template>
 

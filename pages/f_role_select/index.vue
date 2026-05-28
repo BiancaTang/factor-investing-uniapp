@@ -54,11 +54,12 @@
 		</view>
 
 		<button class="btn ghost wide" @click="backPlay">返回游戏页</button>
+		<f-factor-intro-fab />
 	</view>
 </template>
 
 <script setup>
-import { ref, computed, onUnmounted } from 'vue'
+import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { f_getStoredUser } from '../../utils/f_userStorage.js'
 import { F_GAME_ROLES, f_gameRolePortraitUrl } from '../../utils/f_gameRolesSpec.js'
@@ -67,7 +68,6 @@ const roomCode = ref('')
 const loading = ref(true)
 const selecting = ref(false)
 const isRandom = ref(false)
-const pollTimer = ref(null)
 const myRoleId = ref(null)
 const myRoleName = ref('')
 const playingStarted = ref(false)
@@ -214,12 +214,6 @@ async function randomRole() {
 	}
 }
 
-function startPolling() {
-	pollTimer.value = setInterval(() => {
-		fetchRoleStatus()
-	}, 2000)
-}
-
 function goToPlayWaiting() {
 	const rc = roomCode.value
 	if (/^\d{4}$/.test(rc)) {
@@ -243,11 +237,6 @@ onLoad((options) => {
 	}
 	loading.value = false
 	fetchRoleStatus()
-	startPolling()
-})
-
-onUnmounted(() => {
-	if (pollTimer.value) clearInterval(pollTimer.value)
 })
 </script>
 

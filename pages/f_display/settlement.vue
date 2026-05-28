@@ -49,6 +49,7 @@
         {{ skill.f_char_name || '某角色' }} 触发 {{ skill.f_skill_name }}
       </view>
     </view>
+    <f-factor-intro-fab />
   </view>
 </template>
 

@@ -200,9 +200,9 @@ const chartInnerStyle = computed(() => {
 
 /** 小程序端用 px 高度，避免部分机型上 rpx 导致 canvas 实际高度为 0 */
 const canvasStyle = computed(() => {
-	let h = 240
+	let h = 280
 	try {
-		h = typeof uni.upx2px === 'function' ? uni.upx2px(480) : 240
+		h = typeof uni.upx2px === 'function' ? uni.upx2px(560) : 280
 	} catch (e) {}
 	const n = parseInt(props.chartInnerHeightPx, 10)
 	if (Number.isFinite(n) && n > 0) h = n
@@ -306,7 +306,7 @@ const factorInputRows = computed(() => {
 		.sort((a, b) => a.f_round_index - b.f_round_index)
 })
 
-const { idNav, idFc, idAtt, renderCharts, disposeAllCharts } = useFGameCharts(
+const { idNav, idFc, idAtt, renderCharts } = useFGameCharts(
 	() => chartPayload.value,
 	vueInstance,
 	{
@@ -370,7 +370,7 @@ onMounted(() => {
 
 .chart-inner {
 	width: 100%;
-	height: 480rpx;
+	height: 560rpx;
 }
 
 .factor-table {

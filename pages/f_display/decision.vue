@@ -47,6 +47,7 @@
         />
       </view>
     </view>
+    <f-factor-intro-fab />
   </view>
 </template>
 

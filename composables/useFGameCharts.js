@@ -4,7 +4,7 @@
  * 注意：小程序端必须在 setup 里同步传入 getCurrentInstance()，
  * 异步回调里再 getCurrentInstance() 会为 null，导致 selector 查不到 canvas。
  */
-import { ref, watch, nextTick, onUnmounted } from 'vue'
+import { ref, nextTick, onUnmounted } from 'vue'
 import { buildNavOption, buildFactorCumOption, buildAttributionOption } from '../utils/f_factorChartOptions.js'
 import { echarts } from '../utils/echartsRegister.js'
 import { patchCanvasForEcharts } from '../utils/echartsWxCanvasPatch.js'
@@ -53,7 +53,7 @@ export function useFGameCharts(getChartData, vueInstance = null, options = {}) {
 		if (typeof wx !== 'undefined' && wx.getWindowInfo) {
 			const win = wx.getWindowInfo()
 			const windowW = win.windowWidth || 375
-			const h = typeof uni.upx2px === 'function' ? uni.upx2px(480) : (480 * windowW) / 750
+			const h = typeof uni.upx2px === 'function' ? uni.upx2px(560) : (560 * windowW) / 750
 			return {
 				width: Math.max(windowW - 48, 200),
 				height: Math.max(h, 200),
@@ -63,7 +63,7 @@ export function useFGameCharts(getChartData, vueInstance = null, options = {}) {
 		// #endif
 		const sys = uni.getSystemInfoSync()
 		const windowW = sys.windowWidth || 375
-		const h = typeof uni.upx2px === 'function' ? uni.upx2px(480) : (480 * windowW) / 750
+		const h = typeof uni.upx2px === 'function' ? uni.upx2px(560) : (560 * windowW) / 750
 		return {
 			width: Math.max(windowW - 48, 200),
 			height: Math.max(h, 200),

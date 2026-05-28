@@ -88,6 +88,7 @@
 				<text class="tips">注册成功后将写入 f_user_profile，角色默认为玩家（player）。</text>
 			</view>
 		</view>
+		<f-factor-intro-fab />
 	</view>
 </template>
 

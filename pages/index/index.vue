@@ -41,6 +41,7 @@
 
 		<button v-if="user" class="out" @click="logout">退出并重新登录</button>
 
+		<f-factor-intro-fab />
 	</view>
 
 </template>

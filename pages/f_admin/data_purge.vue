@@ -22,6 +22,7 @@
 			</button>
 			<text v-if="lastResult" class="result">{{ lastResult }}</text>
 		</view>
+		<f-factor-intro-fab />
 	</view>
 </template>
 

@@ -141,6 +141,7 @@
 			<text class="footer-round">R{{ state.currentRoundIndex }}/{{ state.maxRounds }}</text>
 			<text class="footer-phase">{{ phaseLabel }}</text>
 		</view>
+		<f-factor-intro-fab />
 	</view>
 </template>
 

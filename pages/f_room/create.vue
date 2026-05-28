@@ -29,6 +29,7 @@
 			</button>
 			<text class="tips">数据写入集合 f_room；房间号全局不可重复。玩家席固定最多 10 人（不含庄家），满员或管理员锁定后不可再加入。</text>
 		</view>
+		<f-factor-intro-fab />
 	</view>
 </template>
 
