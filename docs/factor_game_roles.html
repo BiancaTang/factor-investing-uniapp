@@ -272,8 +272,7 @@
         
         <!-- 角色列表 -->
         <div class="character-grid">
-            
-            <!-- 1. 萤火 -->
+             <!-- 1. 萤火 -->
             <div class="character-card card-yinghuo">
                 <div class="character-header">
                     <div>
@@ -289,12 +288,10 @@
                 <div class="skill-section">
                     <div class="skill-header">
                         <div class="skill-icon icon-active">主</div>
-                        <div class="skill-name">借势</div>
+                        <div class="skill-name">主借势</div>
                         <div class="skill-phase">配置阶段</div>
                     </div>
-                    <div class="skill-desc">
-                        你可选择发动。发动后，若庄家「规模」≥ 0，你的「规模」改为 <strong>-5</strong>；若庄家 &lt; 0，改为 <strong>-3</strong>。
-                    </div>
+                    <div class="skill-desc">配置阶段可发动。若庄家「规模」=0，你的「规模」改为 <strong>0</strong>；若庄家「规模」&lt;0，改为 <strong>-5</strong>。</div>
                 </div>
                 
                 <div class="divider"></div>
@@ -302,15 +299,13 @@
                 <div class="skill-section">
                     <div class="skill-header">
                         <div class="skill-icon icon-locked">被</div>
-                        <div class="skill-name">轻身</div>
+                        <div class="skill-name">被轻身</div>
                         <div class="skill-phase">运行阶段</div>
                     </div>
-                    <div class="skill-desc">
-                        若「成长」> 0，规模收益 <strong>×2</strong>；否则 <strong>×0.5</strong>。
-                    </div>
+                    <div class="skill-desc">若「成长」&gt; 0，成长收益 <strong>×1.5</strong>；否则 <strong>×0.9</strong>。</div>
                 </div>
             </div>
-            
+
             <!-- 2. 追风 -->
             <div class="character-card card-zhuifeng">
                 <div class="character-header">
@@ -327,12 +322,10 @@
                 <div class="skill-section">
                     <div class="skill-header">
                         <div class="skill-icon icon-active">主</div>
-                        <div class="skill-name">逐浪</div>
+                        <div class="skill-name">主逐浪</div>
                         <div class="skill-phase">配置阶段</div>
                     </div>
-                    <div class="skill-desc">
-                        你可选择将自己的「贝塔」改为 <strong>场上平均值 + 2</strong>，或改为 <strong>场上最大值</strong>。二选一。
-                    </div>
+                    <div class="skill-desc">配置阶段可发动，二选一：若庄家「贝塔」&gt;0，你的贝塔在原有配置基础上 <strong>+2</strong>；若庄家「贝塔」&lt;0，在原有配置基础上 <strong>-2</strong>。</div>
                 </div>
                 
                 <div class="divider"></div>
@@ -340,15 +333,13 @@
                 <div class="skill-section">
                     <div class="skill-header">
                         <div class="skill-icon icon-locked">被</div>
-                        <div class="skill-name">乘势</div>
+                        <div class="skill-name">被乘势</div>
                         <div class="skill-phase">运行阶段</div>
                     </div>
-                    <div class="skill-desc">
-                        若「动量」> 0，贝塔收益 <strong>×2</strong>；否则 <strong>×0.5</strong>。
-                    </div>
+                    <div class="skill-desc">若「动量」&gt; 0，贝塔收益 <strong>×1.5</strong>；否则 <strong>×0.9</strong>。</div>
                 </div>
             </div>
-            
+
             <!-- 3. 盾墙 -->
             <div class="character-card card-dunqiang">
                 <div class="character-header">
@@ -358,19 +349,17 @@
                     </div>
                     <div class="factor-tags">
                         <span class="tag tag-main">主：残差波动</span>
-                        <span class="tag tag-sub">副：市净</span>
+                        <span class="tag tag-sub">副：净市率</span>
                     </div>
                 </div>
                 
                 <div class="skill-section">
                     <div class="skill-header">
                         <div class="skill-icon icon-active">主</div>
-                        <div class="skill-name">预判</div>
+                        <div class="skill-name">主预判</div>
                         <div class="skill-phase">配置阶段</div>
                     </div>
-                    <div class="skill-desc">
-                        你可选择将自己的「残差波动」改为 <strong>-4</strong>，或改为 <strong>场上最低值 - 1</strong>（最低锁 -5）。二选一。
-                    </div>
+                    <div class="skill-desc">配置阶段可发动，二选一：若庄家「残差波动」&lt;0，将你的「残差波动」改为 <strong>-4</strong>；若庄家「残差波动」&gt;0，改为 <strong>1</strong>。</div>
                 </div>
                 
                 <div class="divider"></div>
@@ -378,15 +367,13 @@
                 <div class="skill-section">
                     <div class="skill-header">
                         <div class="skill-icon icon-locked">被</div>
-                        <div class="skill-name">铁壁</div>
+                        <div class="skill-name">被铁壁</div>
                         <div class="skill-phase">运行阶段</div>
                     </div>
-                    <div class="skill-desc">
-                        若「市净」> 0，残差波动收益 <strong>×2</strong>；否则 <strong>×0.5</strong>。
-                    </div>
+                    <div class="skill-desc">若「净市率」&gt; 0，残差波动收益 <strong>×1.5</strong>；否则 <strong>×0.9</strong>。</div>
                 </div>
             </div>
-            
+
             <!-- 4. 刀客 -->
             <div class="character-card card-daoke">
                 <div class="character-header">
@@ -403,12 +390,10 @@
                 <div class="skill-section">
                     <div class="skill-header">
                         <div class="skill-icon icon-active">主</div>
-                        <div class="skill-name">追涨</div>
+                        <div class="skill-name">主追涨</div>
                         <div class="skill-phase">配置阶段</div>
                     </div>
-                    <div class="skill-desc">
-                        你可选择将自己的「动量」改为 <strong>场上最大值 + 1</strong>（上限 5），或改为 <strong>庄家动量 + 2</strong>（上限 5）。二选一。
-                    </div>
+                    <div class="skill-desc">配置阶段可发动：若庄家「动量」&gt;0，将自己的「动量」改为场上最大值 <strong>+1</strong>（上限 5）。</div>
                 </div>
                 
                 <div class="divider"></div>
@@ -416,15 +401,13 @@
                 <div class="skill-section">
                     <div class="skill-header">
                         <div class="skill-icon icon-locked">被</div>
-                        <div class="skill-name">嗜血</div>
+                        <div class="skill-name">被嗜血</div>
                         <div class="skill-phase">运行阶段</div>
                     </div>
-                    <div class="skill-desc">
-                        若「流动性」> 0，动量收益 <strong>×2</strong>；否则 <strong>×0.5</strong>。
-                    </div>
+                    <div class="skill-desc">若「流动性」&gt; 0，动量收益 <strong>×1.5</strong>；否则 <strong>×0.9</strong>。</div>
                 </div>
             </div>
-            
+
             <!-- 5. 掘墓人 -->
             <div class="character-card card-juemu">
                 <div class="character-header">
@@ -433,7 +416,7 @@
                         <div class="character-strategy">深度价值</div>
                     </div>
                     <div class="factor-tags">
-                        <span class="tag tag-main">主：市净</span>
+                        <span class="tag tag-main">主：净市率</span>
                         <span class="tag tag-sub">副：盈利收益</span>
                     </div>
                 </div>
@@ -441,12 +424,10 @@
                 <div class="skill-section">
                     <div class="skill-header">
                         <div class="skill-icon icon-active">主</div>
-                        <div class="skill-name">左侧</div>
+                        <div class="skill-name">主左侧</div>
                         <div class="skill-phase">配置阶段</div>
                     </div>
-                    <div class="skill-desc">
-                        你可选择将自己的「市净」改为 <strong>+4</strong> 或 <strong>+5</strong>。二选一。
-                    </div>
+                    <div class="skill-desc">配置阶段可发动，二选一：若庄家「净市率」&lt;0，将你的「净市率」改为 <strong>0</strong>；若庄家「净市率」&gt;0，改为 <strong>4</strong>。</div>
                 </div>
                 
                 <div class="divider"></div>
@@ -454,15 +435,13 @@
                 <div class="skill-section">
                     <div class="skill-header">
                         <div class="skill-icon icon-locked">被</div>
-                        <div class="skill-name">捡漏</div>
+                        <div class="skill-name">被捡漏</div>
                         <div class="skill-phase">运行阶段</div>
                     </div>
-                    <div class="skill-desc">
-                        若「盈利收益」> 0，市净收益 <strong>×2</strong>；否则 <strong>×0.5</strong>。
-                    </div>
+                    <div class="skill-desc">若「盈利收益」&gt; 0，净市率收益 <strong>×1.5</strong>；否则 <strong>×0.9</strong>。</div>
                 </div>
             </div>
-            
+
             <!-- 6. 磐石 -->
             <div class="character-card card-panshi">
                 <div class="character-header">
@@ -479,12 +458,10 @@
                 <div class="skill-section">
                     <div class="skill-header">
                         <div class="skill-icon icon-active">主</div>
-                        <div class="skill-name">避险</div>
+                        <div class="skill-name">主避险</div>
                         <div class="skill-phase">配置阶段</div>
                     </div>
-                    <div class="skill-desc">
-                        你可选择将自己的「盈利收益」改为 <strong>场上平均值 + 1</strong>，或改为 <strong>场上平均值 + 2</strong>。二选一。
-                    </div>
+                    <div class="skill-desc">配置阶段可发动，二选一：若庄家「盈利收益」&gt;0，将你的「盈利收益」改为 <strong>5</strong>；若庄家「盈利收益」&lt;0，改为 <strong>0</strong>。</div>
                 </div>
                 
                 <div class="divider"></div>
@@ -492,15 +469,13 @@
                 <div class="skill-section">
                     <div class="skill-header">
                         <div class="skill-icon icon-locked">被</div>
-                        <div class="skill-name">厚利</div>
+                        <div class="skill-name">被厚利</div>
                         <div class="skill-phase">运行阶段</div>
                     </div>
-                    <div class="skill-desc">
-                        若「杠杆」< 0，盈利收益 <strong>×2</strong>；否则 <strong>×0.5</strong>。
-                    </div>
+                    <div class="skill-desc">若「杠杆」&lt; 0，盈利收益 <strong>×1.5</strong>；否则 <strong>×0.9</strong>。</div>
                 </div>
             </div>
-            
+
             <!-- 7. 夹缝 -->
             <div class="character-card card-jiafeng">
                 <div class="character-header">
@@ -517,12 +492,10 @@
                 <div class="skill-section">
                     <div class="skill-header">
                         <div class="skill-icon icon-active">主</div>
-                        <div class="skill-name">腾挪</div>
+                        <div class="skill-name">主腾挪</div>
                         <div class="skill-phase">配置阶段</div>
                     </div>
-                    <div class="skill-desc">
-                        你可选择将自己的「非线性规模」改为 <strong>0</strong>，或改为 <strong>庄家该因子的相反数</strong>。二选一。
-                    </div>
+                    <div class="skill-desc">配置阶段可发动，二选一：若庄家「非线性规模」&gt;0，将你的「非线性规模」改为 <strong>5</strong>；若庄家「非线性规模」&lt;0，改为 <strong>1</strong>。</div>
                 </div>
                 
                 <div class="divider"></div>
@@ -530,15 +503,13 @@
                 <div class="skill-section">
                     <div class="skill-header">
                         <div class="skill-icon icon-locked">被</div>
-                        <div class="skill-name">中坚</div>
+                        <div class="skill-name">被中坚</div>
                         <div class="skill-phase">运行阶段</div>
                     </div>
-                    <div class="skill-desc">
-                        若「成长」> 0，非线性规模收益 <strong>×2</strong>；否则 <strong>×0.5</strong>。
-                    </div>
+                    <div class="skill-desc">若「成长」&gt; 0，非线性规模收益 <strong>×1.5</strong>；否则 <strong>×0.9</strong>。</div>
                 </div>
             </div>
-            
+
             <!-- 8. 秤砣 -->
             <div class="character-card card-chengtuo">
                 <div class="character-header">
@@ -548,19 +519,17 @@
                     </div>
                     <div class="factor-tags">
                         <span class="tag tag-main">主：成长</span>
-                        <span class="tag tag-sub">副：市净</span>
+                        <span class="tag tag-sub">副：净市率</span>
                     </div>
                 </div>
                 
                 <div class="skill-section">
                     <div class="skill-header">
                         <div class="skill-icon icon-active">主</div>
-                        <div class="skill-name">纠偏</div>
+                        <div class="skill-name">主纠偏</div>
                         <div class="skill-phase">配置阶段</div>
                     </div>
-                    <div class="skill-desc">
-                        你可选择将自己的「成长」改为 <strong>场上平均值</strong>，或改为 <strong>庄家值</strong>。二选一。
-                    </div>
+                    <div class="skill-desc">配置阶段可发动，二选一：若庄家「成长」&gt;0，将你的「成长」改为 <strong>4</strong>；若庄家「成长」&lt;0，改为 <strong>1</strong>。</div>
                 </div>
                 
                 <div class="divider"></div>
@@ -568,15 +537,13 @@
                 <div class="skill-section">
                     <div class="skill-header">
                         <div class="skill-icon icon-locked">被</div>
-                        <div class="skill-name">平衡</div>
+                        <div class="skill-name">被平衡</div>
                         <div class="skill-phase">运行阶段</div>
                     </div>
-                    <div class="skill-desc">
-                        若「市净」> 0，成长收益 <strong>×2</strong>；否则 <strong>×0.5</strong>。
-                    </div>
+                    <div class="skill-desc">若「净市率」&lt; 0，成长收益 <strong>×1.5</strong>；否则 <strong>×0.9</strong>。</div>
                 </div>
             </div>
-            
+
             <!-- 9. 刺猬 -->
             <div class="character-card card-ciwei">
                 <div class="character-header">
@@ -593,12 +560,10 @@
                 <div class="skill-section">
                     <div class="skill-header">
                         <div class="skill-icon icon-active">主</div>
-                        <div class="skill-name">缩壳</div>
+                        <div class="skill-name">主缩壳</div>
                         <div class="skill-phase">配置阶段</div>
                     </div>
-                    <div class="skill-desc">
-                        你可选择将自己的「规模」改为 <strong>-3</strong> 或 <strong>-4</strong>。二选一。
-                    </div>
+                    <div class="skill-desc">配置阶段可发动，二选一：若庄家「规模」&gt;0，将你的「规模」改为 <strong>3</strong>；若庄家「规模」&lt;0，改为 <strong>-3</strong>。</div>
                 </div>
                 
                 <div class="divider"></div>
@@ -606,15 +571,13 @@
                 <div class="skill-section">
                     <div class="skill-header">
                         <div class="skill-icon icon-locked">被</div>
-                        <div class="skill-name">抱团</div>
+                        <div class="skill-name">被抱团</div>
                         <div class="skill-phase">运行阶段</div>
                     </div>
-                    <div class="skill-desc">
-                        若「残差波动」< 0，规模收益 <strong>×2</strong>；否则 <strong>×0.5</strong>。
-                    </div>
+                    <div class="skill-desc">若「残差波动」&lt; 0，规模收益 <strong>×1.5</strong>；否则 <strong>×0.9</strong>。</div>
                 </div>
             </div>
-            
+
             <!-- 10. 走钢丝 -->
             <div class="character-card card-zougangsi">
                 <div class="character-header">
@@ -624,19 +587,17 @@
                     </div>
                     <div class="factor-tags">
                         <span class="tag tag-main">主：动量</span>
-                        <span class="tag tag-sub">副：市净</span>
+                        <span class="tag tag-sub">副：净市率</span>
                     </div>
                 </div>
                 
                 <div class="skill-section">
                     <div class="skill-header">
                         <div class="skill-icon icon-active">主</div>
-                        <div class="skill-name">切换</div>
+                        <div class="skill-name">主切换</div>
                         <div class="skill-phase">配置阶段</div>
                     </div>
-                    <div class="skill-desc">
-                        你可选择将自己的「动量」改为 <strong>场上最大值</strong>，或改为 <strong>场上最小值</strong>。二选一。
-                    </div>
+                    <div class="skill-desc">配置阶段可发动，二选一：A 按庄家「动量」（&gt;0 改为 <strong>3</strong>，&lt;0 改为 <strong>-3</strong>）；B 按庄家「净市率」（&gt;0 改为 <strong>2</strong>，&lt;0 改为 <strong>-2</strong>）。</div>
                 </div>
                 
                 <div class="divider"></div>
@@ -644,15 +605,13 @@
                 <div class="skill-section">
                     <div class="skill-header">
                         <div class="skill-icon icon-locked">被</div>
-                        <div class="skill-name">两端</div>
+                        <div class="skill-name">被两端</div>
                         <div class="skill-phase">运行阶段</div>
                     </div>
-                    <div class="skill-desc">
-                        若「市净」> 0，动量收益 <strong>×2</strong>；否则 <strong>×0.5</strong>。
-                    </div>
+                    <div class="skill-desc">若「净市率」&lt; 0，动量收益 <strong>×1.5</strong>；否则 <strong>×0.9</strong>。</div>
                 </div>
             </div>
-            
+
         </div>
     </div>
 </body>

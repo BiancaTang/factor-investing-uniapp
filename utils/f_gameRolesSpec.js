@@ -1,4 +1,4 @@
-/** 角色 1～10 与 docs/factor_game_roles.html 一致；第 11 号为联调用「测试角色」，不在原始 HTML 手册十卡内，见 utils/f_roleTestRole.js */
+/** 角色 1～10 与 docs/factor_game_roles.html、角色技能设计_revising.md 一致；第 11 号为联调用「测试角色」，见 utils/f_roleTestRole.js */
 const F_CDN = 'https://mp-97b2aa2e-12fb-4d19-b974-f61aadc80368.cdn.bspapp.com/f_static/pic'
 const F_SLUGS = [
 	'yinghuo',
@@ -36,12 +36,12 @@ export const F_GAME_ROLES = [
 		subtitle: '小市值成长',
 		mainFactor: '规模',
 		subFactor: '成长',
-		roleIntro: '偏小盘与成长风格：在规模因子上与庄家博弈，运行阶段随成长敞口调节规模收益弹性。',
-		activeSkillName: '借势',
+		roleIntro: '偏小盘与成长风格：主动随庄家规模敞口调整自身规模；运行阶段由成长敞口调节成长收益倍率。',
+		activeSkillName: '主借势',
 		activeSkillDesc:
-			'你可选择发动。发动后，若庄家「规模」≥ 0，你的「规模」改为 -5；若庄家 < 0，改为 -3。',
-		passiveSkillName: '轻身',
-		passiveSkillDesc: '若「成长」> 0，规模收益 ×2；否则 ×0.5。'
+			'配置阶段可发动。若庄家「规模」=0，你的「规模」改为0；若庄家「规模」<0，你的「规模」改为-5。',
+		passiveSkillName: '被轻身',
+		passiveSkillDesc: '若「成长」>0，成长收益×1.5；否则成长收益×0.9。'
 	},
 	{
 		id: 2,
@@ -49,23 +49,25 @@ export const F_GAME_ROLES = [
 		subtitle: '牛市猎手',
 		mainFactor: '贝塔',
 		subFactor: '动量',
-		roleIntro: '高弹性贝塔与动量结合，适合趋势行情；被动随动量方向放大或收缩贝塔贡献。',
-		activeSkillName: '逐浪',
-		activeSkillDesc: '你可选择将自己的「贝塔」改为场上平均值 + 2，或改为场上最大值。二选一。',
-		passiveSkillName: '乘势',
-		passiveSkillDesc: '若「动量」> 0，贝塔收益 ×2；否则 ×0.5。'
+		roleIntro: '高弹性贝塔与动量结合；主动随庄家贝塔方向加减敞口，被动由动量方向调节贝塔收益。',
+		activeSkillName: '主逐浪',
+		activeSkillDesc:
+			'配置阶段可发动，二选一：若庄家「贝塔」>0，你的贝塔在原有配置基础上+2；若庄家「贝塔」<0，你的贝塔在原有配置基础上-2。',
+		passiveSkillName: '被乘势',
+		passiveSkillDesc: '若「动量」>0，贝塔收益×1.5；否则贝塔收益×0.9。'
 	},
 	{
 		id: 3,
 		name: '盾墙',
 		subtitle: '熊市防守',
 		mainFactor: '残差波动',
-		subFactor: '市净',
-		roleIntro: '防守型残差波动与估值因子；主动压低波动暴露，被动与市净敞口联动调节残差波动收益。',
-		activeSkillName: '预判',
-		activeSkillDesc: '你可选择将自己的「残差波动」改为 -4，或改为场上最低值 - 1（最低锁 -5）。二选一。',
-		passiveSkillName: '铁壁',
-		passiveSkillDesc: '若「市净」> 0，残差波动收益 ×2；否则 ×0.5。'
+		subFactor: '净市率',
+		roleIntro: '防守型残差波动与净市率；主动按庄家残差波动方向定档，被动由净市率敞口调节残差波动收益。',
+		activeSkillName: '主预判',
+		activeSkillDesc:
+			'配置阶段可发动，二选一：若庄家「残差波动」<0，将你的「残差波动」改为-4；若庄家「残差波动」>0，改为1。',
+		passiveSkillName: '被铁壁',
+		passiveSkillDesc: '若「净市率」>0，残差波动收益×1.5；否则残差波动收益×0.9。'
 	},
 	{
 		id: 4,
@@ -73,24 +75,25 @@ export const F_GAME_ROLES = [
 		subtitle: '涨停敢死队',
 		mainFactor: '动量',
 		subFactor: '流动性',
-		roleIntro: '进攻型动量与流动性；主动追逐极端动量，被动由流动性敞口决定动量收益倍率。',
-		activeSkillName: '追涨',
+		roleIntro: '进攻型动量与流动性；主动在庄家动量为正时追逐场上极端动量，被动由流动性敞口决定动量收益倍率。',
+		activeSkillName: '主追涨',
 		activeSkillDesc:
-			'你可选择将自己的「动量」改为场上最大值 + 1（上限 5），或改为庄家动量 + 2（上限 5）。二选一。',
-		passiveSkillName: '嗜血',
-		passiveSkillDesc: '若「流动性」> 0，动量收益 ×2；否则 ×0.5。'
+			'配置阶段可发动：若庄家「动量」>0，将自己的「动量」改为场上最大值+1（上限5）。',
+		passiveSkillName: '被嗜血',
+		passiveSkillDesc: '若「流动性」>0，动量收益×1.5；否则动量收益×0.9。'
 	},
 	{
 		id: 5,
 		name: '掘墓人',
 		subtitle: '深度价值',
-		mainFactor: '市净',
+		mainFactor: '净市率',
 		subFactor: '盈利收益',
-		roleIntro: '深度价值与盈利收益；主动拉高市净暴露，被动视盈利收益符号调节市净贡献。',
-		activeSkillName: '左侧',
-		activeSkillDesc: '你可选择将自己的「市净」改为 +4 或 +5。二选一。',
-		passiveSkillName: '捡漏',
-		passiveSkillDesc: '若「盈利收益」> 0，市净收益 ×2；否则 ×0.5。'
+		roleIntro: '深度价值与盈利收益；主动按庄家净市率方向定档，被动由盈利收益符号调节净市率贡献。',
+		activeSkillName: '主左侧',
+		activeSkillDesc:
+			'配置阶段可发动，二选一：若庄家「净市率」<0，将你的「净市率」改为0；若庄家「净市率」>0，改为4。',
+		passiveSkillName: '被捡漏',
+		passiveSkillDesc: '若「盈利收益」>0，净市率收益×1.5；否则净市率收益×0.9。'
 	},
 	{
 		id: 6,
@@ -98,11 +101,12 @@ export const F_GAME_ROLES = [
 		subtitle: '质量稳健',
 		mainFactor: '盈利收益',
 		subFactor: '杠杆',
-		roleIntro: '质量与盈利收益为核心；主动向场上均值靠拢，被动在杠杆偏保守时强化盈利收益。',
-		activeSkillName: '避险',
-		activeSkillDesc: '你可选择将自己的「盈利收益」改为场上平均值 + 1，或改为场上平均值 + 2。二选一。',
-		passiveSkillName: '厚利',
-		passiveSkillDesc: '若「杠杆」< 0，盈利收益 ×2；否则 ×0.5。'
+		roleIntro: '质量与盈利收益为核心；主动按庄家盈利收益方向定档，被动在杠杆偏保守时强化盈利收益。',
+		activeSkillName: '主避险',
+		activeSkillDesc:
+			'配置阶段可发动，二选一：若庄家「盈利收益」>0，将你的「盈利收益」改为5；若庄家「盈利收益」<0，改为0。',
+		passiveSkillName: '被厚利',
+		passiveSkillDesc: '若「杠杆」<0，盈利收益×1.5；否则盈利收益×0.9。'
 	},
 	{
 		id: 7,
@@ -110,23 +114,25 @@ export const F_GAME_ROLES = [
 		subtitle: '中盘掘金',
 		mainFactor: '非线性规模',
 		subFactor: '成长',
-		roleIntro: '中盘与非线性规模；主动与庄家因子对位，被动由成长方向调节非线性规模收益。',
-		activeSkillName: '腾挪',
-		activeSkillDesc: '你可选择将自己的「非线性规模」改为 0，或改为庄家该因子的相反数。二选一。',
-		passiveSkillName: '中坚',
-		passiveSkillDesc: '若「成长」> 0，非线性规模收益 ×2；否则 ×0.5。'
+		roleIntro: '中盘与非线性规模；主动按庄家非线性规模方向定档，被动由成长方向调节非线性规模收益。',
+		activeSkillName: '主腾挪',
+		activeSkillDesc:
+			'配置阶段可发动，二选一：若庄家「非线性规模」>0，将你的「非线性规模」改为5；若庄家「非线性规模」<0，改为1。',
+		passiveSkillName: '被中坚',
+		passiveSkillDesc: '若「成长」>0，非线性规模收益×1.5；否则非线性规模收益×0.9。'
 	},
 	{
 		id: 8,
 		name: '秤砣',
 		subtitle: 'GARP策略',
 		mainFactor: '成长',
-		subFactor: '市净',
-		roleIntro: '成长与估值平衡（GARP）；主动跟随均值或庄家，被动由市净符号调节成长收益。',
-		activeSkillName: '纠偏',
-		activeSkillDesc: '你可选择将自己的「成长」改为场上平均值，或改为庄家值。二选一。',
-		passiveSkillName: '平衡',
-		passiveSkillDesc: '若「市净」> 0，成长收益 ×2；否则 ×0.5。'
+		subFactor: '净市率',
+		roleIntro: '成长与净市率平衡（GARP）；主动按庄家成长方向定档，被动在净市率偏防御时强化成长收益。',
+		activeSkillName: '主纠偏',
+		activeSkillDesc:
+			'配置阶段可发动，二选一：若庄家「成长」>0，将你的「成长」改为4；若庄家「成长」<0，改为1。',
+		passiveSkillName: '被平衡',
+		passiveSkillDesc: '若「净市率」<0，成长收益×1.5；否则成长收益×0.9。'
 	},
 	{
 		id: 9,
@@ -134,23 +140,25 @@ export const F_GAME_ROLES = [
 		subtitle: '小盘防御',
 		mainFactor: '规模',
 		subFactor: '残差波动',
-		roleIntro: '小盘+低波防守；主动进一步压低规模暴露，被动在残差波动偏防御时强化规模收益。',
-		activeSkillName: '缩壳',
-		activeSkillDesc: '你可选择将自己的「规模」改为 -3 或 -4。二选一。',
-		passiveSkillName: '抱团',
-		passiveSkillDesc: '若「残差波动」< 0，规模收益 ×2；否则 ×0.5。'
+		roleIntro: '小盘与低波防守；主动按庄家规模方向定档，被动在残差波动偏防御时强化规模收益。',
+		activeSkillName: '主缩壳',
+		activeSkillDesc:
+			'配置阶段可发动，二选一：若庄家「规模」>0，将你的「规模」改为3；若庄家「规模」<0，改为-3。',
+		passiveSkillName: '被抱团',
+		passiveSkillDesc: '若「残差波动」<0，规模收益×1.5；否则规模收益×0.9。'
 	},
 	{
 		id: 10,
 		name: '走钢丝',
 		subtitle: '杠铃策略',
 		mainFactor: '动量',
-		subFactor: '市净',
-		roleIntro: '杠铃式动量与估值；主动锚定场上极值，被动由市净方向决定动量收益倍率。',
-		activeSkillName: '切换',
-		activeSkillDesc: '你可选择将自己的「动量」改为场上最大值，或改为场上最小值。二选一。',
-		passiveSkillName: '两端',
-		passiveSkillDesc: '若「市净」> 0，动量收益 ×2；否则 ×0.5。'
+		subFactor: '净市率',
+		roleIntro: '杠铃式动量与净市率；主动按庄家动量或净市率分支切换动量敞口，被动在净市率偏防御时强化动量收益。',
+		activeSkillName: '主切换',
+		activeSkillDesc:
+			'配置阶段可发动，二选一：A 按庄家「动量」（>0 改为3，<0 改为-3）；B 按庄家「净市率」（>0 改为2，<0 改为-2）。',
+		passiveSkillName: '被两端',
+		passiveSkillDesc: '若「净市率」<0，动量收益×1.5；否则动量收益×0.9。'
 	},
 	{
 		id: 11,

@@ -4,16 +4,16 @@ const { F_FACTOR_DEFS } = require('./f_gameFactorSpec.js')
 
 /** 与 utils/f_rolePassives.js 一致（internal 键） */
 const F_ROLE_PASSIVE_RULES = {
-	1: { primary: 'size', secondary: 'growth', op: 'gt' },
-	2: { primary: 'beta', secondary: 'momentum', op: 'gt' },
-	3: { primary: 'residual_volatility', secondary: 'book_to_price', op: 'gt' },
-	4: { primary: 'momentum', secondary: 'liquidity', op: 'gt' },
-	5: { primary: 'book_to_price', secondary: 'earnings_yield', op: 'gt' },
-	6: { primary: 'earnings_yield', secondary: 'leverage', op: 'lt' },
-	7: { primary: 'non_linear_size', secondary: 'growth', op: 'gt' },
-	8: { primary: 'growth', secondary: 'book_to_price', op: 'gt' },
-	9: { primary: 'size', secondary: 'residual_volatility', op: 'lt' },
-	10: { primary: 'momentum', secondary: 'book_to_price', op: 'gt' }
+	1: { target: 'growth', cond: 'growth', op: 'gt' },
+	2: { target: 'beta', cond: 'momentum', op: 'gt' },
+	3: { target: 'residual_volatility', cond: 'book_to_price', op: 'gt' },
+	4: { target: 'momentum', cond: 'liquidity', op: 'gt' },
+	5: { target: 'book_to_price', cond: 'earnings_yield', op: 'gt' },
+	6: { target: 'earnings_yield', cond: 'leverage', op: 'lt' },
+	7: { target: 'non_linear_size', cond: 'growth', op: 'gt' },
+	8: { target: 'growth', cond: 'book_to_price', op: 'lt' },
+	9: { target: 'size', cond: 'residual_volatility', op: 'lt' },
+	10: { target: 'momentum', cond: 'book_to_price', op: 'lt' }
 }
 
 const F_ROLE_NAMES = {
@@ -48,9 +48,9 @@ function f_expInternalFromFacKeys(facByKey) {
 function f_passiveBranchLabel(expInternal, roleId) {
 	const rule = F_ROLE_PASSIVE_RULES[roleId]
 	if (!rule) return null
-	const secVal = Number(expInternal[rule.secondary]) || 0
+	const secVal = Number(expInternal[rule.cond]) || 0
 	const ok = rule.op === 'gt' ? secVal > 0 : secVal < 0
-	return ok ? '×2（顺风）' : '×0.5（逆风）'
+	return ok ? '×1.5（顺风）' : '×0.9（逆风）'
 }
 
 /**
@@ -87,7 +87,7 @@ function f_buildSkillLinesFromSubmit(ctx) {
 		const expInt = f_expInternalFromFacKeys(ctx.facByKey || {})
 		const pl = f_passiveBranchLabel(expInt, rid)
 		if (pl) {
-			lines.push(`${nick} 第 ${R} 轮·被动「${f_roleName(rid)}」：主因子收益 ${pl}`)
+			lines.push(`${nick} 第 ${R} 轮·被动「${f_roleName(rid)}」：因子收益 ${pl}`)
 		}
 	}
 	if (rid === 11 && R === 2) {

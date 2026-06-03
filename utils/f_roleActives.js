@@ -1,6 +1,6 @@
 /**
  * 角色 1～10 主动：按轮次在「写入槽位暴露」之后、「市场 factor_return」之前改写该玩家暴露。
- * 与 docs/factor_game_roles.html / f_gameRolesSpec 文案一致；本局每玩家主动至多发动 1 次（由 f_room_member.f_role_active_round 记录）。
+ * 与角色技能手册 / f_gameRolesSpec 一致；本局每玩家主动至多发动 1 次（由 f_room_member.f_role_active_round 记录）。
  */
 function f_clampInt(v) {
 	const n = Math.round(Number(v))
@@ -14,35 +14,23 @@ function f_valsFromRaw(rawByUid, internal) {
 		.filter((n) => Number.isFinite(n))
 }
 
-function f_avgInt(rawByUid, internal) {
-	const vals = f_valsFromRaw(rawByUid, internal)
-	if (!vals.length) return 0
-	return f_clampInt(vals.reduce((a, b) => a + b, 0) / vals.length)
-}
-
 function f_maxInt(rawByUid, internal) {
 	const vals = f_valsFromRaw(rawByUid, internal)
 	if (!vals.length) return 0
 	return f_clampInt(Math.max(...vals))
 }
 
-function f_minInt(rawByUid, internal) {
-	const vals = f_valsFromRaw(rawByUid, internal)
-	if (!vals.length) return 0
-	return f_clampInt(Math.min(...vals))
-}
-
-/** 二选一文案（博弈页展示） */
+/** 二选一文案（博弈页展示，角色 2～10） */
 export const F_ROLE_ACTIVE_VARIANT_LABELS = {
-	2: { A: '贝塔 = 场上平均 + 2', B: '贝塔 = 场上最大' },
-	3: { A: '残差波动 = -4', B: '残差波动 = 场上最低 − 1（下限 −5）' },
-	4: { A: '动量 = 场上最大 + 1（上限 5）', B: '动量 = 庄家动量 + 2（上限 5）' },
-	5: { A: '市净 = +4', B: '市净 = +5' },
-	6: { A: '盈利收益 = 场上平均 + 1', B: '盈利收益 = 场上平均 + 2' },
-	7: { A: '非线性规模 = 0', B: '非线性规模 = 庄家相反数' },
-	8: { A: '成长 = 场上平均', B: '成长 = 庄家' },
-	9: { A: '规模 = −3', B: '规模 = −4' },
-	10: { A: '动量 = 场上最大', B: '动量 = 场上最小' }
+	2: { A: '庄家贝塔>0：你的贝塔 +2', B: '庄家贝塔<0：你的贝塔 -2' },
+	3: { A: '庄家残差波动<0：你的残差波动 = -4', B: '庄家残差波动>0：你的残差波动 = 1' },
+	4: { A: '庄家动量>0：动量 = 场上最大 +1', B: '庄家动量≤0：保持原配置' },
+	5: { A: '庄家净市率<0：你的净市率 = 0', B: '庄家净市率>0：你的净市率 = 4' },
+	6: { A: '庄家盈利收益>0：你的盈利收益 = 5', B: '庄家盈利收益<0：你的盈利收益 = 0' },
+	7: { A: '庄家非线性规模>0：你的 = 5', B: '庄家非线性规模<0：你的 = 1' },
+	8: { A: '庄家成长>0：你的成长 = 4', B: '庄家成长<0：你的成长 = 1' },
+	9: { A: '庄家规模>0：你的规模 = 3', B: '庄家规模<0：你的规模 = -3' },
+	10: { A: '按庄家动量：动量 = 3 或 -3', B: '按庄家净市率：动量 = 2 或 -2' }
 }
 
 /**
@@ -65,62 +53,89 @@ export function f_applyOneRoleActiveToSlot(rawByUid, exp, slotIndex, rid, varian
 	switch (rid) {
 		case 1: {
 			const bsz = bankNum('size')
-			row.size = bsz >= 0 ? -5 : -3
+			if (bsz === 0) row.size = 0
+			else if (bsz < 0) row.size = -5
 			break
 		}
 		case 2: {
-			const avg = f_avgInt(rawByUid, 'beta')
-			row.beta = v === 'A' ? f_clampInt(avg + 2) : f_maxInt(rawByUid, 'beta')
+			const bb = bankNum('beta')
+			if (v === 'A') {
+				if (bb > 0) row.beta = f_clampInt(row.beta + 2)
+			} else if (bb < 0) {
+				row.beta = f_clampInt(row.beta - 2)
+			}
 			break
 		}
 		case 3: {
+			const brv = bankNum('residual_volatility')
 			if (v === 'A') {
-				row.residual_volatility = -4
-			} else {
-				const mn = f_minInt(rawByUid, 'residual_volatility')
-				row.residual_volatility = f_clampInt(mn - 1)
+				if (brv < 0) row.residual_volatility = -4
+			} else if (brv > 0) {
+				row.residual_volatility = 1
 			}
 			break
 		}
 		case 4: {
-			if (v === 'A') {
+			if (bankNum('momentum') > 0) {
 				row.momentum = f_clampInt(f_maxInt(rawByUid, 'momentum') + 1)
-			} else {
-				row.momentum = f_clampInt(bankNum('momentum') + 2)
 			}
 			break
 		}
 		case 5: {
-			row.book_to_price = v === 'A' ? 4 : 5
+			const bbp = bankNum('book_to_price')
+			if (v === 'A') {
+				if (bbp < 0) row.book_to_price = 0
+			} else if (bbp > 0) {
+				row.book_to_price = 4
+			}
 			break
 		}
 		case 6: {
-			const avg = f_avgInt(rawByUid, 'earnings_yield')
-			row.earnings_yield = v === 'A' ? f_clampInt(avg + 1) : f_clampInt(avg + 2)
+			const bey = bankNum('earnings_yield')
+			if (v === 'A') {
+				if (bey > 0) row.earnings_yield = 5
+			} else if (bey < 0) {
+				row.earnings_yield = 0
+			}
 			break
 		}
 		case 7: {
+			const bnls = bankNum('non_linear_size')
 			if (v === 'A') {
-				row.non_linear_size = 0
-			} else {
-				row.non_linear_size = f_clampInt(-bankNum('non_linear_size'))
+				if (bnls > 0) row.non_linear_size = 5
+			} else if (bnls < 0) {
+				row.non_linear_size = 1
 			}
 			break
 		}
 		case 8: {
+			const bg = bankNum('growth')
 			if (v === 'A') {
-				row.growth = f_avgInt(rawByUid, 'growth')
-			} else {
-				row.growth = f_clampInt(bankNum('growth'))
+				if (bg > 0) row.growth = 4
+			} else if (bg < 0) {
+				row.growth = 1
 			}
 			break
 		}
 		case 9: {
-			row.size = v === 'A' ? -3 : -4
+			const bs = bankNum('size')
+			if (v === 'A') {
+				if (bs > 0) row.size = 3
+			} else if (bs < 0) {
+				row.size = -3
+			}
 			break
 		}
 		case 10: {
-			row.momentum = v === 'A' ? f_maxInt(rawByUid, 'momentum') : f_minInt(rawByUid, 'momentum')
+			if (v === 'A') {
+				const bm = bankNum('momentum')
+				if (bm > 0) row.momentum = 3
+				else if (bm < 0) row.momentum = -3
+			} else {
+				const bbp = bankNum('book_to_price')
+				if (bbp > 0) row.momentum = 2
+				else if (bbp < 0) row.momentum = -2
+			}
 			break
 		}
 		default:

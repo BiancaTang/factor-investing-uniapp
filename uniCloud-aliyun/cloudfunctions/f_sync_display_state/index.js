@@ -6,6 +6,54 @@ const db = uniCloud.database()
 
 const FACTOR_KEYS = F_FACTOR_DEFS.map((d) => d.key)
 
+function f_isHttpUrl(s) {
+	return /^https?:\/\//i.test(String(s || ''))
+}
+
+/** 批量读取 f_user_profile 头像，云存储 fileID 转为临时 HTTPS 链接供 H5 展示 */
+async function f_avatarByUidMap(uids) {
+	const out = {}
+	const unique = [...new Set((uids || []).map((u) => String(u || '').trim()).filter(Boolean))]
+	if (!unique.length) return out
+
+	const _ = db.command
+	const profRes = await db
+		.collection('f_user_profile')
+		.where({ f_uid: _.in(unique) })
+		.field({ f_uid: true, f_avatar_url: true })
+		.get()
+
+	const cloudPairs = []
+	for (const row of profRes.data || []) {
+		const uid = row.f_uid ? String(row.f_uid) : ''
+		const url = row.f_avatar_url != null ? String(row.f_avatar_url).trim() : ''
+		if (!uid || !url) continue
+		if (f_isHttpUrl(url)) {
+			out[uid] = url
+		} else {
+			cloudPairs.push({ uid, fileID: url })
+		}
+	}
+
+	if (!cloudPairs.length) return out
+
+	try {
+		const tempRes = await uniCloud.getTempFileURL({ fileList: cloudPairs.map((c) => c.fileID) })
+		const fileList = tempRes.fileList || []
+		for (let i = 0; i < cloudPairs.length; i++) {
+			const { uid, fileID } = cloudPairs[i]
+			const item = fileList[i]
+			out[uid] = (item && item.tempFileURL) || fileID
+		}
+	} catch (_) {
+		for (const { uid, fileID } of cloudPairs) {
+			if (!out[uid]) out[uid] = fileID
+		}
+	}
+
+	return out
+}
+
 function f_skillBroadcastLogForClient(row) {
 	const raw = row.f_skill_broadcast_log
 	if (Array.isArray(raw) && raw.length) {
@@ -194,6 +242,7 @@ exports.main = async (event) => {
 		}
 
 		const memRows = memRes.data || []
+		const avatarByUid = await f_avatarByUidMap(memRows.map((m) => m.f_player_uid))
 		const players = memRows.map((m, idx) => {
 			const uid = m.f_player_uid
 			const openRow = openRound > 0 ? roundRowByUid.get(uid) : null
@@ -215,7 +264,7 @@ exports.main = async (event) => {
 			return {
 				uid,
 				nickName: m.f_nick_name || `玩家${idx + 1}`,
-				avatar: '',
+				avatar: avatarByUid[String(uid || '')] || '',
 				charId: null,
 				charName: null,
 				charFaction: null,

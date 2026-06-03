@@ -4,6 +4,8 @@
 	"version": "1.0.0",
 	"description": "uni-app：HBuilderX 发行勿提交根目录 vite.config.mjs；CLI 打包见 vite.uni-cli.example.mjs 头注释",
 	"scripts": {
+		"dev:h5": "UNI_INPUT_DIR=. uni",
+		"build:h5": "UNI_INPUT_DIR=. uni build",
 		"update-browserslist": "update-browserslist-db"
 	},
 	"dependencies": {

@@ -1,18 +1,16 @@
 <template>
 	<view class="runway">
-		<view class="runway-track">
-			<!-- 跑道刻度 -->
+		<view class="runway-track" :style="{ height: trackLayout.height + 'px' }">
+			<!-- 跑道刻度（NAV 1 在左侧起点） -->
 			<view class="track-marks">
-				<view v-for="n in 11" :key="n" class="mark" :style="{ left: ((n - 1) * 10) + '%' }">
-					<text class="mark-num">{{ n - 1 }}</text>
+				<view v-for="mark in trackMarks" :key="mark.label" class="mark" :style="{ left: mark.left + '%' }">
+					<text class="mark-num">{{ mark.label }}</text>
 				</view>
 			</view>
 
 			<!-- 起点/终点标识 -->
-			<text class="track-start">◆</text>
-			<text class="track-end">◆</text>
-
-			<!-- 玩家棋子 -->
+			<text class="track-start" :style="{ left: LEFT_PCT + '%' }">◆</text>
+			<text class="track-end" :style="{ left: RIGHT_PCT + '%' }">◆</text>
 			<view
 				v-for="player in sortedPlayers"
 				:key="player.uid"
@@ -20,8 +18,8 @@
 				:style="getPieceStyle(player)"
 			>
 				<view class="piece-avatar" :style="{ borderColor: getFactionColor(player.charFaction) }">
-					<image v-if="player.avatar" :src="player.avatar" class="piece-img" />
-					<text v-else class="piece-symbol">◆</text>
+					<image v-if="player.avatar" :src="player.avatar" class="piece-img" mode="aspectFill" />
+					<text v-else class="piece-symbol">{{ (player.nickName || '?').slice(0, 1) }}</text>
 				</view>
 				<view class="piece-info">
 					<text class="piece-name">{{ player.nickName }}</text>
@@ -50,22 +48,53 @@ const FACTION_COLORS = {
 	aggressive: '#e53935'
 }
 
+const START_NAV = 1
+const LEFT_PCT = 8
+const RIGHT_PCT = 92
+const LANE_HEIGHT = 40
+const TRACK_PAD_Y = 12
+const TRACK_MIN_HEIGHT = 72
+
 const sortedPlayers = computed(() =>
 	[...props.players].sort((a, b) => Number(b.nav) - Number(a.nav))
 )
 
+const trackLayout = computed(() => {
+	const count = Math.max(1, sortedPlayers.value.length)
+	const height = Math.max(TRACK_MIN_HEIGHT, TRACK_PAD_Y * 2 + count * LANE_HEIGHT)
+	return { height, count }
+})
+
+function resolveNavRange() {
+	const navs = props.players.map(p => Number(p.nav)).filter(n => Number.isFinite(n))
+	const dataMax = navs.length ? Math.max(...navs) : START_NAV
+	const maxNav = Math.max(START_NAV + 0.001, props.maxNav, dataMax)
+	return { maxNav, range: maxNav - START_NAV }
+}
+
+const trackMarks = computed(() => {
+	const { range } = resolveNavRange()
+	const count = 5
+	return Array.from({ length: count }, (_, i) => {
+		const ratio = count === 1 ? 0 : i / (count - 1)
+		const left = LEFT_PCT + ratio * (RIGHT_PCT - LEFT_PCT)
+		const navVal = START_NAV + ratio * range
+		const label = range < 0.5 ? navVal.toFixed(2) : navVal.toFixed(1)
+		return { left, label }
+	})
+})
+
 function getPieceStyle(player) {
-	const max = Math.max(props.maxNav, ...props.players.map(p => Number(p.nav)))
-	const min = Math.min(0.5, ...props.players.map(p => Number(p.nav)))
-	const range = max - min || 1
-	const pos = ((Number(player.nav) - min) / range) * 90 + 5
+	const { range } = resolveNavRange()
+	const nav = Number(player.nav)
+	const ratio = Math.max(0, Math.min(1, (nav - START_NAV) / range))
+	const pos = LEFT_PCT + ratio * (RIGHT_PCT - LEFT_PCT)
 
 	const rank = sortedPlayers.value.findIndex(p => p.uid === player.uid)
-	const laneOffset = (rank % 3) * 28
 
 	return {
 		left: pos + '%',
-		top: (10 + laneOffset) + 'px',
+		top: (TRACK_PAD_Y + rank * LANE_HEIGHT) + 'px',
 		zIndex: 10 + rank
 	}
 }
@@ -83,11 +112,12 @@ function getFactionColor(faction) {
 
 .runway-track {
 	position: relative;
-	height: 120px;
+	min-height: 72px;
 	background: linear-gradient(180deg, rgba(255,255,255,0.01) 0%, rgba(255,255,255,0.03) 100%);
 	border-radius: 1px;
 	border: 1px solid rgba(255,255,255,0.04);
 	overflow: visible;
+	transition: height 0.35s ease;
 }
 
 .track-marks {
@@ -116,35 +146,27 @@ function getFactionColor(faction) {
 	color: #333;
 }
 
-.track-start {
-	position: absolute;
-	left: 8px;
-	top: 50%;
-	transform: translateY(-50%);
-	font-size: 12px;
-	color: #333;
-}
-
+.track-start,
 .track-end {
 	position: absolute;
-	right: 8px;
 	top: 50%;
-	transform: translateY(-50%);
+	transform: translate(-50%, -50%);
 	font-size: 12px;
 	color: #333;
 }
 
 .player-piece {
 	position: absolute;
-	transition: left 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+	transform: translateX(-50%);
+	transition: left 0.8s cubic-bezier(0.34, 1.56, 0.64, 1), top 0.35s ease;
 	display: flex;
 	align-items: center;
 	gap: 6px;
 }
 
 .piece-avatar {
-	width: 28px;
-	height: 28px;
+	width: 32px;
+	height: 32px;
 	border-radius: 50%;
 	border: 1px solid;
 	overflow: hidden;
