@@ -102,7 +102,8 @@
 			<view v-else-if="status" class="empty">暂无成员或未加入房间</view>
 
 			<view v-if="status && status.f_game_ended && rankingList.length" class="ranking">
-				<text class="list-title">最终净值排名</text>
+				<text class="list-title">累积净值 · 最终排名</text>
+				<text class="ranking-hint">与净值对比图曲线终值一致</text>
 				<view v-for="r in rankingList" :key="r.f_player_uid" class="li">
 					<text class="ph">#{{ r.rank }} {{ r.f_nick_name }}</text>
 					<text class="pr">净值 {{ r.f_nav_text }}</text>
@@ -143,8 +144,15 @@ import { onLoad } from '@dcloudio/uni-app'
 import FGameCharts from '../../components/f-game-charts/f-game-charts.vue'
 import FRoundMarketEvent from '../../components/f-round-market-event/f-round-market-event.vue'
 import FSkillBroadcastBanner from '../../components/f-skill-broadcast-banner/f-skill-broadcast-banner.vue'
-import { f_skillBroadcastLogFromRoomData } from '../../utils/f_skillBroadcastLog.js'
-import { f_buildJointNavCompareChartData, f_simulatePythonFactorGame } from '../../utils/f_factorEngine.js'
+import {
+	f_skillBroadcastLogFromRoomData,
+	f_skillToastTitleFromEntry
+} from '../../utils/f_skillBroadcastLog.js'
+import {
+	f_buildJointNavCompareChartData,
+	f_lastSimNavByPlayerId,
+	f_simulatePythonFactorGame
+} from '../../utils/f_factorEngine.js'
 import {
 	f_roundEventFactorMultipliersByRoundFromRoomMap,
 	f_normalizeRandomEventsByRound
@@ -184,7 +192,8 @@ function processSkillBroadcastPayloadObs(data) {
 	if (!Number.isFinite(seq) || seq < 1 || !latest) return
 	if (seq <= lastSkillSeqSeenObs.value) return
 	lastSkillSeqSeenObs.value = seq
-	uni.showToast({ title: '技能播报', icon: 'none', duration: 1800 })
+	const toastTitle = f_skillToastTitleFromEntry(latest) || '技能播报'
+	uni.showToast({ title: toastTitle, icon: 'none', duration: 2200 })
 }
 onLoad((q) => {
 	const u = f_getStoredUser()
@@ -389,40 +398,33 @@ const simulationPlayersForObs = computed(() => {
 
 const rankingList = computed(() => {
 	const ps = (status.value && status.value.f_players) || []
-	const ifBanker = !!(status.value && status.value.f_banker_intervene)
-	const adminUid = status.value && status.value.f_admin_uid ? String(status.value.f_admin_uid) : ''
-	const bankerNav0 = Math.max(1, Math.floor(roomGroupCount.value / 3))
-	const sim = f_simulatePythonFactorGame(
-		ps.map((p) => ({
+	const withHist = ps.filter((p) => Array.isArray(p.f_history) && p.f_history.length > 0)
+	if (!withHist.length) return []
+	const simOpts = {
+		if_banker: !!(status.value && status.value.f_banker_intervene),
+		f_group_count: roomGroupCount.value,
+		f_admin_uid: status.value && status.value.f_admin_uid ? String(status.value.f_admin_uid) : '',
+		roleIdByPlayerId: f_roleMapFromObsPlayers(),
+		role1_10ActiveRoundByPlayerId: f_role1_10ActiveRoundByPlayerIdFromObs(),
+		roleActiveVariantByPlayerId: f_roleActiveVariantByPlayerIdFromObs(),
+		role11ActiveRoundByPlayerId: f_role11ActiveRoundByPlayerIdFromObs(),
+		roundEventFactorMultipliersByRound: roundEventFactorMultipliersByRoundObs.value
+	}
+	const navMap = f_lastSimNavByPlayerId(
+		withHist.map((p) => ({
 			player_id: String(p.f_player_uid || ''),
-			history: Array.isArray(p.f_history) ? p.f_history : []
+			history: p.f_history
 		})),
-		{
-			if_banker: ifBanker,
-			f_group_count: roomGroupCount.value,
-			f_admin_uid: adminUid,
-			roleIdByPlayerId: f_roleMapFromObsPlayers(),
-			role1_10ActiveRoundByPlayerId: f_role1_10ActiveRoundByPlayerIdFromObs(),
-			roleActiveVariantByPlayerId: f_roleActiveVariantByPlayerIdFromObs(),
-			role11ActiveRoundByPlayerId: f_role11ActiveRoundByPlayerIdFromObs(),
-			roundEventFactorMultipliersByRound: roundEventFactorMultipliersByRoundObs.value
-		}
+		simOpts
 	)
-	const rows = ps.map((p) => {
+	const rows = withHist.map((p) => {
 		const uid = String(p.f_player_uid || '')
-		const pts = sim.navByPlayerId.get(uid) || []
-		const sortedPts = [...pts].sort((a, b) => a.round - b.round)
-		const last = sortedPts.length ? sortedPts[sortedPts.length - 1] : null
-		const nav = last ? Number(last.nav) : 0
-		let navNorm = Number.isFinite(nav) ? nav : 0
-		if (ifBanker && adminUid && uid === adminUid) {
-			navNorm = bankerNav0 === 0 ? navNorm : navNorm / bankerNav0
-		}
+		const navNorm = navMap.get(uid)
 		return {
 			f_player_uid: uid,
 			f_nick_name: p.f_nick_name || p.f_player_uid,
-			f_nav: navNorm,
-			f_round_index: last ? Number(last.round) : 0
+			f_nav: navNorm != null && Number.isFinite(navNorm) ? navNorm : 0,
+			f_round_index: (p.f_history[p.f_history.length - 1] && p.f_history[p.f_history.length - 1].f_round_index) || 0
 		}
 	})
 	rows.sort((a, b) => {
@@ -818,6 +820,13 @@ async function onFinishGame() {
 	margin-top: 24rpx;
 	padding-top: 18rpx;
 	border-top: 1rpx solid #3f341a;
+}
+
+.ranking-hint {
+	display: block;
+	font-size: 22rpx;
+	color: #8a7a50;
+	margin-bottom: 10rpx;
 }
 .footer {
 	position: fixed;

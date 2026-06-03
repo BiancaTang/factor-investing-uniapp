@@ -16,7 +16,7 @@
 				<LobbyScreen
 					v-if="state.currentPhase === 'lobby'"
 					:room-name="state.roomName"
-					:players="state.players"
+					:players="displayPlayers"
 					:max-players="state.maxPlayers"
 				/>
 
@@ -25,7 +25,7 @@
 					v-else-if="state.currentPhase === 'decision'"
 					:round-index="state.currentRoundIndex"
 					:time-left="state.timeLeft"
-					:players="state.players"
+					:players="displayPlayers"
 					:group-exposure="state.groupExposure"
 					:submitted-count="state.submittedCount"
 					:total-players="state.totalPlayers"
@@ -43,7 +43,7 @@
 				<SettlementScreen
 					v-else-if="state.currentPhase === 'settlement'"
 					:round-index="state.currentRoundIndex"
-					:players="state.players"
+					:players="displayPlayers"
 					:skill-log="state.skillLog"
 				/>
 
@@ -51,17 +51,18 @@
 				<ReviewScreen
 					v-else-if="state.currentPhase === 'review'"
 					:round-index="state.currentRoundIndex"
-					:group-exposure="state.groupExposure"
-					:event="state.currentEvent"
+					:group-exposure="displayGroupExposure"
+					:event="displayReviewEvent"
 					:skill-log="state.skillLog"
 					:round-history="state.roundHistory"
-					:players="state.players"
+					:players="displayPlayers"
+					:nav-series-by-uid="displayNavSeriesByUid"
 				/>
 
 				<!-- Act 5: 终局盛典 -->
 				<FinaleScreen
 					v-else-if="state.currentPhase === 'finale'"
-					:players="state.players"
+					:players="displayRankingPlayers"
 					:round-history="state.roundHistory"
 				/>
 			</view>
@@ -149,7 +150,12 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { ParticleSystem } from '@/utils/f_displayEngine.js'
-import { f_buildJointNavCompareChartData } from '@/utils/f_factorEngine.js'
+import { F_FACTOR_DEFS } from '@/utils/f_gameFactorSpec.js'
+import {
+	f_buildJointNavCompareChartData,
+	f_lastSimNavByPlayerId,
+	f_simNavSeriesByPlayerId
+} from '@/utils/f_factorEngine.js'
 import { f_roundEventFactorMultipliersByRoundFromRoomMap } from '@/utils/f_roundRandomEventMultipliers.js'
 import FGameCharts from '@/components/f-game-charts/f-game-charts.vue'
 import FSkillBroadcastBanner from '@/components/f-skill-broadcast-banner/f-skill-broadcast-banner.vue'
@@ -292,6 +298,120 @@ const displayChartSimRoleOpts = computed(() => ({
 			: {}
 }))
 
+const displaySimOptions = computed(() => ({
+	if_banker: !!state.value.ifBanker,
+	f_group_count: displayGroupCount.value,
+	f_admin_uid: state.value.roomAdminUid || '',
+	roundEventFactorMultipliersByRound: displayRoundEventFactorMultipliersByRound.value,
+	...displayChartSimRoleOpts.value
+}))
+
+/** 候场/决策跑道：全员列表，有提交历史的用与净值图一致的仿真 NAV */
+const displayPlayers = computed(() => {
+	const raw = state.value.players || []
+	const hist = playersWithChartHistory.value
+	if (!hist.length) return raw
+	const navMap = f_lastSimNavByPlayerId(hist, displaySimOptions.value)
+	const mapped = raw.map((p) => {
+		const uid = String(p.uid || '')
+		const n = navMap.get(uid)
+		if (n == null || !Number.isFinite(n)) return p
+		return { ...p, nav: n.toFixed(4) }
+	})
+	return [...mapped]
+		.sort((a, b) => Number(b.nav) - Number(a.nav))
+		.map((p, i) => ({ ...p, rank: i + 1 }))
+})
+
+/** 终局/复盘排名：仅含净值图同一批「有提交」玩家，避免 DB 净值与曲线不一致 */
+const displayRankingPlayers = computed(() => {
+	const hist = playersWithChartHistory.value
+	if (!hist.length) return displayPlayers.value
+	const navMap = f_lastSimNavByPlayerId(hist, displaySimOptions.value)
+	const rawByUid = Object.fromEntries(
+		(state.value.players || []).map((p) => [String(p.uid || ''), p])
+	)
+	return hist
+		.map((h) => {
+			const uid = String(h.player_id || '')
+			const raw = rawByUid[uid] || {}
+			const n = navMap.get(uid)
+			return {
+				uid,
+				nickName: h.label || raw.nickName || uid.slice(0, 8),
+				avatar: raw.avatar || '',
+				charId: raw.charId,
+				charName: raw.charName,
+				charFaction: raw.charFaction,
+				nav: (n != null && Number.isFinite(n) ? n : 1).toFixed(4),
+				exposure: raw.exposure || {},
+				hasSubmitted: raw.hasSubmitted
+			}
+		})
+		.sort((a, b) => Number(b.nav) - Number(a.nav))
+		.map((p, i) => ({ ...p, rank: i + 1 }))
+})
+
+/** 复盘：云函数在 openRound=0 时 groupExposure 可能全 0，用最近轮提交历史兜底 */
+const displayGroupExposure = computed(() => {
+	const raw = state.value.groupExposure || {}
+	if (F_FACTOR_DEFS.some((d) => Number(raw[d.key]) !== 0)) return raw
+	const ri = parseInt(state.value.currentRoundIndex, 10)
+	if (!Number.isFinite(ri) || ri <= 0 || state.value.currentPhase !== 'review') return raw
+	const hist = simulationPlayersForCharts.value
+	if (!hist.length) return raw
+	const out = {}
+	for (const def of F_FACTOR_DEFS) {
+		const vals = []
+		for (const p of hist) {
+			const row = (p.history || []).find((h) => Number(h.f_round_index) === ri)
+			if (row && row[def.key] != null) {
+				const n = Number(row[def.key])
+				if (Number.isFinite(n)) vals.push(n)
+			}
+		}
+		out[def.key] = vals.length
+			? Number((vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(2))
+			: 0
+	}
+	return out
+})
+
+/** 复盘事件：从 randomEventsByRound 还原（与云函数 EventScreen 结构一致） */
+const displayReviewEvent = computed(() => {
+	if (state.value.currentEvent) return state.value.currentEvent
+	const ri = parseInt(state.value.currentRoundIndex, 10)
+	if (!Number.isFinite(ri) || ri <= 0 || ri % 2 !== 0) return null
+	const snap = (state.value.randomEventsByRound || {})[String(ri)]
+	if (!snap || typeof snap !== 'object' || !snap.name) return null
+	const UP = 1.18
+	const DOWN = 1 / UP
+	const effects = (snap.effects || []).map((e) => ({
+		factor: e.internal,
+		direction: e.direction === 'up' ? 'up' : 'down',
+		multiplier: e.direction === 'up' ? UP : DOWN
+	}))
+	return {
+		cardId: snap.cardId || `EVT-${String(snap.id || 0).padStart(2, '0')}`,
+		name: snap.name,
+		category: snap.sentimentLabel || (snap.sentiment === 'good' ? '利好' : '利空'),
+		sentiment: snap.sentiment,
+		lore: snap.lore || '',
+		effects
+	}
+})
+
+const displayNavSeriesByUid = computed(() => {
+	const hist = playersWithChartHistory.value
+	if (!hist.length) return {}
+	const map = f_simNavSeriesByPlayerId(hist, displaySimOptions.value)
+	const obj = {}
+	for (const [uid, series] of map.entries()) {
+		obj[uid] = series
+	}
+	return obj
+})
+
 const compareNavChartData = computed(() => {
 	const list = playersWithChartHistory.value
 	if (list.length < 2) return null
@@ -301,13 +421,7 @@ const compareNavChartData = computed(() => {
 			history: p.history,
 			label: p.label || p.player_id
 		})),
-		{
-			if_banker: !!state.value.ifBanker,
-			f_group_count: displayGroupCount.value,
-			f_admin_uid: state.value.roomAdminUid || '',
-			roundEventFactorMultipliersByRound: displayRoundEventFactorMultipliersByRound.value,
-			...displayChartSimRoleOpts.value
-		}
+		displaySimOptions.value
 	)
 })
 

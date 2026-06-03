@@ -15,3 +15,19 @@ export function f_skillBroadcastLogFromRoomData(data) {
 	}
 	return []
 }
+
+/**
+ * 小程序 Toast：角色名 + 主动/被动，不附带轮次与数值说明。
+ * @param {{ lines?: string[] } | null | undefined} entry
+ * @returns {string}
+ */
+export function f_skillToastTitleFromEntry(entry) {
+	const lines = entry && Array.isArray(entry.lines) ? entry.lines.filter(Boolean) : []
+	if (!lines.length) return ''
+	const line = String(lines[0])
+	const activeM = line.match(/发动[「"]([^」"]+)[」"]主动/)
+	if (activeM) return `${activeM[1]} · 主动技能`
+	const passiveM = line.match(/被动[「"]([^」"]+)[」"]/)
+	if (passiveM) return `${passiveM[1]} · 被动技能`
+	return ''
+}

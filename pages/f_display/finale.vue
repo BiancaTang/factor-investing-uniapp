@@ -2,6 +2,7 @@
   <view class="finale-screen">
     <view class="finale-header">
       <text class="finale-title">终局盛典</text>
+      <text class="finale-sub">与下方「净值对比」图同一批玩家、同一终值（仿真累积 NAV）</text>
     </view>
 
     <view class="champion-section">
@@ -22,6 +23,17 @@
         <text class="podium-medal">{{ ['I', 'II', 'III'][idx] }}</text>
         <text class="podium-name">{{ player.nickName }}</text>
         <text class="podium-nav">{{ player.nav }}</text>
+      </view>
+    </view>
+
+    <view class="final-ranking-section">
+      <text class="ranking-title">全员排名</text>
+      <view class="final-ranking-list">
+        <view v-for="(player, idx) in sortedPlayers" :key="player.uid" class="rank-row">
+          <text class="rank-no">#{{ idx + 1 }}</text>
+          <text class="rank-name">{{ player.nickName }}</text>
+          <text class="rank-nav">NAV {{ player.nav }}</text>
+        </view>
       </view>
     </view>
 
@@ -97,6 +109,63 @@ function getFactionColor(faction) {
   font-weight: 300;
   color: #c9a84c;
   letter-spacing: 8px;
+  display: block;
+  text-align: center;
+}
+
+.finale-sub {
+  display: block;
+  text-align: center;
+  font-size: 11px;
+  color: #666;
+  margin-top: 10px;
+  letter-spacing: 1px;
+}
+
+.final-ranking-section {
+  width: 100%;
+  max-width: 520px;
+  margin-bottom: 28px;
+}
+
+.ranking-title {
+  font-size: 10px;
+  color: #555;
+  letter-spacing: 4px;
+  display: block;
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.final-ranking-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.rank-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+.rank-no {
+  width: 32px;
+  font-size: 12px;
+  color: #c9a84c;
+}
+
+.rank-name {
+  flex: 1;
+  font-size: 13px;
+  color: #aaa;
+}
+
+.rank-nav {
+  font-size: 13px;
+  color: #c9a84c;
+  font-variant-numeric: tabular-nums;
 }
 
 .champion-section {

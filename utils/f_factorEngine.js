@@ -452,6 +452,81 @@ export function f_buildJointNavCompareChartData(allPlayerHistories, options = {}
 	}
 }
 
+/** 与 f_buildJointNavCompareChartData 曲线终点一致：庄家用首轮 NAV 归一化，其余为仿真原值 */
+function f_chartAlignedNavValues(sortedPts, uid, options) {
+	const ifBanker = !!options.if_banker
+	const adminUid =
+		options.f_admin_uid != null && String(options.f_admin_uid).trim() !== ''
+			? String(options.f_admin_uid).trim()
+			: ''
+	const u = String(uid || '')
+	if (ifBanker && adminUid && u === adminUid) {
+		return f_normalizeNavPoints(sortedPts).map((p) => Number(p.nav))
+	}
+	return sortedPts.map((p) => {
+		const n = Number(p.nav)
+		return Number.isFinite(n) ? n : 1
+	})
+}
+
+/**
+ * 仿真末轮 NAV，与净值对比图曲线终点一致（庄家 = 归一化曲线末点，非 DB 原值）。
+ * @returns {Map<string, number>}
+ */
+export function f_lastSimNavByPlayerId(allPlayerHistories, options = {}) {
+	const sim = f_simulatePythonFactorGame(
+		(allPlayerHistories || []).map((p) => ({
+			player_id: p.player_id,
+			history: p.history || []
+		})),
+		options
+	)
+	const ifBanker = !!options.if_banker
+	const adminUid =
+		options.f_admin_uid != null && String(options.f_admin_uid).trim() !== ''
+			? String(options.f_admin_uid).trim()
+			: ''
+	const out = new Map()
+	for (const p of allPlayerHistories || []) {
+		const uid = String(p.player_id || '')
+		const sortedPts = [...(sim.navByPlayerId.get(uid) || [])].sort((a, b) => a.round - b.round)
+		if (!sortedPts.length) continue
+		const aligned = f_chartAlignedNavValues(sortedPts, uid, options)
+		const last = aligned.length ? aligned[aligned.length - 1] : 1
+		out.set(uid, Number.isFinite(last) ? last : 1)
+	}
+	if (ifBanker && adminUid && !out.has(adminUid) && sim.bankerNavByRound && sim.bankerNavByRound.length) {
+		const bankerPts = [...sim.bankerNavByRound].sort((a, b) => a.round - b.round)
+		const aligned = f_chartAlignedNavValues(bankerPts, adminUid, options)
+		const last = aligned.length ? aligned[aligned.length - 1] : 1
+		out.set(adminUid, Number.isFinite(last) ? last : 1)
+	}
+	return out
+}
+
+/**
+ * 各玩家仿真净值序列（按轮），与净值图 Y 轴数值一致。
+ * @returns {Map<string, number[]>}
+ */
+export function f_simNavSeriesByPlayerId(allPlayerHistories, options = {}) {
+	const sim = f_simulatePythonFactorGame(
+		(allPlayerHistories || []).map((p) => ({
+			player_id: p.player_id,
+			history: p.history || []
+		})),
+		options
+	)
+	const out = new Map()
+	for (const p of allPlayerHistories || []) {
+		const uid = String(p.player_id || '')
+		const sortedPts = [...(sim.navByPlayerId.get(uid) || [])].sort((a, b) => a.round - b.round)
+		let series = sortedPts.length ? f_chartAlignedNavValues(sortedPts, uid, options) : [1]
+		if (!series.length) series = [1]
+		out.set(uid, series)
+	}
+	return out
+}
+
 /**
  * @param {Array<ReturnType<typeof f_buildChartDataFromHistory>>} payloads
  * @deprecated 多人净值请改用 f_buildJointNavCompareChartData，保证与 Python 一致

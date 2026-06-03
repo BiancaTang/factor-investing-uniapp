@@ -224,6 +224,12 @@ exports.main = async (event) => {
 		}
 
 		const openRoundRows = openRound > 0 ? rows.filter((r) => parseInt(r.f_round_index, 10) === openRound) : []
+		/** 复盘阶段 openRound=0：用最近已完成轮次的提交数据算群体因子与事件 */
+		const exposureRound = openRound > 0 ? openRound : maxRoundIndexAll
+		const exposureRoundRows =
+			exposureRound > 0
+				? rows.filter((r) => parseInt(r.f_round_index, 10) === exposureRound)
+				: []
 		const submittedUids = new Set(openRoundRows.map((r) => r.f_player_uid).filter(Boolean))
 		const roundRowByUid = new Map()
 		for (const r of openRoundRows) {
@@ -232,7 +238,7 @@ exports.main = async (event) => {
 
 		const groupExposure = {}
 		for (const k of FACTOR_KEYS) {
-			const vals = openRoundRows.map((r) => Number(r[k] || 0)).filter((n) => Number.isFinite(n))
+			const vals = exposureRoundRows.map((r) => Number(r[k] || 0)).filter((n) => Number.isFinite(n))
 			if (!vals.length) {
 				groupExposure[k] = 0
 			} else {
@@ -328,7 +334,7 @@ exports.main = async (event) => {
 			}))
 			.filter((p) => p.history.length > 0)
 
-		const currentEvent = f_roomSnapshotToCurrentEvent(room, openRound)
+		const currentEvent = f_roomSnapshotToCurrentEvent(room, exposureRound)
 		const roleMaps = f_roleMapsFromMembers(memRows)
 
 		const skSeq = parseInt(room.f_skill_broadcast_seq, 10)
