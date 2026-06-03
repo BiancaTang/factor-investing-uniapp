@@ -40,6 +40,20 @@ function f_rolePortraitUrl(roleId) {
 	return `${F_CDN}/${slug}_${id}.png`
 }
 
+function f_rolePortraitGrayUrl(roleId) {
+	const n = parseInt(roleId, 10)
+	if (n === 11) {
+		return `${F_CDN}/${F_SLUGS[0]}_1_gray.jpg`
+	}
+	const slug = Number.isFinite(n) && n >= 1 && n <= 10 ? F_SLUGS[n - 1] : F_SLUGS[0]
+	const id = Number.isFinite(n) && n >= 1 && n <= 10 ? n : 1
+	return `${F_CDN}/${slug}_${id}_gray.jpg`
+}
+
+function f_rolePortraitDisplayUrl(roleId, selected) {
+	return selected ? f_rolePortraitGrayUrl(roleId) : f_rolePortraitUrl(roleId)
+}
+
 function f_roleById(roleId) {
 	const n = parseInt(roleId, 10)
 	return F_ROLES.find((r) => r.id === n) || null
@@ -48,5 +62,7 @@ function f_roleById(roleId) {
 module.exports = {
 	F_ROLES,
 	f_rolePortraitUrl,
+	f_rolePortraitGrayUrl,
+	f_rolePortraitDisplayUrl,
 	f_roleById
 }

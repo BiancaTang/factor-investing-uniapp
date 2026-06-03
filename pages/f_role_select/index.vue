@@ -62,7 +62,7 @@
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { f_getStoredUser } from '../../utils/f_userStorage.js'
-import { F_GAME_ROLES, f_gameRolePortraitUrl } from '../../utils/f_gameRolesSpec.js'
+import { F_GAME_ROLES, f_gameRolePortraitDisplayUrl } from '../../utils/f_gameRolesSpec.js'
 
 const roomCode = ref('')
 const loading = ref(true)
@@ -84,7 +84,7 @@ const roles = ref(
 		subtitle: r.subtitle,
 		mainFactor: r.mainFactor,
 		subFactor: r.subFactor,
-		image: f_gameRolePortraitUrl(r.id),
+		image: f_gameRolePortraitDisplayUrl(r.id, false),
 		selectedBy: '',
 		selectedByUid: ''
 	}))
@@ -121,7 +121,7 @@ async function fetchRoleStatus() {
 				subtitle: sr.subtitle,
 				mainFactor: sr.mainFactor,
 				subFactor: sr.subFactor,
-				image: sr.image || f_gameRolePortraitUrl(sr.id),
+				image: f_gameRolePortraitDisplayUrl(sr.id, !!sr.selectedByUid),
 				selectedBy: sr.selectedBy || '',
 				selectedByUid: sr.selectedByUid || ''
 			}))

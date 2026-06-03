@@ -193,3 +193,19 @@ export function f_gameRolePortraitUrl(roleId) {
 	const id = Number.isFinite(n) && n >= 1 && n <= 10 ? n : 1
 	return `${F_CDN}/${slug}_${id}.png`
 }
+
+/** 已被选中的角色展示图：如 yinghuo_1_gray.jpg */
+export function f_gameRolePortraitGrayUrl(roleId) {
+	const n = parseInt(roleId, 10)
+	if (n === 11) {
+		return `${F_CDN}/${F_SLUGS[0]}_1_gray.jpg`
+	}
+	const slug = Number.isFinite(n) && n >= 1 && n <= 10 ? F_SLUGS[n - 1] : F_SLUGS[0]
+	const id = Number.isFinite(n) && n >= 1 && n <= 10 ? n : 1
+	return `${F_CDN}/${slug}_${id}_gray.jpg`
+}
+
+/** @param {number} roleId @param {boolean} selected 是否已被某玩家选中 */
+export function f_gameRolePortraitDisplayUrl(roleId, selected) {
+	return selected ? f_gameRolePortraitGrayUrl(roleId) : f_gameRolePortraitUrl(roleId)
+}

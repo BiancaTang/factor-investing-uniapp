@@ -1,6 +1,6 @@
 'use strict'
 
-const { F_ROLES, f_rolePortraitUrl, f_roleById } = require('./f_gameRolesSpec.js')
+const { F_ROLES, f_rolePortraitDisplayUrl, f_roleById } = require('./f_gameRolesSpec.js')
 
 const db = uniCloud.database()
 const f_rooms = db.collection('f_room')
@@ -40,7 +40,7 @@ exports.main = async (event) => {
 			subtitle: r.subtitle,
 			mainFactor: r.mainFactor,
 			subFactor: r.subFactor,
-			image: f_rolePortraitUrl(r.id),
+			image: f_rolePortraitDisplayUrl(r.id, !!t),
 			selected: !!t,
 			selectedBy: t ? t.nick : '',
 			selectedByUid: t ? String(t.f_player_uid || '') : ''

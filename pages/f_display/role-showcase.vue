@@ -93,7 +93,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { onLoad, onUnload } from '@dcloudio/uni-app'
-import { F_GAME_ROLES, f_gameRolePortraitUrl } from '@/utils/f_gameRolesSpec.js'
+import { F_GAME_ROLES, f_gameRolePortraitDisplayUrl } from '@/utils/f_gameRolesSpec.js'
 
 const roomCode = ref('')
 const liveRoles = ref([])
@@ -128,11 +128,12 @@ const mergedRoles = computed(() => {
 	}
 	return F_GAME_ROLES.map((meta) => {
 		const live = map.get(meta.id)
+		const selectedByUid = (live && live.selectedByUid) || ''
 		return {
 			...meta,
-			image: f_gameRolePortraitUrl(meta.id),
+			image: f_gameRolePortraitDisplayUrl(meta.id, !!selectedByUid),
 			selectedBy: (live && live.selectedBy) || '',
-			selectedByUid: (live && live.selectedByUid) || ''
+			selectedByUid
 		}
 	})
 })
