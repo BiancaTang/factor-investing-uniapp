@@ -34,7 +34,7 @@ const props = defineProps({
 	snapshot: { type: Object, default: null },
 	/** 当前开放轮次（须为双数且与快照登记轮次一致时由父组件传入） */
 	openRound: { type: Number, default: 0 },
-	/** display：大屏；compact：小程序 / 观测页 */
+	/** display：大屏；displayPanel：大屏三栏内嵌；compact：小程序 / 观测页 */
 	variant: { type: String, default: 'compact' }
 })
 
@@ -237,6 +237,83 @@ const effectsRows = computed(() => f_eventEffectRowsFromSnapshot(props.snapshot)
 }
 
 .display .rme-lore-text {
+	font-size: 13px;
+	line-height: 1.55;
+}
+
+.rme.displayPanel {
+	border-radius: 0;
+	border: none;
+	background: transparent;
+	padding: 0;
+	max-width: none;
+	margin: 0;
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+	min-height: 0;
+}
+
+.displayPanel .rme-head {
+	margin-bottom: 10px;
+}
+
+.displayPanel .rme-kicker {
+	font-size: 13px;
+}
+
+.displayPanel .rme-sent {
+	font-size: 12px;
+	padding: 4px 10px;
+}
+
+.displayPanel .rme-title {
+	font-size: 20px;
+	margin-bottom: 12px;
+	line-height: 1.35;
+}
+
+.displayPanel .rme-fx {
+	margin-bottom: 12px;
+	flex-shrink: 0;
+}
+
+.displayPanel .rme-fx-title {
+	font-size: 14px;
+	margin-bottom: 8px;
+}
+
+.displayPanel .rme-fx-row {
+	gap: 8px;
+}
+
+.displayPanel .rme-chip {
+	min-width: 0;
+	flex: 1 1 calc(50% - 8px);
+	padding: 10px 12px;
+	border-radius: 6px;
+}
+
+.displayPanel .rme-chip-lab {
+	font-size: 14px;
+}
+
+.displayPanel .rme-chip-val {
+	font-size: 16px;
+}
+
+.displayPanel .rme-lore {
+	padding-top: 10px;
+	flex: 1;
+	min-height: 0;
+	overflow-y: auto;
+}
+
+.displayPanel .rme-lore-label {
+	font-size: 12px;
+}
+
+.displayPanel .rme-lore-text {
 	font-size: 13px;
 	line-height: 1.55;
 }

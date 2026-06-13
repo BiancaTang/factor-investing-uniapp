@@ -10,6 +10,13 @@ function f_isHttpUrl(s) {
 	return /^https?:\/\//i.test(String(s || ''))
 }
 
+function f_isCloudFileId(s) {
+	const u = String(s || '').trim()
+	if (!u) return false
+	if (u.startsWith('cloud://')) return true
+	return !f_isHttpUrl(u)
+}
+
 /** 批量读取 f_user_profile 头像，云存储 fileID 转为临时 HTTPS 链接供 H5 展示 */
 async function f_avatarByUidMap(uids) {
 	const out = {}
@@ -28,27 +35,29 @@ async function f_avatarByUidMap(uids) {
 		const uid = row.f_uid ? String(row.f_uid) : ''
 		const url = row.f_avatar_url != null ? String(row.f_avatar_url).trim() : ''
 		if (!uid || !url) continue
-		if (f_isHttpUrl(url)) {
-			out[uid] = url
-		} else {
+		if (f_isCloudFileId(url)) {
 			cloudPairs.push({ uid, fileID: url })
+		} else if (f_isHttpUrl(url)) {
+			out[uid] = url
 		}
 	}
 
 	if (!cloudPairs.length) return out
 
 	try {
-		const tempRes = await uniCloud.getTempFileURL({ fileList: cloudPairs.map((c) => c.fileID) })
-		const fileList = tempRes.fileList || []
-		for (let i = 0; i < cloudPairs.length; i++) {
-			const { uid, fileID } = cloudPairs[i]
-			const item = fileList[i]
-			out[uid] = (item && item.tempFileURL) || fileID
+		const fileList = cloudPairs.map((c) => c.fileID)
+		const tempRes = await uniCloud.getTempFileURL({ fileList })
+		const tempByFid = {}
+		for (const item of tempRes.fileList || []) {
+			if (item && item.fileID && item.tempFileURL) {
+				tempByFid[item.fileID] = item.tempFileURL
+			}
 		}
-	} catch (_) {
 		for (const { uid, fileID } of cloudPairs) {
-			if (!out[uid]) out[uid] = fileID
+			out[uid] = tempByFid[fileID] || ''
 		}
+	} catch (err) {
+		console.error('[f_avatarByUidMap] getTempFileURL', err)
 	}
 
 	return out

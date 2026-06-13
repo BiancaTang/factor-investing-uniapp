@@ -49,19 +49,67 @@ export function f_saveProfileToCloud(payload) {
 	})
 }
 
-/** 本地临时路径时上传到云存储，返回可写入 f_avatar_url 的链接或 fileID */
+/** 仅本地临时路径 / 空：不可在大屏或其它端展示 */
+export function f_isBrokenAvatarUrl(url) {
+	const s = String(url || '').trim()
+	if (!s) return true
+	if (s.startsWith('wxfile://')) return true
+	if (s.startsWith('file://')) return true
+	if (/^http:\/\/tmp\//i.test(s)) return true
+	return false
+}
+
+/** 已上传云存储、可长期写入库并在 H5/大屏展示的地址 */
+export function f_isCloudStoredAvatarUrl(url) {
+	const s = String(url || '').trim()
+	if (!s || f_isBrokenAvatarUrl(s)) return false
+	if (s.startsWith('cloud://')) return true
+	if (/^https:\/\/[^/]+\.cdn\.bspapp\.com\//i.test(s)) return true
+	if (/^https?:\/\//i.test(s)) return true
+	return s.length > 8
+}
+
+/** 展示用：须 getTempFileURL 的 cloud:// fileID */
+export function f_avatarUrlNeedsTempResolve(url) {
+	const s = String(url || '').trim()
+	return s.startsWith('cloud://') || (!f_isBrokenAvatarUrl(s) && !/^https?:\/\//i.test(s) && s.length > 8)
+}
+
+/** 本地临时路径 / 微信头像：上传到云存储，返回 cloud:// 或 CDN HTTPS */
 export async function f_ensureCloudAvatarUrl(filePath) {
 	if (!filePath) return ''
-	if (/^https?:\/\//i.test(filePath)) return filePath
+	const s = String(filePath).trim()
+	if (f_isCloudStoredAvatarUrl(s)) return s
+
+	if (/^https?:\/\//i.test(s)) {
+		if (/thirdwx\.qlogo\.cn|wx\.qlogo\.cn/i.test(s)) {
+			try {
+				const dl = await uni.downloadFile({ url: s })
+				if (dl.statusCode === 200 && dl.tempFilePath) {
+					return await f_uploadLocalAvatarToCloud(dl.tempFilePath)
+				}
+			} catch (e) {
+				console.warn('[f_ensureCloudAvatarUrl] wx avatar upload', e)
+			}
+		}
+		return s
+	}
+
+	return await f_uploadLocalAvatarToCloud(s)
+}
+
+async function f_uploadLocalAvatarToCloud(filePath) {
 	try {
-		const cloudPath = `f_upload/${Date.now()}_${Math.random().toString(36).slice(2)}.png`
+		const cloudPath = `f_upload/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`
 		const up = await uniCloud.uploadFile({ filePath, cloudPath })
-		const fid = up.fileID
-		const t = await uniCloud.getTempFileURL({ fileList: [fid] })
-		const u = t.fileList && t.fileList[0] && t.fileList[0].tempFileURL
-		return u || fid
+		const fid = up && up.fileID != null ? String(up.fileID).trim() : ''
+		if (fid && f_isCloudStoredAvatarUrl(fid)) {
+			return fid
+		}
+		console.error('[f_uploadLocalAvatarToCloud] invalid fileID', up)
+		return ''
 	} catch (e) {
-		console.error('[f_ensureCloudAvatarUrl]', e)
-		return filePath
+		console.error('[f_uploadLocalAvatarToCloud]', e)
+		return ''
 	}
 }

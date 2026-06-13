@@ -10,14 +10,16 @@
 				class="display-skill-strip"
 				:log="skillBroadcastLogDisplay"
 				variant="display"
+				header-only-when-collapsed
+				overlay-when-expanded
 			/>
 			<view class="display-stage">
 				<!-- Act 0: 候场大厅 -->
 				<LobbyScreen
 					v-if="state.currentPhase === 'lobby'"
-					:room-name="state.roomName"
-					:players="displayPlayers"
-					:max-players="state.maxPlayers"
+					:room-id="state.roomId"
+					:round-index="state.currentRoundIndex"
+					:players="state.players"
 				/>
 
 				<!-- Act 1: 决策倒计时 -->
@@ -31,6 +33,15 @@
 					:total-players="state.totalPlayers"
 					:market-snapshot="state.roundMarketSnapshot"
 					:market-open-round="state.roundMarketEventRound"
+					:if-banker="!!state.ifBanker"
+					:f-group-count="displayGroupCount"
+					:room-admin-uid="state.roomAdminUid || ''"
+					:simulation-players="simulationPlayersForCharts"
+					:role-id-by-player-id="displayChartSimRoleOpts.roleIdByPlayerId"
+					:role1-10-active-round-by-player-id="displayChartSimRoleOpts.role1_10ActiveRoundByPlayerId"
+					:role-active-variant-by-player-id="displayChartSimRoleOpts.roleActiveVariantByPlayerId"
+					:role11-active-round-by-player-id="displayChartSimRoleOpts.role11ActiveRoundByPlayerId"
+					:round-event-factor-multipliers-by-round="displayRoundEventFactorMultipliersByRound"
 				/>
 
 				<!-- Act 2: 事件降临 -->
@@ -52,11 +63,18 @@
 					v-else-if="state.currentPhase === 'review'"
 					:round-index="state.currentRoundIndex"
 					:group-exposure="displayGroupExposure"
-					:event="displayReviewEvent"
-					:skill-log="state.skillLog"
-					:round-history="state.roundHistory"
 					:players="displayPlayers"
-					:nav-series-by-uid="displayNavSeriesByUid"
+					:market-snapshot="displayReviewMarketSnapshot"
+					:market-open-round="displayReviewMarketEventRound"
+					:if-banker="!!state.ifBanker"
+					:f-group-count="displayGroupCount"
+					:room-admin-uid="state.roomAdminUid || ''"
+					:simulation-players="simulationPlayersForCharts"
+					:role-id-by-player-id="displayChartSimRoleOpts.roleIdByPlayerId"
+					:role1-10-active-round-by-player-id="displayChartSimRoleOpts.role1_10ActiveRoundByPlayerId"
+					:role-active-variant-by-player-id="displayChartSimRoleOpts.roleActiveVariantByPlayerId"
+					:role11-active-round-by-player-id="displayChartSimRoleOpts.role11ActiveRoundByPlayerId"
+					:round-event-factor-multipliers-by-round="displayRoundEventFactorMultipliersByRound"
 				/>
 
 				<!-- Act 5: 终局盛典 -->
@@ -72,21 +90,17 @@
 				<view class="dock-row">
 					<text class="dock-label">回合复盘</text>
 					<view class="dock-actions">
-						<button type="button" class="dock-btn" @click="openChartLightbox('nav')">
-							净值对比
-						</button>
-						<button type="button" class="dock-btn" @click="openChartLightbox('factor')">
-							因子累积收益
+						<button type="button" class="dock-btn" @click="openAttributionLightbox">
+							查看个人收益归因
 						</button>
 					</view>
 				</view>
-				<text class="dock-hint">管理员已结束本轮后可用 · 点击展开大图</text>
 			</view>
 		</view>
 
-		<!-- 全屏查看单张图，便于投屏分析 -->
+		<!-- 全屏查看个人收益归因 -->
 		<view
-			v-if="lightboxChart"
+			v-if="lightboxChart === 'attribution'"
 			class="chart-lightbox"
 			@click="closeChartLightbox"
 		>
@@ -97,34 +111,15 @@
 				</view>
 				<view class="chart-lightbox-body">
 					<FGameCharts
-						v-if="lightboxChart === 'nav'"
-						key="lb-nav"
+						:key="'lb-att-' + lightboxAttributionPlayerId"
 						:history="[]"
-						:nav-chart-data="compareNavChartData"
-						nav-chart-title="玩家净值对比（已提交玩家）"
-						only-nav
+						display-mode="attributionOnly"
+						chart-large
 						:if-banker="!!state.ifBanker"
 						:f-group-count="displayGroupCount"
 						:room-admin-uid="state.roomAdminUid || ''"
 						:simulation-players="simulationPlayersForCharts"
-						:attribution-player-id="displayAttributionPlayerId"
-						:round-event-factor-multipliers-by-round="displayRoundEventFactorMultipliersByRound"
-						:role-id-by-player-id="displayChartSimRoleOpts.roleIdByPlayerId"
-						:role1-10-active-round-by-player-id="displayChartSimRoleOpts.role1_10ActiveRoundByPlayerId"
-						:role-active-variant-by-player-id="displayChartSimRoleOpts.roleActiveVariantByPlayerId"
-						:role11-active-round-by-player-id="displayChartSimRoleOpts.role11ActiveRoundByPlayerId"
-						:chart-inner-height-px="lightboxChartInnerPx"
-					/>
-					<FGameCharts
-						v-else-if="lightboxChart === 'factor'"
-						key="lb-fc"
-						:history="[]"
-						display-mode="factorOnly"
-						:if-banker="!!state.ifBanker"
-						:f-group-count="displayGroupCount"
-						:room-admin-uid="state.roomAdminUid || ''"
-						:simulation-players="simulationPlayersForCharts"
-						:attribution-player-id="displayAttributionPlayerId"
+						:attribution-player-id="lightboxAttributionPlayerId"
 						:round-event-factor-multipliers-by-round="displayRoundEventFactorMultipliersByRound"
 						:role-id-by-player-id="displayChartSimRoleOpts.roleIdByPlayerId"
 						:role1-10-active-round-by-player-id="displayChartSimRoleOpts.role1_10ActiveRoundByPlayerId"
@@ -133,14 +128,23 @@
 						:chart-inner-height-px="lightboxChartInnerPx"
 					/>
 				</view>
+				<view class="chart-lightbox-players">
+					<view
+						v-for="p in attributionLightboxPlayers"
+						:key="p.uid"
+						class="lightbox-player"
+						:class="{ active: p.uid === lightboxAttributionPlayerId }"
+						@click="selectAttributionPlayer(p.uid)"
+					>
+						<image
+							:src="p.avatar || '/static/default-avatar.png'"
+							class="lightbox-player-avatar"
+							mode="aspectFill"
+						/>
+						<text class="lightbox-player-name">{{ p.nickName || '玩家' }}</text>
+					</view>
+				</view>
 			</view>
-		</view>
-
-		<!-- 底部状态栏 -->
-		<view class="display-footer">
-			<text class="footer-room">房间 {{ state.roomId }}</text>
-			<text class="footer-round">R{{ state.currentRoundIndex }}/{{ state.maxRounds }}</text>
-			<text class="footer-phase">{{ phaseLabel }}</text>
 		</view>
 		<f-factor-intro-fab />
 	</view>
@@ -152,11 +156,11 @@ import { onLoad } from '@dcloudio/uni-app'
 import { ParticleSystem } from '@/utils/f_displayEngine.js'
 import { F_FACTOR_DEFS } from '@/utils/f_gameFactorSpec.js'
 import {
-	f_buildJointNavCompareChartData,
 	f_lastSimNavByPlayerId,
 	f_simNavSeriesByPlayerId
 } from '@/utils/f_factorEngine.js'
 import { f_roundEventFactorMultipliersByRoundFromRoomMap } from '@/utils/f_roundRandomEventMultipliers.js'
+import { f_resolveDisplayPlayerAvatars } from '@/utils/f_displayAvatar.js'
 import FGameCharts from '@/components/f-game-charts/f-game-charts.vue'
 import FSkillBroadcastBanner from '@/components/f-skill-broadcast-banner/f-skill-broadcast-banner.vue'
 
@@ -221,17 +225,41 @@ const state = ref({
 const lightboxChartInnerPx = ref(420)
 
 const lightboxChart = ref(null)
+const lightboxAttributionPlayerId = ref('')
 
-function openChartLightbox(kind) {
-	lightboxChart.value = kind === 'factor' ? 'factor' : 'nav'
+function openAttributionLightbox() {
+	const defaultId = displayAttributionPlayerId.value
+	lightboxAttributionPlayerId.value =
+		defaultId || attributionLightboxPlayers.value[0]?.uid || ''
+	lightboxChart.value = 'attribution'
+}
+
+function selectAttributionPlayer(uid) {
+	lightboxAttributionPlayerId.value = String(uid || '')
 }
 
 function closeChartLightbox() {
 	lightboxChart.value = null
 }
 
+const attributionLightboxPlayers = computed(() =>
+	(state.value.players || []).map((p) => ({
+		uid: String(p.uid || ''),
+		nickName: p.nickName || '',
+		avatar: p.avatar || ''
+	}))
+)
+
+const lightboxAttributionPlayerName = computed(() => {
+	const id = lightboxAttributionPlayerId.value
+	const p = attributionLightboxPlayers.value.find((x) => x.uid === id)
+	return p?.nickName || '玩家'
+})
+
 const lightboxTitle = computed(() =>
-	lightboxChart.value === 'factor' ? '因子收益率曲线（累积）' : '玩家净值对比（已提交玩家）'
+	lightboxChart.value === 'attribution'
+		? `${lightboxAttributionPlayerName.value} · 收益归因`
+		: ''
 )
 
 const simulationPlayersForCharts = computed(() => {
@@ -267,6 +295,11 @@ const displayGroupCount = computed(() => {
 })
 
 const displayAttributionPlayerId = computed(() => {
+	const histSet = new Set(playersWithChartHistory.value.map((p) => String(p.player_id || '')))
+	for (const p of displayPlayers.value) {
+		const uid = String(p.uid || '')
+		if (histSet.has(uid)) return uid
+	}
 	const list = playersWithChartHistory.value
 	if (!list.length) return ''
 	return String(list[0].player_id || '')
@@ -377,28 +410,18 @@ const displayGroupExposure = computed(() => {
 	return out
 })
 
-/** 复盘事件：从 randomEventsByRound 还原（与云函数 EventScreen 结构一致） */
-const displayReviewEvent = computed(() => {
-	if (state.value.currentEvent) return state.value.currentEvent
+/** 复盘页随机事件：与决策页 FRoundMarketEvent 同一 snapshot 结构 */
+const displayReviewMarketSnapshot = computed(() => {
 	const ri = parseInt(state.value.currentRoundIndex, 10)
 	if (!Number.isFinite(ri) || ri <= 0 || ri % 2 !== 0) return null
 	const snap = (state.value.randomEventsByRound || {})[String(ri)]
 	if (!snap || typeof snap !== 'object' || !snap.name) return null
-	const UP = 1.18
-	const DOWN = 1 / UP
-	const effects = (snap.effects || []).map((e) => ({
-		factor: e.internal,
-		direction: e.direction === 'up' ? 'up' : 'down',
-		multiplier: e.direction === 'up' ? UP : DOWN
-	}))
-	return {
-		cardId: snap.cardId || `EVT-${String(snap.id || 0).padStart(2, '0')}`,
-		name: snap.name,
-		category: snap.sentimentLabel || (snap.sentiment === 'good' ? '利好' : '利空'),
-		sentiment: snap.sentiment,
-		lore: snap.lore || '',
-		effects
-	}
+	return snap
+})
+
+const displayReviewMarketEventRound = computed(() => {
+	const ri = parseInt(state.value.currentRoundIndex, 10)
+	return displayReviewMarketSnapshot.value && Number.isFinite(ri) && ri > 0 ? ri : 0
 })
 
 const displayNavSeriesByUid = computed(() => {
@@ -411,28 +434,6 @@ const displayNavSeriesByUid = computed(() => {
 	}
 	return obj
 })
-
-const compareNavChartData = computed(() => {
-	const list = playersWithChartHistory.value
-	if (list.length < 2) return null
-	return f_buildJointNavCompareChartData(
-		list.map((p) => ({
-			player_id: p.player_id,
-			history: p.history,
-			label: p.label || p.player_id
-		})),
-		displaySimOptions.value
-	)
-})
-
-const phaseLabel = computed(() => ({
-	lobby: '候场中',
-	decision: '决策中',
-	event: '事件降临',
-	settlement: '结算中',
-	review: '复盘',
-	finale: '终局盛典'
-}[state.value.currentPhase] || '等待'))
 
 const skillBroadcastLogDisplay = computed(() => {
 	const raw = state.value.skillBroadcastLog
@@ -545,7 +546,8 @@ async function fetchDisplayState() {
 		}
 		displaySkillBroadcastPrimed = true
 
-		state.value = newData
+		const playersResolved = await f_resolveDisplayPlayerAvatars(newData.players || [])
+		state.value = { ...newData, players: playersResolved }
 	} catch (err) {
 		console.error('大屏轮询异常:', err)
 	}
@@ -688,12 +690,15 @@ onUnmounted(() => {
 <style scoped>
 /* === 高维神权 · 黑金主调 === */
 .display-page {
-	width: 100vw;
+	width: 100%;
+	max-width: 100%;
 	height: 100vh;
+	height: 100dvh;
 	background: #050505;
 	color: #e8e4dc;
 	overflow: hidden;
 	position: relative;
+	box-sizing: border-box;
 	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Noto Sans SC', sans-serif;
 }
 
@@ -709,25 +714,34 @@ onUnmounted(() => {
 	display: flex;
 	flex-direction: column;
 	width: 100%;
-	height: calc(100% - 48px);
+	max-width: 100%;
+	height: 100%;
+	min-width: 0;
 	position: relative;
 	z-index: 10;
-	overflow-x: hidden;
+	overflow-x: clip;
 	overflow-y: auto;
+	box-sizing: border-box;
 }
 
 .display-skill-strip {
 	flex-shrink: 0;
-	width: calc(100% - 32px);
-	max-width: 960px;
-	margin: 10px auto 0;
-	z-index: 20;
+	width: calc(100% - 40px);
+	margin: 8px 20px 0;
+	position: relative;
+	z-index: 60;
+	box-sizing: border-box;
 }
 
 .display-stage {
 	flex: 1;
 	min-height: 0;
+	min-width: 0;
+	width: 100%;
+	max-width: 100%;
 	position: relative;
+	overflow: hidden;
+	box-sizing: border-box;
 }
 
 .display-chart-dock {
@@ -774,14 +788,6 @@ onUnmounted(() => {
 .dock-btn:hover {
 	background: rgba(48, 42, 26, 0.98);
 	border-color: rgba(212, 175, 55, 0.65);
-}
-
-.dock-hint {
-	display: block;
-	margin-top: 6px;
-	font-size: 11px;
-	color: rgba(160, 150, 130, 0.75);
-	letter-spacing: 0.04em;
 }
 
 .chart-lightbox {
@@ -860,38 +866,61 @@ onUnmounted(() => {
 	margin-bottom: 8px;
 }
 
-.display-footer {
-	position: fixed;
-	bottom: 0;
-	left: 0;
-	right: 0;
-	height: 48px;
-	background: rgba(5, 5, 5, 0.85);
-	border-top: 1px solid rgba(201, 168, 76, 0.15);
+.chart-lightbox-players {
 	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 12px 16px;
+	padding: 12px 16px 16px;
+	border-top: 1px solid rgba(201, 168, 76, 0.18);
+	max-height: 140px;
+	overflow-y: auto;
+}
+
+.lightbox-player {
+	display: flex;
+	flex-direction: column;
 	align-items: center;
-	justify-content: space-between;
-	padding: 0 32px;
-	z-index: 50;
-	backdrop-filter: blur(4px);
+	gap: 4px;
+	width: 56px;
+	cursor: pointer;
+	opacity: 0.72;
+	transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
-.footer-room {
-	font-size: 12px;
-	color: #555;
-	letter-spacing: 2px;
+.lightbox-player.active {
+	opacity: 1;
 }
 
-.footer-round {
-	font-size: 14px;
-	font-weight: 500;
-	color: #c9a84c;
-	letter-spacing: 2px;
+.lightbox-player.active .lightbox-player-avatar {
+	border-color: #d4af37;
+	box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.35);
 }
 
-.footer-phase {
-	font-size: 12px;
-	color: #666;
-	letter-spacing: 2px;
+.lightbox-player-avatar {
+	width: 40px;
+	height: 40px;
+	border-radius: 50%;
+	border: 2px solid rgba(201, 168, 76, 0.35);
+	background: rgba(0, 0, 0, 0.3);
+}
+
+.lightbox-player-name {
+	font-size: 10px;
+	color: rgba(220, 197, 138, 0.85);
+	text-align: center;
+	max-width: 56px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+</style>
+
+<style>
+page {
+	width: 100%;
+	max-width: 100%;
+	overflow-x: hidden;
+	box-sizing: border-box;
 }
 </style>

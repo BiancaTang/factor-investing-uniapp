@@ -1,80 +1,105 @@
 <template>
 	<view class="lobby-screen">
 		<view class="lobby-header">
-			<text class="lobby-title">因子博弈沙盘</text>
-			<text class="lobby-subtitle">FACTOR INVESTING BATTLE</text>
+			<text class="lobby-title">影子博弈沙盘</text>
+			<text class="lobby-datetime">{{ dateTimeLabel }}</text>
 		</view>
 
-		<view class="lobby-center">
-			<FactorRing :exposure="demoExposure" :current-round="0" :size="ringSize" />
-		</view>
-
-		<view class="lobby-bottom">
-			<view class="lobby-status">
-				<text class="status-text">{{ roomName || '—' }}</text>
-				<text class="status-players">{{ readyCount }} / {{ maxPlayers }}</text>
+		<view class="lobby-meta">
+			<view class="meta-item">
+				<text class="meta-label">房间号</text>
+				<text class="meta-value">{{ roomId || '—' }}</text>
 			</view>
+			<view class="meta-item">
+				<text class="meta-label">轮次</text>
+				<text class="meta-value">{{ roundLabel }}</text>
+			</view>
+			<view class="meta-item">
+				<text class="meta-label">状态</text>
+				<text class="meta-value status-waiting">候场中</text>
+			</view>
+		</view>
 
-			<view v-if="readyPlayers.length" class="lobby-players">
-				<view v-for="player in readyPlayers" :key="player.uid" class="ready-chip">
-					<image v-if="player.avatar" :src="player.avatar" class="chip-avatar" />
-					<text v-else class="chip-dot">◆</text>
-					<text class="chip-name">{{ player.nickName }}</text>
+		<view class="lobby-roster">
+			<text class="roster-title">候场人员</text>
+			<view v-if="players.length" class="roster-grid">
+				<view v-for="player in players" :key="player.uid" class="roster-card">
+					<view class="roster-avatar-wrap">
+						<image
+							v-if="player.avatar && !isAvatarBroken(player)"
+							:src="player.avatar"
+							class="roster-avatar"
+							mode="aspectFill"
+							referrerpolicy="no-referrer"
+							@error="onAvatarError(player)"
+						/>
+						<text v-else class="roster-avatar-fallback">{{ avatarInitial(player) }}</text>
+					</view>
+					<text class="roster-name">{{ player.nickName || '玩家' }}</text>
 				</view>
 			</view>
-
-			<view class="lobby-quote">
-				<text class="quote-text">等待管理员开启第一轮</text>
+			<view v-else class="roster-empty">
+				<text>暂无成员</text>
 			</view>
 		</view>
+
 		<f-factor-intro-fab />
 	</view>
 </template>
 
 <script setup>
 import { computed, ref, onMounted, onUnmounted } from 'vue'
-import FactorRing from '@/components/f-display/factor-ring.vue'
 
 const props = defineProps({
-	roomName: { type: String, default: '' },
-	players: { type: Array, default: () => [] },
-	maxPlayers: { type: Number, default: 20 }
+	roomId: { type: String, default: '' },
+	roundIndex: { type: Number, default: 0 },
+	players: { type: Array, default: () => [] }
 })
 
-const readyPlayers = computed(() => props.players.slice(0, 8))
-const readyCount = computed(() => props.players.length)
+const brokenAvatarUids = ref(new Set())
 
-const demoExposure = computed(() => ({
-	fac_size: 0.5,
-	fac_beta: -0.3,
-	fac_momentum: 0.8,
-	fac_non_linear_size: 0.2,
-	fac_book_to_price: -0.5,
-	fac_earnings_yield: 0.3,
-	fac_growth: 1.2,
-	fac_leverage: -0.2,
-	fac_liquidity: 0.4,
-	fac_residual_volatility: -0.6
-}))
+const now = ref(Date.now())
+let clockTimer = null
 
-const ringSize = ref(380)
+const dateTimeLabel = computed(() => {
+	const d = new Date(now.value)
+	const y = d.getFullYear()
+	const mo = String(d.getMonth() + 1).padStart(2, '0')
+	const da = String(d.getDate()).padStart(2, '0')
+	const h = String(d.getHours()).padStart(2, '0')
+	const mi = String(d.getMinutes()).padStart(2, '0')
+	const s = String(d.getSeconds()).padStart(2, '0')
+	return `${y}年${mo}月${da}日 ${h}:${mi}:${s}`
+})
 
-function updateRingSize() {
-	const w = typeof window !== 'undefined' ? window.innerWidth : 1200
-	const h = typeof window !== 'undefined' ? window.innerHeight : 800
-	const cap = Math.min(w - 48, h - 220, 520)
-	ringSize.value = Math.max(280, Math.floor(cap))
+const roundLabel = computed(() => {
+	const n = parseInt(props.roundIndex, 10)
+	return Number.isFinite(n) && n > 0 ? String(n) : '—'
+})
+
+function avatarInitial(player) {
+	const name = (player && player.nickName) || '?'
+	return String(name).slice(0, 1)
+}
+
+function isAvatarBroken(player) {
+	return brokenAvatarUids.value.has(String(player && player.uid))
+}
+
+function onAvatarError(player) {
+	const uid = player && player.uid
+	if (!uid) return
+	brokenAvatarUids.value = new Set([...brokenAvatarUids.value, String(uid)])
 }
 
 onMounted(() => {
-	updateRingSize()
-	window.addEventListener('resize', updateRingSize)
+	clockTimer = setInterval(() => {
+		now.value = Date.now()
+	}, 1000)
 })
 
 onUnmounted(() => {
-	if (typeof window !== 'undefined') {
-		window.removeEventListener('resize', updateRingSize)
-	}
+	if (clockTimer) clearInterval(clockTimer)
 })
 </script>
 
@@ -86,7 +111,7 @@ onUnmounted(() => {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	padding: 24px 32px 88px;
+	padding: 40px 48px 40px;
 	box-sizing: border-box;
 	overflow: auto;
 }
@@ -94,109 +119,132 @@ onUnmounted(() => {
 .lobby-header {
 	flex-shrink: 0;
 	text-align: center;
-	margin-bottom: 16px;
+	margin-bottom: 36px;
 }
 
 .lobby-title {
-	font-size: clamp(22px, 3.2vw, 34px);
+	font-size: clamp(28px, 4vw, 42px);
 	font-weight: 300;
 	color: #c9a84c;
 	display: block;
-	letter-spacing: clamp(4px, 0.8vw, 10px);
+	letter-spacing: clamp(6px, 1vw, 14px);
 }
 
-.lobby-subtitle {
-	font-size: 11px;
-	color: #6a6358;
+.lobby-datetime {
 	display: block;
-	margin-top: 10px;
-	letter-spacing: 3px;
+	margin-top: 16px;
+	font-size: clamp(14px, 1.6vw, 18px);
+	color: #8a8275;
+	letter-spacing: 2px;
+	font-variant-numeric: tabular-nums;
 }
 
-.lobby-center {
+.lobby-meta {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 32px 56px;
+	margin-bottom: 40px;
+	width: 100%;
+	max-width: 900px;
+}
+
+.meta-item {
+	text-align: center;
+	min-width: 100px;
+}
+
+.meta-label {
+	display: block;
+	font-size: 11px;
+	color: #5c564d;
+	letter-spacing: 3px;
+	margin-bottom: 8px;
+}
+
+.meta-value {
+	display: block;
+	font-size: clamp(20px, 2.4vw, 28px);
+	color: #d4c4a0;
+	letter-spacing: 2px;
+	font-weight: 300;
+}
+
+.meta-value.status-waiting {
+	color: #c9a84c;
+}
+
+.lobby-roster {
+	flex: 1;
+	width: 100%;
+	max-width: 1100px;
+	min-height: 0;
+	display: flex;
+	flex-direction: column;
+}
+
+.roster-title {
+	font-size: 12px;
+	color: #6a6358;
+	letter-spacing: 4px;
+	text-align: center;
+	margin-bottom: 24px;
+}
+
+.roster-grid {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 20px 24px;
+	padding: 8px 0 24px;
+}
+
+.roster-card {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	width: 96px;
+}
+
+.roster-avatar-wrap {
+	width: 64px;
+	height: 64px;
+	border-radius: 50%;
+	border: 1px solid rgba(201, 168, 76, 0.35);
+	background: rgba(0, 0, 0, 0.35);
+	overflow: hidden;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-bottom: 10px;
+}
+
+.roster-avatar {
+	width: 100%;
+	height: 100%;
+}
+
+.roster-avatar-fallback {
+	font-size: 22px;
+	color: #c9a84c;
+}
+
+.roster-name {
+	font-size: 13px;
+	color: #a89b88;
+	text-align: center;
+	line-height: 1.35;
+	word-break: break-all;
+	max-width: 100%;
+}
+
+.roster-empty {
 	flex: 1;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	min-height: 0;
-	width: 100%;
-	padding: 8px 0;
-}
-
-.lobby-bottom {
-	flex-shrink: 0;
-	width: 100%;
-	max-width: 720px;
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 16px;
-	margin-top: 8px;
-}
-
-.lobby-status {
-	text-align: center;
-}
-
-.status-text {
-	font-size: 13px;
-	color: #7a7268;
-	display: block;
+	font-size: 14px;
+	color: #555;
 	letter-spacing: 2px;
-}
-
-.status-players {
-	font-size: 18px;
-	font-weight: 400;
-	color: #a89b88;
-	display: block;
-	margin-top: 6px;
-	letter-spacing: 2px;
-}
-
-.lobby-players {
-	display: flex;
-	flex-wrap: wrap;
-	justify-content: center;
-	gap: 10px;
-	width: 100%;
-}
-
-.ready-chip {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	padding: 6px 14px;
-	background: rgba(201, 168, 76, 0.08);
-	border: 1px solid rgba(201, 168, 76, 0.18);
-	border-radius: 4px;
-}
-
-.chip-avatar {
-	width: 22px;
-	height: 22px;
-	border-radius: 50%;
-}
-
-.chip-dot {
-	font-size: 11px;
-	color: #c9a84c;
-}
-
-.chip-name {
-	font-size: 12px;
-	color: #9a9085;
-	letter-spacing: 1px;
-}
-
-.lobby-quote {
-	text-align: center;
-	padding-bottom: 4px;
-}
-
-.quote-text {
-	font-size: 12px;
-	color: #7a7268;
-	letter-spacing: 4px;
 }
 </style>

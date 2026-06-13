@@ -12,7 +12,7 @@ import { patchCanvasForEcharts } from '../utils/echartsWxCanvasPatch.js'
 /**
  * @param {() => any} getChartData
  * @param {import('vue').ComponentInternalInstance | null} vueInstance setup 内同步取得的 getCurrentInstance()，勿在异步里取
- * @param {{ onlyNav?: boolean, getOnlyNav?: () => boolean, getRenderMode?: () => 'all' | 'onlyNav' | 'factorOnly' }} options
+ * @param {{ onlyNav?: boolean, getOnlyNav?: () => boolean, getRenderMode?: () => 'all' | 'onlyNav' | 'factorOnly' | 'attributionOnly', getStaticChart?: () => boolean, getChartLarge?: () => boolean }} options
  *        仅净值模式请传 getOnlyNav（与 props 同步）；onlyNav 为兼容旧用法
  */
 export function useFGameCharts(getChartData, vueInstance = null, options = {}) {
@@ -22,6 +22,18 @@ export function useFGameCharts(getChartData, vueInstance = null, options = {}) {
 		typeof options.getRenderMode === 'function'
 			? options.getRenderMode
 			: () => (getOnlyNav() ? 'onlyNav' : 'all')
+	const getStaticChart =
+		typeof options.getStaticChart === 'function' ? options.getStaticChart : () => false
+	const getChartLarge =
+		typeof options.getChartLarge === 'function' ? options.getChartLarge : () => false
+
+	function fcOption(data) {
+		return buildFactorCumOption(data, { static: getStaticChart(), large: getChartLarge() })
+	}
+
+	function attOption(data) {
+		return buildAttributionOption(data, { static: getStaticChart(), large: getChartLarge() })
+	}
 	const componentScope = vueInstance && vueInstance.proxy ? vueInstance.proxy : null
 	const chartUid = Math.random().toString(36).slice(2)
 	const idNav = ref(`fchart-nav-${chartUid}`)
@@ -36,6 +48,7 @@ export function useFGameCharts(getChartData, vueInstance = null, options = {}) {
 		const mode = getRenderMode()
 		if (mode === 'onlyNav') return { nav: true, fc: false, att: false }
 		if (mode === 'factorOnly') return { nav: false, fc: true, att: false }
+		if (mode === 'attributionOnly') return { nav: false, fc: false, att: true }
 		return { nav: true, fc: true, att: true }
 	}
 
@@ -150,12 +163,12 @@ export function useFGameCharts(getChartData, vueInstance = null, options = {}) {
 		if (flags.fc) {
 			if (!elFc) return
 			chartFc = echarts.init(elFc)
-			chartFc.setOption(buildFactorCumOption(d), true)
+			chartFc.setOption(fcOption(d), true)
 		}
 		if (flags.att) {
 			if (!elAtt) return
 			chartAtt = echarts.init(elAtt)
-			chartAtt.setOption(buildAttributionOption(d), true)
+			chartAtt.setOption(attOption(d), true)
 		}
 	}
 
@@ -199,11 +212,11 @@ export function useFGameCharts(getChartData, vueInstance = null, options = {}) {
 		}
 		if (flags.fc) {
 			await sleep(100)
-			chartFc = await run(idFc.value, buildFactorCumOption)
+			chartFc = await run(idFc.value, fcOption)
 		}
 		if (flags.att) {
 			await sleep(100)
-			chartAtt = await run(idAtt.value, buildAttributionOption)
+			chartAtt = await run(idAtt.value, attOption)
 		}
 	}
 

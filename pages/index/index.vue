@@ -21,6 +21,8 @@
 
 		<view v-if="user" class="actions">
 
+			<button v-if="avatarBroken" class="action primary" @click="goFixAvatar">重新上传头像（大屏可见）</button>
+
 			<button v-if="isAdmin" class="action primary" @click="goCreateRoom">创建房间</button>
 
 			<button v-if="isAdmin" class="action pdf" @click="goScorePdf">导出评分 PDF</button>
@@ -54,6 +56,8 @@
 
 	import { f_roleLabel, f_isAdmin } from '../../utils/f_role.js'
 
+	import { f_isBrokenAvatarUrl } from '../../utils/f_profileApi.js'
+
 
 
 	export default {
@@ -82,6 +86,10 @@
 
 				return f_isAdmin(this.user)
 
+			},
+
+			avatarBroken() {
+				return !!(this.user && f_isBrokenAvatarUrl(this.user.f_avatar_url))
 			}
 
 		},
@@ -152,6 +160,10 @@
 
 				uni.navigateTo({ url: '/pages/f_room/join' })
 
+			},
+
+			goFixAvatar() {
+				uni.navigateTo({ url: '/pages/login/login?fix=1' })
 			},
 
 			logout() {

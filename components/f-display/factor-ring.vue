@@ -111,8 +111,9 @@ function getConnectorStyle(item) {
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	padding: 8px;
+	padding: 0;
 	box-sizing: border-box;
+	max-width: 100%;
 }
 
 .ring-container {

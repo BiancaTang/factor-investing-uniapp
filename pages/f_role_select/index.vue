@@ -14,9 +14,10 @@
 				class="role-item"
 				:class="{
 					disabled: role.selectedByUid && role.selectedByUid !== myUid,
-					mine: role.selectedByUid === myUid
+					mine: role.selectedByUid === myUid,
+					pending: pendingRoleId === role.id && role.selectedByUid !== myUid
 				}"
-				@click="selectRole(role)"
+				@click="pickRole(role)"
 			>
 				<view class="role-left">
 					<image class="role-thumb" :src="role.image" mode="aspectFill" />
@@ -30,6 +31,10 @@
 						<text class="factor-tag main">主:{{ role.mainFactor }}</text>
 						<text class="factor-tag sub">副:{{ role.subFactor }}</text>
 					</view>
+					<view class="skill-brief">
+						<text class="skill-tag active">配·{{ role.activeSkillName }}</text>
+						<text class="skill-tag passive">运·{{ role.passiveSkillName }}</text>
+					</view>
 					<view v-if="role.selectedByUid" class="taken-info">
 						<text class="taken-text">已被 {{ role.selectedBy }} 选择</text>
 					</view>
@@ -37,7 +42,29 @@
 			</view>
 		</view>
 
+		<view v-if="pendingRoleDetail" class="skill-panel">
+			<text class="skill-panel-title">{{ pendingRoleDetail.name }} · 技能</text>
+			<text class="skill-intro">{{ pendingRoleDetail.roleIntro }}</text>
+			<view class="skill-block">
+				<text class="skill-sec">配置 · {{ pendingRoleDetail.activeSkillName }}</text>
+				<text class="skill-desc">{{ pendingRoleDetail.activeSkillDesc }}</text>
+			</view>
+			<view class="skill-block">
+				<text class="skill-sec">运行 · {{ pendingRoleDetail.passiveSkillName }}</text>
+				<text class="skill-desc">{{ pendingRoleDetail.passiveSkillDesc }}</text>
+			</view>
+		</view>
+
 		<view class="actions">
+			<text v-if="pendingRoleLabel" class="pending-hint">已预选：{{ pendingRoleLabel }}，请点击确认提交</text>
+			<button
+				class="btn confirm"
+				:disabled="selecting || !canConfirm"
+				:loading="selecting && !isRandom"
+				@click="confirmSelection"
+			>
+				确认
+			</button>
 			<button
 				class="btn random"
 				:disabled="selecting || !canRandom"
@@ -70,6 +97,7 @@ const selecting = ref(false)
 const isRandom = ref(false)
 const myRoleId = ref(null)
 const myRoleName = ref('')
+const pendingRoleId = ref(null)
 const playingStarted = ref(false)
 
 const myUid = computed(() => {
@@ -77,22 +105,59 @@ const myUid = computed(() => {
 	return u && u.f_uid ? String(u.f_uid) : ''
 })
 
-const roles = ref(
-	F_GAME_ROLES.map((r) => ({
-		id: r.id,
-		name: r.name,
-		subtitle: r.subtitle,
-		mainFactor: r.mainFactor,
-		subFactor: r.subFactor,
-		image: f_gameRolePortraitDisplayUrl(r.id, false),
-		selectedBy: '',
-		selectedByUid: ''
-	}))
-)
+function f_roleRowFromMeta(meta, live = {}) {
+	return {
+		id: meta.id,
+		name: meta.name,
+		subtitle: meta.subtitle,
+		mainFactor: meta.mainFactor,
+		subFactor: meta.subFactor,
+		roleIntro: meta.roleIntro,
+		activeSkillName: meta.activeSkillName,
+		activeSkillDesc: meta.activeSkillDesc,
+		passiveSkillName: meta.passiveSkillName,
+		passiveSkillDesc: meta.passiveSkillDesc,
+		image: f_gameRolePortraitDisplayUrl(meta.id, !!live.selectedByUid),
+		selectedBy: live.selectedBy || '',
+		selectedByUid: live.selectedByUid || ''
+	}
+}
+
+const roles = ref(F_GAME_ROLES.map((r) => f_roleRowFromMeta(r)))
 
 const selectedCount = computed(() => roles.value.filter((r) => r.selectedByUid).length)
 const remainingCount = computed(() => roles.value.filter((r) => !r.selectedByUid).length)
 const canRandom = computed(() => roles.value.some((r) => !r.selectedByUid || r.selectedByUid === myUid.value))
+
+const pendingRoleLabel = computed(() => {
+	if (!pendingRoleId.value) return ''
+	const r = roles.value.find((x) => x.id === pendingRoleId.value)
+	return r ? r.name : ''
+})
+
+const pendingRoleDetail = computed(() => {
+	if (!pendingRoleId.value) return null
+	return roles.value.find((x) => x.id === pendingRoleId.value) || null
+})
+
+const canConfirm = computed(() => {
+	if (!pendingRoleId.value || playingStarted.value) return false
+	const r = roles.value.find((x) => x.id === pendingRoleId.value)
+	if (!r) return false
+	if (r.selectedByUid && r.selectedByUid !== myUid.value) return false
+	return true
+})
+
+function syncPendingAfterFetch() {
+	if (pendingRoleId.value) {
+		const r = roles.value.find((x) => x.id === pendingRoleId.value)
+		if (!r || (r.selectedByUid && r.selectedByUid !== myUid.value)) {
+			pendingRoleId.value = myRoleId.value
+		}
+	} else if (myRoleId.value) {
+		pendingRoleId.value = myRoleId.value
+	}
+}
 
 async function fetchRoleStatus() {
 	try {
@@ -115,16 +180,10 @@ async function fetchRoleStatus() {
 			return
 		}
 		if (data && data.f_roles) {
-			roles.value = data.f_roles.map((sr) => ({
-				id: sr.id,
-				name: sr.name,
-				subtitle: sr.subtitle,
-				mainFactor: sr.mainFactor,
-				subFactor: sr.subFactor,
-				image: f_gameRolePortraitDisplayUrl(sr.id, !!sr.selectedByUid),
-				selectedBy: sr.selectedBy || '',
-				selectedByUid: sr.selectedByUid || ''
-			}))
+			roles.value = F_GAME_ROLES.map((meta) => {
+				const sr = data.f_roles.find((r) => r.id === meta.id) || {}
+				return f_roleRowFromMeta(meta, sr)
+			})
 		}
 		const u = f_getStoredUser()
 		if (u && data.f_selected_players) {
@@ -137,14 +196,26 @@ async function fetchRoleStatus() {
 				myRoleName.value = ''
 			}
 		}
+		syncPendingAfterFetch()
 	} catch (e) {
 		console.error(e)
 	}
 }
 
-async function selectRole(role) {
+function pickRole(role) {
 	if (playingStarted.value || selecting.value) return
 	if (role.selectedByUid && role.selectedByUid !== myUid.value) return
+	pendingRoleId.value = role.id
+}
+
+async function confirmSelection() {
+	if (playingStarted.value || selecting.value || !canConfirm.value) return
+	const roleId = pendingRoleId.value
+	if (myRoleId.value === roleId) {
+		uni.showToast({ title: '已是当前角色', icon: 'none' })
+		goToPlayWaiting()
+		return
+	}
 
 	selecting.value = true
 	isRandom.value = false
@@ -159,7 +230,7 @@ async function selectRole(role) {
 			data: {
 				f_room_code: roomCode.value,
 				f_player_uid: u.f_uid,
-				f_role_id: role.id
+				f_role_id: roleId
 			}
 		})
 		const body = res.result || {}
@@ -169,6 +240,7 @@ async function selectRole(role) {
 		}
 		myRoleId.value = body.f_data.f_role_id
 		myRoleName.value = body.f_data.f_role_name
+		pendingRoleId.value = myRoleId.value
 		uni.showToast({ title: `已选择 ${body.f_data.f_role_name}`, icon: 'success' })
 		await fetchRoleStatus()
 		goToPlayWaiting()
@@ -183,35 +255,12 @@ async function selectRole(role) {
 async function randomRole() {
 	if (playingStarted.value || selecting.value || !canRandom.value) return
 
-	selecting.value = true
-	isRandom.value = true
-	try {
-		const u = f_getStoredUser()
-		if (!u || !u.f_uid) return
-		const res = await uniCloud.callFunction({
-			name: 'f_select_role',
-			data: {
-				f_room_code: roomCode.value,
-				f_player_uid: u.f_uid,
-				f_is_random: true
-			}
-		})
-		const body = res.result || {}
-		if (body.f_code !== 0) {
-			uni.showToast({ title: body.f_message || '随机失败', icon: 'none' })
-			return
-		}
-		myRoleId.value = body.f_data.f_role_id
-		myRoleName.value = body.f_data.f_role_name
-		uni.showToast({ title: `随机到 ${body.f_data.f_role_name}`, icon: 'success' })
-		await fetchRoleStatus()
-		goToPlayWaiting()
-	} catch (e) {
-		console.error(e)
-		uni.showToast({ title: '随机失败', icon: 'none' })
-	} finally {
-		selecting.value = false
-	}
+	const pool = roles.value.filter((r) => !r.selectedByUid || r.selectedByUid === myUid.value)
+	if (!pool.length) return
+	const pick = pool[Math.floor(Math.random() * pool.length)]
+	pendingRoleId.value = pick.id
+	isRandom.value = false
+	uni.showToast({ title: `已预选 ${pick.name}，请点确认`, icon: 'none' })
 }
 
 function goToPlayWaiting() {
@@ -299,6 +348,11 @@ onLoad((options) => {
 	border-color: #d4af37;
 }
 
+.role-item.pending {
+	border-color: #7ec99a;
+	box-shadow: 0 0 0 2rpx rgba(126, 201, 154, 0.35);
+}
+
 .role-item.disabled {
 	opacity: 0.45;
 	pointer-events: none;
@@ -367,8 +421,91 @@ onLoad((options) => {
 	color: #ff6b6b;
 }
 
+.skill-brief {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8rpx;
+	margin-top: 8rpx;
+}
+
+.skill-tag {
+	font-size: 20rpx;
+	padding: 4rpx 10rpx;
+	border-radius: 8rpx;
+	line-height: 1.35;
+}
+
+.skill-tag.active {
+	background: rgba(212, 175, 55, 0.18);
+	color: #e8c96a;
+}
+
+.skill-tag.passive {
+	background: rgba(126, 201, 154, 0.15);
+	color: #9fd4b0;
+}
+
+.skill-panel {
+	margin-top: 24rpx;
+	padding: 20rpx;
+	background: #12120f;
+	border: 1rpx solid #3f341a;
+	border-radius: 16rpx;
+}
+
+.skill-panel-title {
+	font-size: 28rpx;
+	font-weight: 700;
+	color: #f5e6b3;
+	display: block;
+	margin-bottom: 12rpx;
+}
+
+.skill-intro {
+	font-size: 24rpx;
+	color: #bfa56a;
+	line-height: 1.5;
+	display: block;
+	margin-bottom: 16rpx;
+}
+
+.skill-block + .skill-block {
+	margin-top: 12rpx;
+}
+
+.skill-sec {
+	font-size: 24rpx;
+	font-weight: 600;
+	color: #d4af37;
+	display: block;
+	margin-bottom: 6rpx;
+}
+
+.skill-desc {
+	font-size: 22rpx;
+	color: #aaa;
+	line-height: 1.45;
+	display: block;
+}
+
 .actions {
 	margin-top: 32rpx;
+	display: flex;
+	flex-direction: column;
+	gap: 16rpx;
+}
+
+.pending-hint {
+	font-size: 26rpx;
+	color: #7ec99a;
+	text-align: center;
+	line-height: 1.45;
+}
+
+.btn.confirm {
+	background: linear-gradient(135deg, #43a047, #2e7d32);
+	color: #fff;
+	font-weight: 600;
 }
 
 .btn {

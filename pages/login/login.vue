@@ -2,7 +2,7 @@
 	<view class="page">
 		<view class="hero">
 			<text class="brand">因子投资</text>
-			<text class="sub">{{ step === 'phone' ? '请输入ID' : '完善微信头像与昵称以完成注册' }}</text>
+			<text class="sub">{{ stepSubTitle }}</text>
 		</view>
 
 		<view class="card">
@@ -28,6 +28,37 @@
 					确定
 				</button>
 				<text class="tips">将查询云数据库表 f_user_profile 是否已有该 ID。</text>
+			</view>
+
+			<!-- 老用户：重传头像（wxfile 等无效地址） -->
+			<view v-else-if="step === 'avatar-fix'" class="block">
+				<view class="phone-bar">
+					<text class="phone-fixed">ID {{ phone }}</text>
+				</view>
+				<text class="warn-tip">当前头像未上传到云存储，大屏无法显示。请重新选择头像。</text>
+				<view class="row avatar-row">
+					<text class="label">头像</text>
+					<!-- #ifdef MP-WEIXIN -->
+					<button class="avatar-btn" open-type="chooseAvatar" @chooseavatar="onChooseAvatar">
+						<image v-if="avatarUrl" class="avatar" :src="avatarUrl" mode="aspectFill" />
+						<text v-else class="avatar-placeholder">点击选择微信头像</text>
+					</button>
+					<!-- #endif -->
+					<!-- #ifndef MP-WEIXIN -->
+					<view class="avatar-side">
+						<button class="pick-btn" @click="pickLocalImage">选择图片</button>
+						<image v-if="avatarUrl" class="avatar large" :src="avatarUrl" mode="aspectFill" />
+					</view>
+					<!-- #endif -->
+				</view>
+				<button
+					class="btn enter"
+					:disabled="!avatarUrl || saving"
+					:loading="saving"
+					@click="doUpdateAvatar"
+				>
+					保存头像
+				</button>
 			</view>
 
 			<!-- 第二步：未注册时填写资料 -->
@@ -94,9 +125,15 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { onShow } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { f_getStoredUser, f_saveUserLocal } from '../../utils/f_userStorage.js'
-import { f_lookupPhoneInCloud, f_saveProfileToCloud, f_ensureCloudAvatarUrl } from '../../utils/f_profileApi.js'
+import {
+	f_lookupPhoneInCloud,
+	f_saveProfileToCloud,
+	f_ensureCloudAvatarUrl,
+	f_isBrokenAvatarUrl,
+	f_isCloudStoredAvatarUrl
+} from '../../utils/f_profileApi.js'
 
 const step = ref('phone')
 const phone = ref('')
@@ -111,10 +148,30 @@ const canRegister = computed(() => {
 	return !!(avatarUrl.value && nickName.value.trim() && phoneOk.value)
 })
 
+const stepSubTitle = computed(() => {
+	if (step.value === 'phone') return '请输入ID'
+	if (step.value === 'avatar-fix') return '重新上传头像到云存储'
+	return '完善微信头像与昵称以完成注册'
+})
+
+onLoad((q) => {
+	if (q && String(q.fix) === '1') {
+		const u = f_getStoredUser()
+		if (u && u.f_phone) {
+			step.value = 'avatar-fix'
+			phone.value = String(u.f_phone)
+			nickName.value = String(u.f_nick_name || '')
+			avatarUrl.value = ''
+		}
+	}
+})
+
 onShow(() => {
 	const u = f_getStoredUser()
-	if (u && u.f_phone && u.f_nick_name && u.f_avatar_url) {
-		uni.reLaunch({ url: '/pages/index/index' })
+	if (u && u.f_phone && u.f_nick_name && u.f_avatar_url && !f_isBrokenAvatarUrl(u.f_avatar_url)) {
+		if (step.value === 'phone') {
+			uni.reLaunch({ url: '/pages/index/index' })
+		}
 	}
 })
 
@@ -142,6 +199,13 @@ async function onPhoneConfirm() {
 		const fd = body.f_data || {}
 		if (fd.f_exists && fd.f_user) {
 			const u = fd.f_user
+			if (f_isBrokenAvatarUrl(u.f_avatar_url)) {
+				step.value = 'avatar-fix'
+				nickName.value = u.f_nick_name || ''
+				avatarUrl.value = ''
+				uni.showToast({ title: '请重新上传头像', icon: 'none', duration: 2400 })
+				return
+			}
 			f_saveUserLocal({
 				f_uid: u.f_uid || '',
 				f_avatar_url: u.f_avatar_url,
@@ -194,40 +258,79 @@ async function doRegister() {
 	if (!canRegister.value || saving.value) return
 	saving.value = true
 	try {
-		let f_avatar_url = avatarUrl.value
-		// #ifndef MP-WEIXIN
-		f_avatar_url = await f_ensureCloudAvatarUrl(f_avatar_url)
-		// #endif
+		const uploaded = await f_uploadAvatarForProfile(avatarUrl.value)
+		if (!uploaded) return
 
 		const payload = {
-			f_avatar_url,
+			f_avatar_url: uploaded,
 			f_nick_name: nickName.value.trim(),
 			f_phone: String(phone.value).trim()
 		}
 
-		const res = await f_saveProfileToCloud(payload)
-		const body = res.result || {}
-		if (body.f_code !== 0) {
-			uni.showToast({ title: body.f_message || '注册失败', icon: 'none' })
-			return
-		}
-
-		const fd = body.f_data || {}
-		f_saveUserLocal({
-			...payload,
-			f_uid: fd.f_uid || '',
-			f_role: fd.f_role || 'player',
-			f_cloud_id: fd.f_id,
-			f_cloud_action: fd.f_action
-		})
-		uni.showToast({ title: '注册成功', icon: 'success' })
-		setTimeout(() => uni.reLaunch({ url: '/pages/index/index' }), 400)
+		await f_finishProfileSave(payload)
 	} catch (err) {
 		console.error('[doRegister]', err)
 		uni.showToast({ title: '请检查 uniCloud 与云函数 f_save_profile', icon: 'none', duration: 2800 })
 	} finally {
 		saving.value = false
 	}
+}
+
+async function doUpdateAvatar() {
+	if (!avatarUrl.value || saving.value) return
+	if (!nickName.value.trim()) {
+		uni.showToast({ title: '缺少昵称，请重新登录', icon: 'none' })
+		return
+	}
+	saving.value = true
+	try {
+		const uploaded = await f_uploadAvatarForProfile(avatarUrl.value)
+		if (!uploaded) return
+
+		const payload = {
+			f_avatar_url: uploaded,
+			f_nick_name: nickName.value.trim(),
+			f_phone: String(phone.value).trim()
+		}
+		await f_finishProfileSave(payload)
+	} catch (err) {
+		console.error('[doUpdateAvatar]', err)
+		uni.showToast({ title: '头像更新失败', icon: 'none' })
+	} finally {
+		saving.value = false
+	}
+}
+
+async function f_uploadAvatarForProfile(localUrl) {
+	const uploaded = await f_ensureCloudAvatarUrl(localUrl)
+	if (!uploaded || !f_isCloudStoredAvatarUrl(uploaded)) {
+		uni.showToast({
+			title: '头像上传云存储失败，请重选',
+			icon: 'none',
+			duration: 2800
+		})
+		return ''
+	}
+	return uploaded
+}
+
+async function f_finishProfileSave(payload) {
+	const res = await f_saveProfileToCloud(payload)
+	const body = res.result || {}
+	if (body.f_code !== 0) {
+		uni.showToast({ title: body.f_message || '保存失败', icon: 'none' })
+		return
+	}
+	const fd = body.f_data || {}
+	f_saveUserLocal({
+		...payload,
+		f_uid: fd.f_uid || '',
+		f_role: fd.f_role || 'player',
+		f_cloud_id: fd.f_id,
+		f_cloud_action: fd.f_action
+	})
+	uni.showToast({ title: '保存成功', icon: 'success' })
+	setTimeout(() => uni.reLaunch({ url: '/pages/index/index' }), 400)
 }
 </script>
 
@@ -407,5 +510,17 @@ async function doRegister() {
 	font-size: 22rpx;
 	color: #bfa56a;
 	line-height: 1.65;
+}
+
+.warn-tip {
+	display: block;
+	font-size: 24rpx;
+	color: #e8b86d;
+	line-height: 1.5;
+	margin-bottom: 20rpx;
+	padding: 16rpx 20rpx;
+	background: rgba(232, 184, 109, 0.08);
+	border-radius: 12rpx;
+	border: 1rpx solid rgba(232, 184, 109, 0.25);
 }
 </style>

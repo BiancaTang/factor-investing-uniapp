@@ -73,7 +73,7 @@
 				</view>
 			</view>
 			<!-- #endif -->
-			<view v-if="factorInputRows.length" class="block">
+			<view v-if="showFactorTable && factorInputRows.length" class="block">
 				<text class="sub">玩家输入的十个因子值</text>
 				<view class="factor-table">
 					<view class="factor-head">
@@ -124,7 +124,7 @@ const props = defineProps({
 		type: Boolean,
 		default: false
 	},
-	/** all: 三图+表；factorOnly: 仅因子收益率曲线+十因子表 */
+	/** all: 三图+表；factorOnly: 仅因子收益率曲线+十因子表；attributionOnly: 仅收益归因 */
 	displayMode: {
 		type: String,
 		default: 'all'
@@ -189,6 +189,21 @@ const props = defineProps({
 	chartInnerHeightPx: {
 		type: Number,
 		default: 0
+	},
+	/** 为 true 时仅首次渲染，不随轮询数据或尺寸变化重绘（大屏静态归因） */
+	staticChart: {
+		type: Boolean,
+		default: false
+	},
+	/** 大屏等场景放大轴、图例与数据标签 */
+	chartLarge: {
+		type: Boolean,
+		default: false
+	},
+	/** 为 true 时不展示十因子输入表（大屏 factorOnly 用） */
+	hideFactorTable: {
+		type: Boolean,
+		default: false
 	}
 })
 
@@ -211,11 +226,18 @@ const canvasStyle = computed(() => {
 
 const effectiveMode = computed(() => {
 	if (props.onlyNav) return 'onlyNav'
-	return props.displayMode === 'factorOnly' ? 'factorOnly' : 'all'
+	if (props.displayMode === 'factorOnly') return 'factorOnly'
+	if (props.displayMode === 'attributionOnly') return 'attributionOnly'
+	return 'all'
 })
-const showNav = computed(() => effectiveMode.value !== 'factorOnly')
-const showFactorCurve = computed(() => effectiveMode.value !== 'onlyNav')
-const showAttribution = computed(() => effectiveMode.value === 'all')
+const showNav = computed(() => effectiveMode.value !== 'factorOnly' && effectiveMode.value !== 'attributionOnly')
+const showFactorCurve = computed(() => effectiveMode.value !== 'onlyNav' && effectiveMode.value !== 'attributionOnly')
+const showAttribution = computed(() => effectiveMode.value === 'all' || effectiveMode.value === 'attributionOnly')
+const showFactorTable = computed(() => {
+	if (effectiveMode.value === 'attributionOnly') return false
+	if (props.hideFactorTable) return false
+	return effectiveMode.value === 'all' || effectiveMode.value === 'factorOnly'
+})
 
 const chartPayload = computed(() => {
 	if (props.chartData && typeof props.chartData === 'object') {
@@ -278,6 +300,14 @@ const chartPayload = computed(() => {
 const hasData = computed(() => {
 	const d = chartPayload.value
 	if (!d) return false
+	if (effectiveMode.value === 'attributionOnly') {
+		const br = d.attribution?.[0]?.by_round
+		return Array.isArray(br) && br.length > 0
+	}
+	if (effectiveMode.value === 'factorOnly') {
+		const fc = d.factor_cumulative
+		return Array.isArray(fc) && fc.length > 0
+	}
 	const ns = d.nav_series
 	if (ns && ns.length) {
 		for (const s of ns) {
@@ -311,22 +341,24 @@ const { idNav, idFc, idAtt, renderCharts } = useFGameCharts(
 	vueInstance,
 	{
 		getOnlyNav: () => props.onlyNav,
-		getRenderMode: () => effectiveMode.value
+		getRenderMode: () => effectiveMode.value,
+		getStaticChart: () => props.staticChart,
+		getChartLarge: () => props.chartLarge
 	}
 )
 
 watch(
-	chartPayload,
+	() => (props.staticChart ? props.chartData : chartPayload.value),
 	() => {
 		if (hasData.value) renderCharts()
 	},
-	{ deep: true }
+	{ deep: !props.staticChart }
 )
 
 watch(
 	() => props.chartInnerHeightPx,
 	() => {
-		if (!hasData.value) return
+		if (props.staticChart || !hasData.value) return
 		nextTick(() => {
 			setTimeout(() => renderCharts(), 80)
 		})

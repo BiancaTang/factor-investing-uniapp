@@ -1,20 +1,31 @@
 <template>
-	<view v-if="flatLines.length" class="fsb" :class="variant">
+	<view
+		v-if="flatLines.length"
+		class="fsb"
+		:class="[variant, { 'fsb-is-expanded': expanded, 'fsb-overlay': overlayWhenExpanded }]"
+	>
 		<view class="fsb-head" @click="toggleExpand">
 			<text class="fsb-kicker">技能播报</text>
 			<text class="fsb-meta">{{ headMeta }}</text>
-			<text class="fsb-toggle">{{ expanded ? '收起' : '展开全部' }}</text>
+			<text class="fsb-chevron">{{ expanded ? '▲' : '▼' }}</text>
+			<text class="fsb-toggle">{{ expanded ? '收起' : '展开' }}</text>
 		</view>
-		<view v-if="!expanded" class="fsb-body">
+		<view
+			v-if="expanded"
+			class="fsb-dropdown"
+			:class="{ 'fsb-dropdown-overlay': overlayWhenExpanded }"
+		>
+			<scroll-view scroll-y class="fsb-scroll" :show-scrollbar="false">
+				<view v-for="(block, bi) in displayBlocks" :key="'b-' + bi" class="fsb-block">
+					<text v-if="block.roundLabel" class="fsb-block-round">{{ block.roundLabel }}</text>
+					<text v-for="(ln, li) in block.lines" :key="'b-' + bi + '-' + li" class="fsb-line">{{ ln }}</text>
+				</view>
+			</scroll-view>
+		</view>
+		<view v-else-if="!headerOnlyWhenCollapsed && previewLines.length" class="fsb-body">
 			<text v-for="(ln, i) in previewLines" :key="'p-' + i" class="fsb-line">{{ ln }}</text>
 			<text v-if="hiddenCount > 0" class="fsb-more">还有 {{ hiddenCount }} 条…</text>
 		</view>
-		<scroll-view v-else scroll-y class="fsb-scroll" :show-scrollbar="false">
-			<view v-for="(block, bi) in displayBlocks" :key="'b-' + bi" class="fsb-block">
-				<text v-if="block.roundLabel" class="fsb-block-round">{{ block.roundLabel }}</text>
-				<text v-for="(ln, li) in block.lines" :key="'b-' + bi + '-' + li" class="fsb-line">{{ ln }}</text>
-			</view>
-		</scroll-view>
 	</view>
 </template>
 
@@ -35,6 +46,16 @@ const props = defineProps({
 	previewCount: {
 		type: Number,
 		default: 2
+	},
+	/** 折叠时仅显示标题栏（大屏顶栏下拉用） */
+	headerOnlyWhenCollapsed: {
+		type: Boolean,
+		default: false
+	},
+	/** 展开时用浮层覆盖下方内容，不撑开布局 */
+	overlayWhenExpanded: {
+		type: Boolean,
+		default: false
 	}
 })
 
@@ -98,17 +119,37 @@ const headMeta = computed(() => {
 	margin-bottom: 16rpx;
 }
 .fsb.display {
-	border-radius: 12px;
-	padding: 14px 18px 16px;
-	margin-bottom: 12px;
+	border-radius: 8px;
+	padding: 10px 16px;
+	margin-bottom: 0;
+	border-color: rgba(201, 168, 76, 0.28);
+}
+.fsb.display.fsb-is-expanded {
+	padding-bottom: 10px;
+}
+.fsb.display.fsb-overlay.fsb-is-expanded {
+	padding-bottom: 10px;
+}
+.fsb.display.fsb-overlay {
+	position: relative;
+	z-index: 60;
 }
 .fsb-head {
 	display: flex;
 	align-items: center;
 	gap: 12rpx;
 	margin-bottom: 10rpx;
+	cursor: pointer;
+	user-select: none;
 }
 .fsb.display .fsb-head {
+	margin-bottom: 0;
+	gap: 10px;
+}
+.fsb-is-expanded.fsb.display .fsb-head {
+	margin-bottom: 0;
+}
+.fsb-is-expanded.fsb.display:not(.fsb-overlay) .fsb-head {
 	margin-bottom: 8px;
 }
 .fsb-kicker {
@@ -135,7 +176,38 @@ const headMeta = computed(() => {
 	flex-shrink: 0;
 }
 .fsb.display .fsb-toggle {
-	font-size: 13px;
+	font-size: 12px;
+	color: rgba(126, 201, 154, 0.85);
+}
+.fsb-chevron {
+	font-size: 20rpx;
+	color: #7ec99a;
+	flex-shrink: 0;
+	line-height: 1;
+}
+.fsb.display .fsb-chevron {
+	font-size: 11px;
+	color: rgba(201, 168, 76, 0.7);
+}
+.fsb-dropdown {
+	overflow: hidden;
+}
+.fsb-dropdown-overlay {
+	position: absolute;
+	top: 100%;
+	left: 0;
+	right: 0;
+	margin-top: 4px;
+	z-index: 61;
+	border-radius: 8px;
+	border: 1px solid rgba(201, 168, 76, 0.32);
+	background: linear-gradient(165deg, #221c12 0%, #100e0a 100%);
+	box-shadow: 0 16px 48px rgba(0, 0, 0, 0.72);
+	padding: 10px 16px 12px;
+	box-sizing: border-box;
+}
+.fsb-dropdown-overlay .fsb-scroll {
+	max-height: min(320px, 42vh);
 }
 .fsb-body {
 	display: flex;
@@ -146,7 +218,7 @@ const headMeta = computed(() => {
 	max-height: 360rpx;
 }
 .fsb.display .fsb-scroll {
-	max-height: 220px;
+	max-height: min(280px, 36vh);
 }
 .fsb-block {
 	margin-bottom: 14rpx;
